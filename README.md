@@ -4,21 +4,22 @@ Official [Cursor](https://cursor.com) plugin for [Truto](https://truto.one) — 
 
 ## Installation
 
-### Cursor Marketplace (Recommended)
+### Via `npx skills` (Recommended)
 
-Search for **Truto** in Cursor's plugin marketplace and install.
-
-### Manual (GitHub Rule)
-
-1. Open **Cursor Settings > Rules**
-2. Click **Add Rule > Remote Rule (GitHub)**
-3. Enter: `truto/agent-skills`
-
-### Via `npx`
+Install the skills into your project (or globally with `-g`):
 
 ```bash
-npx skills add truto/agent-skills
+npx skills add trutohq/truto-skills
 ```
+
+This works for Cursor and any other agent supported by the [`skills`](https://www.npmjs.com/package/skills) CLI.
+
+### Manual (Cursor — GitHub Remote Rule)
+
+1. Open **Cursor Settings > Rules**
+2. In the **Project Rules** section, click **Add Rule**
+3. Select **Remote Rule (GitHub)**
+4. Enter the repository URL: `https://github.com/trutohq/truto-skills`
 
 ## Skills
 
@@ -49,9 +50,9 @@ Truto is a unified API platform that lets you integrate with 200+ third-party to
 
 ## Resources
 
-- [Truto Documentation](https://docs.truto.one)
+- [Truto Documentation](https://truto.one/docs)
 - [Truto Dashboard](https://app.truto.one)
-- [API Reference](https://docs.truto.one/api-reference)
+- [API Reference](https://truto.one/docs/api-reference)
 - [Truto Website](https://truto.one)
 
 ## License

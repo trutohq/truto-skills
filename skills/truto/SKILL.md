@@ -1,7 +1,7 @@
 ---
-name: truto
+
+## name: truto
 description: Write application code that integrates with third-party tools via the Truto unified API. Covers API calls, webhook handlers, connection flows, and data access patterns for use in the user's codebase.
----
 
 # Truto — Unified API Platform
 
@@ -21,20 +21,22 @@ This skill is about **code that lives in the user's codebase**. For admin setup,
 
 ## Core Concepts
 
-| Concept | Description | Reference |
-|---------|-------------|-----------|
-| **Environment** | Isolated workspace scoping all resources. API tokens are tied to one environment. | [Core Resources](./references/core-resources.md) |
-| **Integration** | A third-party tool definition (e.g., Salesforce, Jira, Slack). | [Core Resources](./references/core-resources.md) |
-| **Environment Integration** | An integration installed into a specific environment with optional config overrides. | [Core Resources](./references/core-resources.md) |
-| **Integrated Account** | A connected instance of an integration for a specific tenant (end-user). | [Core Resources](./references/core-resources.md) |
-| **Tenant** | Your end-user or customer, identified by `tenant_id` on integrated accounts. | [Core Resources](./references/core-resources.md) |
-| **Unified API** | Standardized CRUD endpoints across integrations using a common schema. | [Unified API](./references/unified-api.md) |
-| **Proxy API** | Pass-through to the native API of the underlying tool. | [Proxy & Custom API](./references/proxy-and-custom-api.md) |
-| **Custom API** | User-defined API endpoints with custom routing logic. | [Proxy & Custom API](./references/proxy-and-custom-api.md) |
-| **Sync Job** | Scheduled or on-demand data synchronization from integrated accounts. | [Sync Jobs](./references/sync-jobs.md) |
-| **Webhook** | HTTP callbacks for real-time event notifications. | [Webhooks & Notifications](./references/webhooks-and-notifications.md) |
-| **Datastore** | External storage destinations (MongoDB, GCS, S3, Qdrant) for sync job output. | [Datastores](./references/datastores.md) |
-| **Workflow** | Event-driven automation triggered by Truto events. | [Workflows](./references/workflows.md) |
+
+| Concept                     | Description                                                                          | Reference                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| **Environment**             | Isolated workspace scoping all resources. API tokens are tied to one environment.    | [Core Resources](./references/core-resources.md)                       |
+| **Integration**             | A third-party tool definition (e.g., Salesforce, Jira, Slack).                       | [Core Resources](./references/core-resources.md)                       |
+| **Environment Integration** | An integration installed into a specific environment with optional config overrides. | [Core Resources](./references/core-resources.md)                       |
+| **Integrated Account**      | A connected instance of an integration for a specific tenant (end-user).             | [Core Resources](./references/core-resources.md)                       |
+| **Tenant**                  | Your end-user or customer, identified by `tenant_id` on integrated accounts.         | [Core Resources](./references/core-resources.md)                       |
+| **Unified API**             | Standardized CRUD endpoints across integrations using a common schema.               | [Unified API](./references/unified-api.md)                             |
+| **Proxy API**               | Pass-through to the native API of the underlying tool.                               | [Proxy & Custom API](./references/proxy-and-custom-api.md)             |
+| **Custom API**              | User-defined API endpoints with custom routing logic.                                | [Proxy & Custom API](./references/proxy-and-custom-api.md)             |
+| **Sync Job**                | Scheduled or on-demand data synchronization from integrated accounts.                | [Sync Jobs](./references/sync-jobs.md)                                 |
+| **Webhook**                 | HTTP callbacks for real-time event notifications.                                    | [Webhooks & Notifications](./references/webhooks-and-notifications.md) |
+| **Datastore**               | External storage destinations (MongoDB, GCS, S3, Qdrant) for sync job output.        | [Datastores](./references/datastores.md)                               |
+| **Workflow**                | Event-driven automation triggered by Truto events.                                   | [Workflows](./references/workflows.md)                                 |
+
 
 ## Getting Started
 
@@ -207,12 +209,14 @@ const response = await fetch(
 
 ## When to Use Unified vs Proxy vs Custom API
 
-| Use Case | API | Why |
-|----------|-----|-----|
-| Standardized CRUD across integrations | **Unified** | Same request/response schema regardless of the underlying tool |
-| Access native API features not in unified schema | **Proxy** | Full access to the tool's native endpoints |
-| Custom business logic or transformations | **Custom** | Define your own endpoints with custom routing |
-| Bulk data operations with dependencies | **Batch Request** | Execute multiple API calls with dependency graph in one request |
+
+| Use Case                                         | API               | Why                                                             |
+| ------------------------------------------------ | ----------------- | --------------------------------------------------------------- |
+| Standardized CRUD across integrations            | **Unified**       | Same request/response schema regardless of the underlying tool  |
+| Access native API features not in unified schema | **Proxy**         | Full access to the tool's native endpoints                      |
+| Custom business logic or transformations         | **Custom**        | Define your own endpoints with custom routing                   |
+| Bulk data operations with dependencies           | **Batch Request** | Execute multiple API calls with dependency graph in one request |
+
 
 ## Authentication
 
@@ -220,23 +224,29 @@ All API requests use Bearer token authentication. The API token must only be use
 
 ## References
 
-| Document | Topics |
-|----------|--------|
-| [Authentication](./references/authentication.md) | API tokens, link tokens, integrated account tokens, auth patterns |
-| [MCP Tokens](./references/mcp-tokens.md) | MCP protocol tokens for AI agents, tool filtering, expiration |
-| [Connection Flow](./references/connection-flow.md) | Connection lifecycle, reconnecting accounts, webhook events, post-connection automation |
-| [Core Resources](./references/core-resources.md) | Environments, integrations, integrated accounts, teams |
-| [Integrated Account Context](./references/integrated-account-context.md) | Context field lifecycle, credentials, instance config, usage in APIs/sync/workflows |
-| [Unified API](./references/unified-api.md) | Unified CRUD, meta endpoints, pagination, SuperQuery |
-| [Proxy & Custom API](./references/proxy-and-custom-api.md) | Proxy pass-through, custom endpoints, batch requests |
-| [Sync Jobs](./references/sync-jobs.md) | Sync jobs, runs, cron triggers, templates, run state |
-| [Webhooks & Notifications](./references/webhooks-and-notifications.md) | Webhooks, notification destinations, inbound webhooks |
-| [Datastores](./references/datastores.md) | External storage destinations (MongoDB, GCS, S3, Qdrant) for sync job output |
-| [Workflows](./references/workflows.md) | Event-driven automations triggered by Truto events |
-| [Files & Logs](./references/files-and-logs.md) | File uploads and API/operation log queries |
-| [Static Gates](./references/static-gates.md) | Embeddable connection entry points |
-| [Daemon Jobs](./references/daemon-jobs.md) | Background processing tasks and runs |
 
-## Companion: Truto CLI
+| Document                                                                 | Topics                                                                                  |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| [Authentication](./references/authentication.md)                         | API tokens, link tokens, integrated account tokens, auth patterns                       |
+| [MCP Tokens](./references/mcp-tokens.md)                                 | MCP protocol tokens for AI agents, tool filtering, expiration                           |
+| [Connection Flow](./references/connection-flow.md)                       | Connection lifecycle, reconnecting accounts, webhook events, post-connection automation |
+| [Core Resources](./references/core-resources.md)                         | Environments, integrations, integrated accounts, teams                                  |
+| [Integrated Account Context](./references/integrated-account-context.md) | Context field lifecycle, credentials, instance config, usage in APIs/sync/workflows     |
+| [Unified API](./references/unified-api.md)                               | Unified CRUD, meta endpoints, pagination, SuperQuery                                    |
+| [Unified API Customization](./references/unified-api-customization.md)   | Modifying existing unified API mappings per environment, per-account overrides, creating your own custom unified models |
+| [Proxy & Custom API](./references/proxy-and-custom-api.md)               | Proxy pass-through, custom endpoints, batch requests                                    |
+| [Sync Jobs](./references/sync-jobs.md)                                   | Sync jobs, runs, cron triggers, templates, run state                                    |
+| [Webhooks & Notifications](./references/webhooks-and-notifications.md)   | Webhooks, notification destinations, inbound webhooks                                   |
+| [Datastores](./references/datastores.md)                                 | External storage destinations (MongoDB, GCS, S3, Qdrant) for sync job output            |
+| [Workflows](./references/workflows.md)                                   | Event-driven automations triggered by Truto events                                      |
+| [Files & Logs](./references/files-and-logs.md)                           | File uploads and API/operation log queries                                              |
+| [Static Gates](./references/static-gates.md)                             | Embeddable connection entry points                                                      |
+| [Daemon Jobs](./references/daemon-jobs.md)                               | Background processing tasks and runs                                                    |
 
-For setup tasks — creating integrations, connecting test accounts, exploring available resources, debugging API calls — use the **Truto CLI** skill. The CLI is an admin and debugging tool you run in the terminal; this skill is for the integration code that lives in your application.
+
+## Companion Skills
+
+- **Truto CLI** — for setup tasks (creating integrations, connecting test accounts, exploring resources, debugging API calls). The CLI is an admin and debugging tool you run in the terminal; this skill is for the integration code that lives in your application.
+- **Truto Link SDK** — for embedding the Truto connection UI in a frontend application using `@truto/truto-link-sdk` (popup mode, RapidForm, file pickers, error handling).
+- **truto-jsonata** — for writing JSONata expressions inside Truto config: unified API mapping overrides (`response_mapping`, `query_mapping`, `request_body_mapping`, `error_mapping`, etc.), custom unified model definitions, per-account overrides, environment integration overrides (auth/pagination/rate-limit/webhooks), sync job templates, workflows, daemon jobs, and scheduled actions. Documents the custom `$` functions added by `@truto/truto-jsonata` on top of standard JSONata. Pair with [Unified API Customization](./references/unified-api-customization.md) when modifying unified mappings.
+
