@@ -14,6 +14,17 @@ npx skills add trutohq/truto-skills
 
 This works for Cursor and any other agent supported by the [`skills`](https://www.npmjs.com/package/skills) CLI.
 
+### Claude Code (Plugin Marketplace)
+
+Add the Truto marketplace, then install the plugin:
+
+```bash
+/plugin marketplace add trutohq/truto-skills
+/plugin install truto@truto-skills
+```
+
+Skills become namespaced as `truto:truto`, `truto:truto-cli`, `truto:truto-jsonata`, `truto:truto-link-sdk`, and `truto:truto-api-conventions`.
+
 ### Manual (Cursor — GitHub Remote Rule)
 
 1. Open **Cursor Settings > Rules**
@@ -28,6 +39,8 @@ This works for Cursor and any other agent supported by the [`skills`](https://ww
 | [truto](./skills/truto/SKILL.md) | Build integrations with third-party tools using Truto's unified API platform |
 | [truto-link-sdk](./skills/truto-link-sdk/SKILL.md) | Embed the Truto connection flow in your frontend using @truto/truto-link-sdk |
 | [truto-cli](./skills/truto-cli/SKILL.md) | Install, authenticate, and use the Truto CLI for managing integrations and accessing data |
+| [truto-jsonata](./skills/truto-jsonata/SKILL.md) | Write JSONata expressions for Truto config (mappings, sync jobs, workflows) using the custom `$functions` from `@truto/truto-jsonata` |
+| [truto-api-conventions](./skills/truto-api-conventions/SKILL.md) | Truto API conventions — base URL, auth, URL patterns, pagination, idempotency, and skill routing |
 
 ## Rules
 
