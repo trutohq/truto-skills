@@ -46,7 +46,23 @@ truto integrations tools <id>
 
 # List unified APIs mapped to an integration
 truto integrations unified-apis <id>
+
+# Interactively scaffold a starter integration.config and create the integration
+truto integrations init                               # full interactive flow
+truto integrations init acme-crm \
+  --label "Acme CRM" --category crm \
+  --auth oauth2 --base-url https://api.acme.com/v1 \
+  --resources contacts,deals --webhook              # non-interactive when all flags supplied
+truto integrations init --print                       # write JSON to stdout, do not create
+truto integrations init --out integration.json        # write JSON to a file, do not create
+
+# Best-effort client-side validation of an integration config
+truto integrations validate <id>                      # validate the stored config
+truto integrations validate --file integration.json   # validate a local file
+cat integration.json | truto integrations validate --stdin
 ```
+
+`init` supports auth formats `api_key`, `oauth2`, `oauth2_client_credentials`, `basic`, `keka_oauth`, `oauth`. The scaffold seeds `credentials`, `authorization`, a starter `resources` block (CRUD method skeletons per resource you list), and an optional `webhook` block. `validate` checks for missing `label`, `credentials`, valid `authorization.format`, parseable resource methods, and a non-empty `webhook` block — server-side schema validation still happens at create/update time.
 
 ### Integrated Accounts (`truto accounts`)
 
@@ -95,7 +111,7 @@ Your API token is scoped to one environment — you never need to pass `environm
 
 ### Environment Integrations (`truto environment-integrations`)
 
-Install and configure integrations per environment. **Full CRUD.**
+Install and configure integrations per environment. **Full CRUD plus `override-*` helpers.**
 
 ```bash
 truto environment-integrations list --integration_id <id>
@@ -108,6 +124,39 @@ truto environment-integrations delete <id>
 **Filters:** `--integration_id`
 
 **Update fields:** `is_enabled` (boolean), `show_in_catalog` (boolean), `override` (JSON)
+
+**Override helpers** — all four `override-*` commands deep-patch a single key under `override`, leaving siblings alone. Each accepts `--body <json>` / `--stdin` for the full block, or convenience flags + `--config` for the common shape, plus `--clear` to null the key out.
+
+```bash
+truto environment-integrations show-override <id>     # inspect current override block
+
+# Authorization override (bearer / header / basic)
+truto environment-integrations override-auth <id> \
+  --format header \
+  --config '{"header_name":"X-Api-Key","header_value":"{{credentials.api_key}}"}'
+truto environment-integrations override-auth <id> --format bearer
+truto environment-integrations override-auth <id> --clear
+
+# Pagination override (page / cursor / link_header / offset / range / dynamic)
+truto environment-integrations override-pagination <id> \
+  --format cursor \
+  --config '{"cursor_path":"meta.next","limit_param":"page_size"}'
+truto environment-integrations override-pagination <id> --clear
+
+# Rate-limit override (each value is a JSONata expression evaluated against the response)
+truto environment-integrations override-rate-limit <id> \
+  --is-rate-limited '$response.status = 429' \
+  --retry-after-header '$number($header."retry-after")' \
+  --rate-limit-header '$number($header."x-rate-limit-remaining")'
+
+# Webhook override (signature verification, accept gate, payload transform)
+truto environment-integrations override-webhook <id> \
+  --signature-verification '{"format":"hmac","config":{"algorithm":"sha256","parts":["$body"],"secret":"{{credentials.webhook_secret}}","compare_with":"$header.x-signature"}}' \
+  --handle-verification '$event.event_type != "test"' \
+  --payload-transform '{ "type": $event.event_type, "data": $event.data }'
+```
+
+For end-to-end workflows (when to override what, JSONata scope per surface, debugging tips), see the [Customizing Integrations](../../truto/references/customizing-integrations.md) reference in the `truto` skill.
 
 ### API Tokens (`truto api-tokens`)
 
@@ -256,22 +305,18 @@ truto notification-destinations delete <id>
 
 ---
 
-## Platform Resources
+## Unified Model Customization
 
-### MCP Tokens (`truto mcp-tokens`)
+Four commands work together to customize unified APIs:
 
-Scoped to an integrated account. Unlike other resources, the account ID is a **positional argument**.
+| Command | API resource | What it scopes |
+|---|---|---|
+| `truto unified-models` | `unified-model` | Base unified model definitions (resources, scopes, docs, webhooks). Team-private. |
+| `truto unified-model-mappings` | `unified-model-resource-method` | Base per-(integration, resource, method) mapping rows (`response_mapping`, `query_mapping`, `request_body_mapping`, `error_mapping`, …). |
+| `truto env-unified-models` | `environment-unified-model` | Per-environment install of a unified model + environment-scoped overrides on the model itself. |
+| `truto env-unified-model-mappings` | `environment-unified-model-resource-method` | Per-environment overrides for individual mapping rows. The platform deep-merges these on top of the base mapping at request time. |
 
-```bash
-truto mcp-tokens list <account-id>
-truto mcp-tokens get <account-id> <token-id>
-truto mcp-tokens create <account-id> --name "my-mcp-token"
-truto mcp-tokens create <account-id> -b '{"name":"custom","scopes":[...]}'
-truto mcp-tokens update <account-id> <token-id> -b '{"name":"renamed"}'
-truto mcp-tokens delete <account-id> <token-id> [-f]
-```
-
-`--name` is always required when creating.
+For workflows that string these together (when to override at base vs. environment vs. account scope, how to iterate locally with `unified test-mapping`), see the [Unified API Customization](../../truto/references/unified-api-customization.md) reference in the `truto` skill.
 
 ### Unified Models (`truto unified-models`)
 
@@ -288,6 +333,90 @@ truto unified-models delete <id>
 **Create fields:** `name` (required), `category` (required), `description` (required), `resources` (JSON, required)
 
 **Update requires:** `version` (optimistic locking — fetch current version with `get` first)
+
+### Unified Model Mappings (`truto unified-model-mappings`)
+
+Base mapping rows that translate between a unified resource/method and an integration's native API. **Full CRUD.** API path: `unified-model-resource-method`.
+
+```bash
+truto unified-model-mappings list --integration_name salesforce --resource_name contacts
+truto unified-model-mappings list --unified_model_id <id> --method_name list
+truto unified-model-mappings get <id>
+truto unified-model-mappings create -b '{
+  "unified_model_id":"...","integration_name":"salesforce",
+  "resource_name":"contacts","method_name":"list",
+  "config":{"response_mapping":"$.records ~> |$|{...}|", "...": "..."}
+}'
+truto unified-model-mappings update <id> -b '{"config":{...},"version":2}'
+truto unified-model-mappings delete <id>
+```
+
+**Filters:** `--unified_model_id`, `--integration_name`, `--resource_name`, `--method_name`, `--version`
+
+**Create fields:** `unified_model_id` (required), `integration_name` (required), `resource_name` (required), `method_name` (required), `config` (JSON — typically holds `response_mapping`, `query_mapping`, `request_body_mapping`, `error_mapping`)
+
+**Update requires:** `version` (optimistic locking)
+
+### Environment Unified Models (`truto env-unified-models`)
+
+Install a unified model into an environment with optional model-level overrides (resources, scopes, webhooks, docs). **Full CRUD.** API path: `environment-unified-model`.
+
+```bash
+truto env-unified-models list --environment_id <id>
+truto env-unified-models list --unified_model.name crm
+truto env-unified-models get <id>
+truto env-unified-models create -b '{"environment_id":"...","unified_model_id":"...","override":{"resources":{...}}}'
+truto env-unified-models update <id> -b '{"override":{"scopes":{...}}}'
+truto env-unified-models delete <id>
+```
+
+**Filters:** `--environment_id`, `--unified_model_id`, `--unified_model.name`
+
+**Create fields:** `environment_id` (required), `unified_model_id` (required), `override` (JSON)
+
+The ID returned by this command (the `environment_unified_model_id`) is what you reference when creating per-environment mapping overrides below.
+
+### Environment Unified Model Mappings (`truto env-unified-model-mappings`)
+
+Per-environment overrides for individual mapping rows. The platform deep-merges these on top of the corresponding base `unified-model-mappings` row at request time. **Full CRUD.** API path: `environment-unified-model-resource-method`.
+
+```bash
+truto env-unified-model-mappings list --environment_unified_model_id <id>
+truto env-unified-model-mappings list --integration_name hubspot --resource_name contacts
+truto env-unified-model-mappings get <id>
+truto env-unified-model-mappings create -b '{
+  "environment_unified_model_id":"...","integration_name":"hubspot",
+  "resource_name":"contacts","method_name":"list",
+  "config":{"response_mapping":"$.results ~> |$|{...}|"}
+}'
+truto env-unified-model-mappings update <id> -b '{"config":{...},"version":1}'
+truto env-unified-model-mappings delete <id>
+```
+
+**Filters:** `--environment_unified_model_id`, `--integration_name`, `--resource_name`, `--method_name`, `--version`
+
+**Create fields:** `environment_unified_model_id` (required), `integration_name` (required), `resource_name` (required), `method_name` (required), `config` (JSON)
+
+**Update requires:** `version` (optimistic locking)
+
+---
+
+## Platform Resources
+
+### MCP Tokens (`truto mcp-tokens`)
+
+Scoped to an integrated account. Unlike other resources, the account ID is a **positional argument**.
+
+```bash
+truto mcp-tokens list <account-id>
+truto mcp-tokens get <account-id> <token-id>
+truto mcp-tokens create <account-id> --name "my-mcp-token"
+truto mcp-tokens create <account-id> -b '{"name":"custom","scopes":[...]}'
+truto mcp-tokens update <account-id> <token-id> -b '{"name":"renamed"}'
+truto mcp-tokens delete <account-id> <token-id> [-f]
+```
+
+`--name` is always required when creating.
 
 ### Datastores (`truto datastores`)
 
