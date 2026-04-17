@@ -1,39 +1,57 @@
-# Truto Agent Skills Plugin
+# Truto Agent Skills
 
-Official [Cursor](https://cursor.com) plugin for [Truto](https://truto.one) — the unified API platform for integrating with third-party tools.
+Official agent skills for [Truto](https://truto.one) — the unified API platform for integrating with third-party tools. Works with [Cursor](https://cursor.com), [Claude Code](https://docs.claude.com/en/docs/claude-code), and any other agent that supports the [Agent Skills](https://www.anthropic.com/news/skills) (`SKILL.md`) convention.
 
 ## Installation
 
-### Via `npx skills` (Recommended)
+### Claude Code
 
-Install the skills into your project (or globally with `-g`):
+Add this repo as a plugin marketplace, then install the plugin:
+
+```bash
+/plugin marketplace add trutohq/truto-skills
+/plugin install truto@truto-skills
+```
+
+Skills become namespaced as `truto:truto`, `truto:truto-cli`, `truto:truto-jsonata`, `truto:truto-link-sdk`, and `truto:truto-api-conventions`. To try it locally before installing, run `claude --plugin-dir /path/to/truto-skills`.
+
+### Cursor
+
+Open **Cursor Settings → Rules**, click **Add Rule** under **Project Rules**, choose **Remote Rule (GitHub)**, and enter:
+
+```
+https://github.com/trutohq/truto-skills
+```
+
+This pulls in both the skills and the always-applied `truto-api` rule.
+
+### Any agent (via `npx skills`)
+
+Install into the current project (or globally with `-g`):
 
 ```bash
 npx skills add trutohq/truto-skills
 ```
 
-This works for Cursor and any other agent supported by the [`skills`](https://www.npmjs.com/package/skills) CLI.
-
-### Manual (Cursor — GitHub Remote Rule)
-
-1. Open **Cursor Settings > Rules**
-2. In the **Project Rules** section, click **Add Rule**
-3. Select **Remote Rule (GitHub)**
-4. Enter the repository URL: `https://github.com/trutohq/truto-skills`
+Works for Cursor, Claude Code, and any other agent supported by the [`skills`](https://www.npmjs.com/package/skills) CLI.
 
 ## Skills
 
 | Skill | Description |
 |-------|-------------|
 | [truto](./skills/truto/SKILL.md) | Build integrations with third-party tools using Truto's unified API platform |
-| [truto-link-sdk](./skills/truto-link-sdk/SKILL.md) | Embed the Truto connection flow in your frontend using @truto/truto-link-sdk |
+| [truto-link-sdk](./skills/truto-link-sdk/SKILL.md) | Embed the Truto connection flow in your frontend using `@truto/truto-link-sdk` |
 | [truto-cli](./skills/truto-cli/SKILL.md) | Install, authenticate, and use the Truto CLI for managing integrations and accessing data |
+| [truto-jsonata](./skills/truto-jsonata/SKILL.md) | Write JSONata expressions for Truto config (mappings, sync jobs, workflows) using the custom `$functions` from `@truto/truto-jsonata` |
+| [truto-api-conventions](./skills/truto-api-conventions/SKILL.md) | Truto API conventions — base URL, auth, URL patterns, pagination, idempotency, and skill routing |
 
-## Rules
+## Rules (Cursor only)
 
 | Rule | Description |
 |------|-------------|
 | [truto-api](./rules/truto-api.mdc) | Always-apply rule with API conventions — base URL, auth header, URL patterns, pagination |
+
+For Claude Code, the same content is delivered via the model-invoked `truto-api-conventions` skill above (Claude Code plugins do not have an "always-applied rule" primitive).
 
 ## What is Truto?
 

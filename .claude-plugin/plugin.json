@@ -1,0 +1,10 @@
+{
+  "name": "truto",
+  "version": "0.1.0",
+  "description": "Official plugin for Truto -- the unified API platform. Helps developers integrate with third-party tools using Truto's APIs.",
+  "author": { "name": "Truto", "url": "https://truto.one" },
+  "homepage": "https://truto.one",
+  "repository": "https://github.com/trutohq/truto-skills",
+  "license": "Apache-2.0",
+  "keywords": ["truto", "unified-api", "integrations", "api"]
+}
