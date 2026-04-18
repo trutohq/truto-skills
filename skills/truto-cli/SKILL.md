@@ -80,11 +80,12 @@ truto profiles use staging
 | Category | Commands | Description |
 |----------|----------|-------------|
 | **Auth** | `login`, `logout`, `whoami`, `profiles` | Authentication and profile management |
-| **Core Resources** | `integrations`, `accounts`, `environments`, `environment-integrations`, `api-tokens` | Platform entity management |
+| **Core Resources** | `integrations` (incl. `init`, `validate`), `accounts`, `environments`, `environment-integrations` (incl. `override-auth`, `override-pagination`, `override-rate-limit`, `override-webhook`, `show-override`), `api-tokens` | Platform entity management |
+| **Unified Model Customization** | `unified-models`, `unified-model-mappings`, `env-unified-models`, `env-unified-model-mappings` | Base + per-environment unified model definitions and field mappings |
 | **Automation** | `sync-jobs`, `sync-job-runs`, `sync-job-triggers`, `sync-job-templates`, `workflows`, `workflow-runs` | Data sync and workflow automation |
-| **Data Plane** | `unified`, `proxy`, `custom`, `batch` | Access third-party data |
+| **Data Plane** | `unified` (incl. `test-mapping`), `proxy`, `custom`, `batch` | Access third-party data; iterate on JSONata mappings locally |
 | **Webhooks & Alerts** | `webhooks`, `notification-destinations` | Event delivery and alerting |
-| **Platform** | `unified-models`, `datastores`, `mcp-tokens`, `daemons`, `daemon-jobs`, `gates`, `docs`, `link-tokens`, `users`, `team` | Additional platform resources |
+| **Platform** | `datastores`, `mcp-tokens`, `daemons`, `daemon-jobs`, `gates`, `docs`, `link-tokens`, `users`, `team` | Additional platform resources |
 | **Power Features** | `export`, `diff`, `open`, `interactive`, `logs`, `schema`, `files` | Bulk data, comparison, and utilities |
 | **Meta** | `upgrade`, `context` | CLI management and LLM agent reference |
 
@@ -126,16 +127,19 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
 
 - **`accounts`** not `integrated-accounts` — CLI uses the short name for brevity.
 - **`gates`** not `static-gates` — CLI is `gates`, API path is `static-gate`.
-- **Optimistic locking** — `integrations update` and `unified-models update` require a `version` field. Fetch current version with `get` first.
+- **Optimistic locking** — `integrations update`, `unified-models update`, `unified-model-mappings update`, and `env-unified-model-mappings update` all require a `version` field. Fetch current version with `get` first.
 - **`environment_id` is implicit** — your API token is scoped to one environment.
 - **MCP tokens use positional args** — `mcp-tokens` takes account ID as first positional argument, not `--account`.
+- **`-mappings` is the verb-friendly alias** — `truto unified-model-mappings` and `truto env-unified-model-mappings` map to the API resources `unified-model-resource-method` and `environment-unified-model-resource-method` respectively. Use the CLI names; the long forms only appear in raw HTTP debugging.
+- **`override-*` helpers are deep patches** — `truto environment-integrations override-auth/override-pagination/override-rate-limit/override-webhook` patch the relevant key inside `override` and leave siblings alone. Use `show-override` to inspect the current state, and pass `--clear` to null out a single key.
+- **`unified test-mapping` is offline** — it evaluates a JSONata `response_mapping` against a local sample (no third-party HTTP call), so you can iterate before publishing. It cannot evaluate operator-style (object) mappings yet.
 
 ## References
 
 | Reference | Content |
 |-----------|---------|
-| [Admin Commands](references/admin-commands.md) | Full CRUD details for all platform resource commands |
-| [Data Plane](references/data-plane.md) | Unified, proxy, custom, and batch API commands |
+| [Admin Commands](references/admin-commands.md) | Full CRUD details for every platform resource — including `integrations init/validate`, `environment-integrations override-*`, and the `unified-models` / `unified-model-mappings` / `env-unified-models` / `env-unified-model-mappings` customization group |
+| [Data Plane](references/data-plane.md) | Unified, proxy, custom, and batch API commands; `unified test-mapping` for local JSONata iteration |
 | [Power Features](references/power-features.md) | Export, diff, interactive mode, logs, schema, open |
 | [Common Patterns](references/common-patterns.md) | Pagination, filtering, piping, stdin, profiles, scripting |
 

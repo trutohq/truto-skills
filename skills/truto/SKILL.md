@@ -19,6 +19,18 @@ This skill is about **code that lives in the user's codebase**. For admin setup,
 - Implementing pagination, error handling, or retry logic for Truto API calls
 - Choosing between unified, proxy, and custom APIs for a use case
 
+## Install the Truto CLI (recommended)
+
+Before writing any code, install the **Truto CLI** — it's the fastest way to discover what an integration supports, connect a sandbox account, and try a unified API call without touching your application. Every workflow in this skill (calling the unified API, customizing mappings, overriding integrations per environment, debugging webhooks) has a CLI shortcut you can run in a single line, then port into code once it works.
+
+```bash
+curl -fsSL https://cli.truto.one/install.sh | bash
+truto login --token "$TRUTO_API_TOKEN"
+truto whoami -o json
+```
+
+For the full command surface, output formats, and admin workflows, see the [**Truto CLI** skill](../truto-cli/SKILL.md). For a guided Day-1 walkthrough that combines the CLI with the code in this skill, see [Getting Started](./references/getting-started.md).
+
 ## Core Concepts
 
 
@@ -39,6 +51,8 @@ This skill is about **code that lives in the user's codebase**. For admin setup,
 
 
 ## Getting Started
+
+> **Day 0 — install the CLI first** (see [Install the Truto CLI](#install-the-truto-cli-recommended) above). Most of what's described below is faster to *try* through the **Truto CLI** before wiring it into code, then port the same call into your application. The full Day-1 walkthrough lives at [Getting Started](./references/getting-started.md); the steps below are the canonical flow you'll port into your application.
 
 ### 1. Get an API Token
 
@@ -72,6 +86,8 @@ app.post("/api/truto/link-token", async (req, res) => {
   res.json({ linkToken: link_token });
 });
 ```
+
+The shape is the same in every framework — a server-side `fetch` to `POST /link-token` carrying the API token. [Getting Started](./references/getting-started.md#step-5--write-the-link-token-route-in-your-app) has the same route written for **Next.js Route Handlers** and **Hono / Cloudflare Workers**; pick the variant that matches your stack and adapt the snippet.
 
 When reconnecting, pass `integrated_account_id` instead of `tenant_id`. This updates the existing account's credentials in place — the same `integrated_account_id` is preserved, so all sync jobs, webhooks, and references remain intact. Setting `persist_previous_context: true` keeps any custom context from the previous connection.
 
@@ -153,6 +169,8 @@ app.post("/webhooks/truto", async (req, res) => {
 
 You can also use **Truto Workflows** to automatically trigger actions (like starting a sync job) when an account becomes active. See [Workflows](./references/workflows.md) for details.
 
+> **Tip while developing.** You don't need to wait for the webhook to grab a working `integrated_account_id` — list connected accounts from the CLI with `truto accounts list -o json` (or filter to sandboxes with `--is_sandbox true`) and copy one out. Use that ID to test the unified-API steps below before the webhook plumbing is in place.
+
 ### 5. Read Data via the Unified API
 
 Once an account is active, fetch normalized data:
@@ -224,24 +242,47 @@ All API requests use Bearer token authentication. The API token must only be use
 
 ## References
 
+### Start here
 
 | Document                                                                 | Topics                                                                                  |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| [Getting Started](./references/getting-started.md)                       | Day-1 tutorial: CLI install → login → connect a sandbox → write the link-token route → first unified API call → port the same call into code |
+
+### Customization (the most-used "extend the platform" surfaces)
+
+| Document                                                                 | Topics                                                                                  |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| [Unified API Customization](./references/unified-api-customization.md)   | Modifying existing unified API mappings per environment, per-account overrides, creating your own custom unified models |
+| [Customizing Integrations](./references/customizing-integrations.md)     | Per-environment HTTP-layer overrides: auth header, pagination, rate-limit detection, inbound webhook verification/transform |
+
+### Core API surface
+
+| Document                                                                 | Topics                                                                                  |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| [Unified API](./references/unified-api.md)                               | Unified CRUD, meta endpoints, pagination, SuperQuery                                    |
+| [Proxy & Custom API](./references/proxy-and-custom-api.md)               | Proxy pass-through, custom endpoints, **authoring custom-API handlers**, batch requests |
 | [Authentication](./references/authentication.md)                         | API tokens, link tokens, integrated account tokens, auth patterns                       |
 | [MCP Tokens](./references/mcp-tokens.md)                                 | MCP protocol tokens for AI agents, tool filtering, expiration                           |
 | [Connection Flow](./references/connection-flow.md)                       | Connection lifecycle, reconnecting accounts, webhook events, post-connection automation |
 | [Core Resources](./references/core-resources.md)                         | Environments, integrations, integrated accounts, teams                                  |
 | [Integrated Account Context](./references/integrated-account-context.md) | Context field lifecycle, credentials, instance config, usage in APIs/sync/workflows     |
-| [Unified API](./references/unified-api.md)                               | Unified CRUD, meta endpoints, pagination, SuperQuery                                    |
-| [Unified API Customization](./references/unified-api-customization.md)   | Modifying existing unified API mappings per environment, per-account overrides, creating your own custom unified models |
-| [Proxy & Custom API](./references/proxy-and-custom-api.md)               | Proxy pass-through, custom endpoints, batch requests                                    |
+
+### Automation & data movement
+
+| Document                                                                 | Topics                                                                                  |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | [Sync Jobs](./references/sync-jobs.md)                                   | Sync jobs, runs, cron triggers, templates, run state                                    |
 | [Webhooks & Notifications](./references/webhooks-and-notifications.md)   | Webhooks, notification destinations, inbound webhooks                                   |
 | [Datastores](./references/datastores.md)                                 | External storage destinations (MongoDB, GCS, S3, Qdrant) for sync job output            |
 | [Workflows](./references/workflows.md)                                   | Event-driven automations triggered by Truto events                                      |
+| [Daemon Jobs](./references/daemon-jobs.md)                               | Background processing tasks and runs                                                    |
+
+### Operational
+
+| Document                                                                 | Topics                                                                                  |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | [Files & Logs](./references/files-and-logs.md)                           | File uploads and API/operation log queries                                              |
 | [Static Gates](./references/static-gates.md)                             | Embeddable connection entry points                                                      |
-| [Daemon Jobs](./references/daemon-jobs.md)                               | Background processing tasks and runs                                                    |
 
 
 ## Companion Skills

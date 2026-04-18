@@ -124,6 +124,135 @@ const result = await authenticate(linkToken, {
 });
 ```
 
+## Framework Recipes
+
+The SDK is a plain ES module — these are thin wrappers, not separate packages. Pick the one that matches your stack.
+
+### React — `useTrutoLink` hook
+
+```typescript
+import { useState, useCallback } from "react";
+import authenticate from "@truto/truto-link-sdk";
+
+type ConnectArgs = { tenantId?: string; integratedAccountId?: string };
+
+export function useTrutoLink() {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  const connect = useCallback(async (args: ConnectArgs) => {
+    setPending(true); setError(null);
+    try {
+      const res = await fetch("/api/truto/link-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      });
+      const { linkToken } = await res.json();
+      return await authenticate(linkToken);
+    } catch (err) {
+      if (err !== "closed") setError(err);
+      throw err;
+    } finally {
+      setPending(false);
+    }
+  }, []);
+
+  return { connect, pending, error };
+}
+```
+
+Usage:
+
+```tsx
+function ConnectButton({ tenantId }: { tenantId: string }) {
+  const { connect, pending } = useTrutoLink();
+  return (
+    <button onClick={() => connect({ tenantId })} disabled={pending}>
+      {pending ? "Connecting…" : "Connect an account"}
+    </button>
+  );
+}
+```
+
+### Vue 3 — composable
+
+```typescript
+import { ref } from "vue";
+import authenticate from "@truto/truto-link-sdk";
+
+type ConnectArgs = { tenantId?: string; integratedAccountId?: string };
+
+export function useTrutoLink() {
+  const pending = ref(false);
+  const error = ref<unknown>(null);
+
+  async function connect(args: ConnectArgs) {
+    pending.value = true; error.value = null;
+    try {
+      const res = await fetch("/api/truto/link-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      });
+      const { linkToken } = await res.json();
+      return await authenticate(linkToken);
+    } catch (err) {
+      if (err !== "closed") error.value = err;
+      throw err;
+    } finally {
+      pending.value = false;
+    }
+  }
+
+  return { connect, pending, error };
+}
+```
+
+### Svelte — action
+
+```typescript
+import authenticate from "@truto/truto-link-sdk";
+
+type Args = { tenantId?: string; integratedAccountId?: string };
+
+export function trutoLink(node: HTMLElement, args: Args) {
+  const handler = async () => {
+    const res = await fetch("/api/truto/link-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args),
+    });
+    const { linkToken } = await res.json();
+    try {
+      const result = await authenticate(linkToken);
+      node.dispatchEvent(new CustomEvent("trutoConnected", { detail: result }));
+    } catch (err) {
+      if (err !== "closed") {
+        node.dispatchEvent(new CustomEvent("trutoError", { detail: err }));
+      }
+    }
+  };
+  node.addEventListener("click", handler);
+  return { destroy: () => node.removeEventListener("click", handler) };
+}
+```
+
+Usage:
+
+```svelte
+<button
+  use:trutoLink={{ tenantId }}
+  on:trutoConnected={(e) => console.log(e.detail.integrated_account_id)}
+>
+  Connect an account
+</button>
+```
+
+### Backend link-token routes
+
+The frontend recipes above all call the same backend route. For Express, Next.js Route Handlers, and Hono / Cloudflare Workers variants of that route, see [Getting Started — Step 5](../truto/references/getting-started.md#step-5--write-the-link-token-route-in-your-app) in the Truto skill.
+
 ## References
 
 | Reference | Content |

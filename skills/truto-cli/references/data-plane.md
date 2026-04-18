@@ -75,6 +75,65 @@ Next cursor is printed to stderr when more pages exist. Pass it via query params
 truto unified crm contacts -a <id> -q "next_cursor=abc123"
 ```
 
+### Iterate on a Mapping Locally (`truto unified test-mapping`)
+
+Evaluate a JSONata `response_mapping` against a local sample raw response — no third-party HTTP call. Use this to iterate on a mapping before publishing it via `unified-model-mappings` / `env-unified-model-mappings`.
+
+```bash
+truto unified test-mapping --mapping <jsonata> [options]
+truto unified test-mapping --mapping-file mapping.jsonata [options]
+truto unified test-mapping --model <m> --resource <r> --integration <i> [options]
+```
+
+**Mapping source (one required):**
+
+| Flag | Description |
+|------|-------------|
+| `--mapping <jsonata>` | Inline JSONata expression |
+| `--mapping-file <file>` | Path to a file containing the JSONata mapping |
+| `--model <m> --resource <r> --integration <i>` | Fetch the base mapping from `unified-model-resource-method` |
+| `--method <m>` | Method name when fetching from the platform (default `list`) |
+| `--with-overrides <env-unified-model-id>` | Also overlay environment-specific overrides on the base |
+
+**Sample input (one required):**
+
+| Flag | Description |
+|------|-------------|
+| `--input <file>` | JSON file with the raw upstream response |
+| `--stdin` | Pipe the raw response on stdin |
+
+**Other options:**
+
+| Flag | Description |
+|------|-------------|
+| `-q, --query <params>` | Query params (`key=value,key2=value2`) — exposed in the mapping context as `$query` and `$rawQuery` |
+| `--show-mapping` | Print the resolved JSONata mapping to stderr before evaluating |
+
+#### Examples
+
+```bash
+truto unified test-mapping \
+  --mapping '$.records ~> |$|{ "id": Id, "name": Name }|' \
+  --input ./sample-salesforce-response.json
+
+cat sample-hubspot-response.json | truto unified test-mapping \
+  --mapping-file ./mapping.jsonata --stdin
+
+truto unified test-mapping \
+  --model crm --resource contacts --integration salesforce --method list \
+  --input ./sample.json --show-mapping
+
+truto unified test-mapping \
+  --model crm --resource contacts --integration hubspot \
+  --with-overrides <env-unified-model-id> \
+  --input ./sample.json
+```
+
+#### Limitations
+
+- Evaluates **JSONata-string** mappings only. Operator-style (object) mappings are printed for inspection but not executed locally; their merge semantics live on the platform.
+- The mapping context is `{ response, query, rawQuery, context: {}, headers: {}, body: {} }`. To exercise mappings that read `$context` or `$headers`, run them on the platform.
+
 ---
 
 ## Proxy API (`truto proxy`)

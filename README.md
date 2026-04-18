@@ -73,6 +73,10 @@ Truto is a unified API platform that lets you integrate with 200+ third-party to
 - [API Reference](https://truto.one/docs/api-reference)
 - [Truto Website](https://truto.one)
 
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full history of skill additions and changes.
+
 ## License
 
 Apache-2.0 — see [LICENSE](./LICENSE) for details.
