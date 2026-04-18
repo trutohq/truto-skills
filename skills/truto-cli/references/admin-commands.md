@@ -64,6 +64,8 @@ cat integration.json | truto integrations validate --stdin
 
 `init` supports auth formats `api_key`, `oauth2`, `oauth2_client_credentials`, `basic`, `keka_oauth`, `oauth`. The scaffold seeds `credentials`, `authorization`, a starter `resources` block (CRUD method skeletons per resource you list), and an optional `webhook` block. `validate` checks for missing `label`, `credentials`, valid `authorization.format`, parseable resource methods, and a non-empty `webhook` block — server-side schema validation still happens at create/update time.
 
+For the full `integration.config` schema, all five credential formats (`api_key`, `oauth2`, `oauth2_client_credentials`, `oauth`, `keka_oauth`), and an end-to-end Acme CRM worked example that uses `init → validate → create`, see the [Authoring Integrations](../../truto/references/authoring-integrations.md) reference in the `truto` skill.
+
 ### Integrated Accounts (`truto accounts`)
 
 Live tenant connections to integrations. **Full CRUD.**
