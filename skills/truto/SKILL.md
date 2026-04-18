@@ -252,8 +252,9 @@ All API requests use Bearer token authentication. The API token must only be use
 
 | Document                                                                 | Topics                                                                                  |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| [Authoring Integrations](./references/authoring-integrations.md)         | Author a brand-new integration definition from scratch: full `integration.config` schema, all five credential formats, resources/methods, pagination, rate-limit, inbound webhook receiver, lifecycle actions, plus `truto integrations init/validate/create` workflow and an Acme CRM worked example |
+| [Customizing Integrations](./references/customizing-integrations.md)     | Per-environment HTTP-layer overrides on an existing integration: auth header, pagination, rate-limit detection, inbound webhook verification/transform |
 | [Unified API Customization](./references/unified-api-customization.md)   | Modifying existing unified API mappings per environment, per-account overrides, creating your own custom unified models |
-| [Customizing Integrations](./references/customizing-integrations.md)     | Per-environment HTTP-layer overrides: auth header, pagination, rate-limit detection, inbound webhook verification/transform |
 
 ### Core API surface
 
