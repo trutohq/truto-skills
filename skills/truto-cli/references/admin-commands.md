@@ -94,6 +94,13 @@ truto accounts delete <id>
 # Refresh OAuth credentials
 truto accounts refresh-credentials <id>
 
+# Mint a short-lived (15 min) token scoped to one account
+# Useful for embedding RapidForm post-connect, or making proxy/unified
+# calls scoped to a single account without exposing your env-wide API token.
+# Returns: { "integrated_account_token": "<uuid>" }
+truto accounts create-token <id>
+truto accounts create-token <id> -o json
+
 # List available tools/methods for an account (best discovery command for LLM agents)
 truto accounts tools <id>
 truto accounts tools <id> --methods list,get --tags contacts,deals
