@@ -2,14 +2,24 @@
 
 The unified API provides standardized CRUD endpoints across integrations. Regardless of which third-party tool is connected, the request and response schemas are consistent.
 
+## Discovering supported resources/methods
+
+**Before constructing any unified URL, hit the capabilities endpoint to confirm the route exists for the target account.** Different integrations expose different unified models — HubSpot supports `crm`, Bigcommerce supports `ecommerce`, Greenhouse supports `ats`. Hard-coding routes from memory is the most common LLM-introduced bug here.
+
+```bash
+GET https://api.truto.one/integrated-account/{account_id}/capabilities?type=unified
+```
+
+The response contains `unified[]`, an array of `{ model, resource, methods, env_overridden, docs_url, ... }`. Pick the `(model, resource)` pair you want and confirm `methods[]` includes the verb you're about to call. See [Discovering Capabilities](./discovering-capabilities.md) for the full reference, response TypeScript type, caching guidance, and route-guard helper functions.
+
 ## Base Pattern
 
 ```
 https://api.truto.one/unified/{model_name}/{resource_name}
 ```
 
-- `{model_name}` — The unified model (e.g., `crm`, `ticketing`, `hris`)
-- `{resource_name}` — The resource within the model (e.g., `contacts`, `tickets`, `employees`)
+- `{model_name}` — The unified model (e.g., `crm`, `ticketing`, `hris`) — from `capabilities.unified[].model`
+- `{resource_name}` — The resource within the model (e.g., `contacts`, `tickets`, `employees`) — from `capabilities.unified[].resource`
 
 ## Required Parameter
 

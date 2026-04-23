@@ -2,6 +2,25 @@
 
 These commands access third-party data through integrated accounts. All require `-a, --account <id>` (integrated account ID).
 
+## Step 0: Discover capabilities first
+
+**Before running any command on this page, run capabilities for the target account.** It tells you which resources and methods this integration actually exposes — every argument you'll pass below should be copied out of its response. Skipping this step is the #1 cause of `404` errors and hallucinated commands.
+
+```bash
+ACCOUNT=<integrated-account-uuid>
+
+# What can THIS account do? (proxy + unified + auth + AI readiness in one call)
+truto capabilities $ACCOUNT -o json
+
+# Filter the surface to just what you need
+truto capabilities $ACCOUNT --type unified -o json
+truto capabilities $ACCOUNT --type proxy   --resource contacts -o json
+```
+
+The auto-detection rule: anything matching a v4 UUID is treated as an integrated account; anything else (e.g. `hubspot`, `salesforce`) is treated as an integration slug. Pass `--target integration` or `--target account` to force.
+
+For the full capabilities reference, response shape, copyable templates per method, and failure modes (including the proxy 404 → "Did you mean…?" hint), see [references/querying-data.md](querying-data.md).
+
 ## Unified API (`truto unified`)
 
 Access normalized resources across integrations using unified model schemas. Provides consistent field names regardless of which integration is connected (e.g., HubSpot, Salesforce, and Pipedrive all use the same `crm/contacts` schema).
@@ -9,6 +28,18 @@ Access normalized resources across integrations using unified model schemas. Pro
 ```bash
 truto unified <model> <resource> [id] -a <account-id> [options]
 ```
+
+### Where do I get the arguments?
+
+From [`truto capabilities <account-id> -o json`](#step-0-discover-capabilities-first):
+
+| CLI position | Capabilities field |
+|--------------|--------------------|
+| `<model>` | `unified[].model` (e.g. `crm`, `ats`, `ecommerce`) |
+| `<resource>` | `unified[].resource` (e.g. `contacts`, `products`) |
+| `-m <method>` | One of `unified[].methods[]` (typically `list`/`get`, sometimes `create`/`update`/`delete`/custom) |
+
+If `unified[].env_overridden` is `true` for that resource, the environment has customized the mapping — behavior may differ from the base.
 
 ### Arguments
 
@@ -145,6 +176,31 @@ truto proxy <resource> [id] -a <account-id> [options]
 ```
 
 Same flags as `unified` (`-m`, `-b`, `--stdin`, `-q`), but **no model argument** — proxy hits the integration's native resource names directly.
+
+### Where do I get the arguments?
+
+From [`truto capabilities <account-id> -o json`](#step-0-discover-capabilities-first):
+
+| CLI position | Capabilities field |
+|--------------|--------------------|
+| `<resource>` | `proxy[].resource` (e.g. `products`, `contacts`, `incidents`) |
+| `-m <method>` | One of `proxy[].methods[].method` (`list` / `get` / `create` / `update` / `delete` / any custom name) |
+| Body required? | `proxy[].methods[].has_body_schema` — if `true`, pass `-b` or `--stdin` |
+| Query schema available? | `proxy[].methods[].has_query_schema` — if `true`, drill into `truto accounts tools <id>` for the JSON Schema describing valid `-q` keys |
+
+### 404 → "Did you mean…?" auto-hint
+
+When a proxy call returns 404, the CLI automatically re-runs capabilities for the account and appends a hint to the error before exiting. There are five outcomes — read the hint and act on it instead of guessing:
+
+| Hint | Meaning |
+|------|---------|
+| `Resource \`X\` is not exposed on this account. Did you mean: a, b, c?` | Near-match resources found. Try the suggestion. |
+| `Resource \`X\` is not exposed on this account. Run \`truto capabilities <id> --type proxy\` to list available resources.` | No near-match. Pull the full proxy resource list. |
+| `Method \`X\` is not implemented for \`<resource>\`. Did you mean: a, b?` | Resource exists, near-match methods found. Try the suggestion. |
+| `Method \`X\` is not implemented for \`<resource>\`. Available: list, get, create, update, delete.` | Resource exists, but the specific method does not. Pick from `Available:`. |
+| `Run \`truto capabilities <id> --type proxy\` to list available resources.` | Capabilities call also failed (network/auth). Run it manually first. |
+
+This safety net is on by default. It runs against the same `/integrated-account/<id>/capabilities` endpoint, so it adds one HTTP round-trip per 404 — but it eliminates almost all blind retries.
 
 ### Examples
 
