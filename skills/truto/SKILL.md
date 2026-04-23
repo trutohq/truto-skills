@@ -50,6 +50,78 @@ For the full command surface, output formats, and admin workflows, see the [**Tr
 | **Workflow**                | Event-driven automation triggered by Truto events.                                   | [Workflows](./references/workflows.md)                                 |
 
 
+## Discover Capabilities Before Calling
+
+**Whenever you're about to write a `fetch()` to `/unified/...`, `/proxy/...`, or `/custom/...`, hit the capabilities endpoint first.** Resource and method names are integration-specific (HubSpot has `contacts`/`companies`/`deals`, Bigcommerce has `products`/`orders`/`customers`, etc.). Hard-coding them from memory is the most common LLM-introduced bug in Truto integration code — capabilities is the single source of truth.
+
+Two equivalent endpoints, both returning the same shape:
+
+```
+GET https://api.truto.one/integrated-account/{integrated_account_id}/capabilities[?type=proxy|unified|all]
+GET https://api.truto.one/integration/{integration_slug_or_id}/capabilities[?type=proxy|unified|all]
+```
+
+- Use the **integrated-account** variant when you have a connected account UUID and want to know what *that* account can do (factoring in env-level overrides).
+- Use the **integration** variant before any account is connected (catalog browsing, deciding which integrations to support).
+
+```typescript
+type CapabilitiesResponse = {
+  integration: { id: string; name: string; label: string; category: string };
+  environment_id?: string;
+  proxy: Array<{
+    resource: string;
+    methods: Array<{
+      method: "list" | "get" | "create" | "update" | "delete" | string;
+      name: string;
+      description: string | null;
+      has_description: boolean;
+      has_query_schema: boolean;
+      has_body_schema: boolean;
+      api_documentation_url: string | null;
+    }>;
+  }>;
+  unified: Array<{
+    model: string;
+    model_label: string;
+    resource: string;
+    description: string | null;
+    docs_url: string | null;
+    methods: string[];
+    env_overridden: boolean;
+  }>;
+  auth: {
+    formats: string[];
+    fields: Array<{ name: string; label: string; type: string; required: boolean }>;
+    documentation_link?: string;
+  };
+  ai_readiness: { proxy_methods: number; proxy_methods_with_descriptions: number; ai_ready_score: number };
+  account?: { id: string; status: string; authentication_method: string; is_blocked: boolean };
+};
+
+async function getCapabilities(accountId: string): Promise<CapabilitiesResponse> {
+  const res = await fetch(
+    `https://api.truto.one/integrated-account/${accountId}/capabilities?type=all`,
+    { headers: { Authorization: `Bearer ${process.env.TRUTO_API_TOKEN}` } }
+  );
+  if (!res.ok) throw new Error(`Capabilities failed: ${res.status}`);
+  return res.json();
+}
+
+const caps = await getCapabilities(accountId);
+const proxyResources = caps.proxy.map(r => r.resource);
+const unifiedRoutes = caps.unified.map(u => `${u.model}/${u.resource}`);
+
+// Build calls only for routes the account actually exposes:
+if (caps.unified.some(u => u.model === "crm" && u.resource === "contacts" && u.methods.includes("list"))) {
+  const r = await fetch(
+    `https://api.truto.one/unified/crm/contacts?integrated_account_id=${accountId}`,
+    { headers: { Authorization: `Bearer ${process.env.TRUTO_API_TOKEN}` } }
+  );
+}
+```
+
+Capabilities responses are cheap and stable per integration version. **Cache them per `integration_id` server-side** (see [Discovering Capabilities](./references/discovering-capabilities.md) for the full reference, query-param filters, caching guidance, and patterns for both endpoints). The companion CLI command is `truto capabilities <slug-or-uuid>` — same shape, instant to try in a terminal before porting into code.
+
 ## Getting Started
 
 > **Day 0 — install the CLI first** (see [Install the Truto CLI](#install-the-truto-cli-recommended) above). Most of what's described below is faster to *try* through the **Truto CLI** before wiring it into code, then port the same call into your application. The full Day-1 walkthrough lives at [Getting Started](./references/getting-started.md); the steps below are the canonical flow you'll port into your application.
@@ -260,6 +332,7 @@ All API requests use Bearer token authentication. The API token must only be use
 
 | Document                                                                 | Topics                                                                                  |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| [Discovering Capabilities](./references/discovering-capabilities.md)     | **Read first when writing data-access code.** `/integration/<slug>/capabilities` and `/integrated-account/<id>/capabilities` endpoints, response TypeScript type, query-param filters, caching guidance, common patterns (route guards, dynamic UI, "what can this account do?") |
 | [Unified API](./references/unified-api.md)                               | Unified CRUD, meta endpoints, pagination, SuperQuery                                    |
 | [Proxy & Custom API](./references/proxy-and-custom-api.md)               | Proxy pass-through, custom endpoints, **authoring custom-API handlers**, batch requests |
 | [Authentication](./references/authentication.md)                         | API tokens, link tokens, integrated account tokens, auth patterns                       |

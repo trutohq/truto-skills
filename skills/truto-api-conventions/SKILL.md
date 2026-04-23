@@ -65,6 +65,57 @@ https://api.truto.one/custom/{path}?integrated_account_id={id}
 
 Any HTTP method; the path after `/custom/` is forwarded to the integration's custom handler.
 
+## Capabilities Discovery
+
+**Before constructing any `/unified/...`, `/proxy/...`, or `/custom/...` URL, hit the capabilities endpoint to confirm the route exists for the target.** Resource and method names are integration-specific (HubSpot has `contacts`, Salesforce has `Contact`, Bigcommerce has `products`) — capabilities is the source of truth, and skipping this step is the most common cause of LLM-generated 404s against Truto.
+
+Two endpoints, same shape:
+
+```
+GET https://api.truto.one/integration/{slug_or_id}/capabilities
+GET https://api.truto.one/integrated-account/{integrated_account_id}/capabilities
+```
+
+| Variant | When to call |
+|---------|--------------|
+| `/integration/{slug-or-id}/capabilities` | Catalog browsing — what does this integration support before any account is connected? |
+| `/integrated-account/{uuid}/capabilities` | The actionable one — what does THIS connected account expose, including environment-level overrides? Includes account health (`status`, `is_blocked`). |
+
+### Query parameters
+
+| Param | Values | Effect |
+|-------|--------|--------|
+| `type` | `proxy` \| `unified` \| `all` | Restrict the response to one surface. Default `all`. |
+| `methods` | Comma list, e.g. `list,get` | Only include methods matching one of these names. |
+| `resource` | Resource name | Only include the matching resource (in both `proxy[]` and `unified[]`). |
+| `has_description` | `true` \| `false` | Filter proxy methods by whether they have a description. Default `true`. |
+
+### Response (abridged)
+
+```json
+{
+  "integration": { "name": "<slug>", "label": "...", "category": "..." },
+  "proxy":   [ { "resource": "...", "methods": [ { "method": "list|get|create|update|delete|<custom>", "name": "...", "description": "...", "has_query_schema": true, "has_body_schema": false } ] } ],
+  "unified": [ { "model": "...", "resource": "...", "methods": ["..."], "env_overridden": false, "docs_url": "..." } ],
+  "auth":    { "formats": ["..."], "fields": [ { "name": "...", "required": true } ] },
+  "ai_readiness": { "proxy_methods": 10, "proxy_methods_with_descriptions": 5, "ai_ready_score": 0.5 },
+  "account": { "id": "...", "status": "active", "is_blocked": false }
+}
+```
+
+### URL construction cheat sheet
+
+| Capabilities field | URL position |
+|--------------------|--------------|
+| `proxy[].resource` | `/proxy/{resource}` |
+| `proxy[].methods[].method` (`list`/`get`/`create`/`update`/`delete`) | HTTP verb |
+| `proxy[].methods[].method` (custom name) | `POST /proxy/{resource}/{method_name}` |
+| `unified[].model` + `unified[].resource` | `/unified/{model}/{resource}` |
+| `unified[].methods[]` (`list`/`get`/`create`/`update`/`delete`) | HTTP verb |
+| `unified[].methods[]` (custom name) | `POST /unified/{model}/{resource}/{method_name}` |
+
+The `truto` skill has the full TypeScript type, helper function, and caching pattern in [Discovering Capabilities](../truto/references/discovering-capabilities.md). The `truto-cli` skill exposes the same data via `truto capabilities <slug-or-uuid>` for one-line terminal discovery.
+
 ## Pagination
 
 List endpoints return cursor-based pagination:

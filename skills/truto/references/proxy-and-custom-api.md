@@ -4,11 +4,25 @@
 
 The proxy API passes requests through to the native API of the underlying integrated tool. Use it when you need access to provider-specific features not covered by the unified API.
 
+### Discovering supported resources/methods
+
+**Before constructing any proxy URL, hit the capabilities endpoint to confirm the resource and method exist for the target account.** Proxy resource names are integration-native — HubSpot exposes `contacts`/`companies`/`deals`, Salesforce exposes `Contact`/`Account`/`Opportunity` (note the casing), ServiceNow exposes `incident`/`change_request`. Don't guess.
+
+```bash
+GET https://api.truto.one/integrated-account/{account_id}/capabilities?type=proxy
+```
+
+The response contains `proxy[]`, an array of `{ resource, methods: [{ method, name, description, has_query_schema, has_body_schema }] }`. Pick the resource and method, then construct the URL using the mapping below. See [Discovering Capabilities](./discovering-capabilities.md) for the full reference, response TypeScript type, caching guidance, and route-guard helper functions.
+
+> The companion CLI command `truto proxy <resource>` has a built-in 404 → "Did you mean: <near-matches>?" hint that auto-runs capabilities. The HTTP API itself doesn't auto-suggest, so call capabilities yourself before retrying on a 404.
+
 ### Base Pattern
 
 ```
 https://api.truto.one/proxy/{resource}?integrated_account_id={id}
 ```
+
+- `{resource}` — from `capabilities.proxy[].resource`
 
 ### Endpoints
 
@@ -88,6 +102,10 @@ curl -X POST "https://api.truto.one/proxy/files?integrated_account_id=$ACCOUNT_I
 ## Custom API
 
 Custom APIs let you define your own endpoints with custom routing logic. The path after `/custom/` is forwarded to the integration's custom handler.
+
+### When to use it (after capabilities)
+
+Reach for the custom API when [capabilities](./discovering-capabilities.md) doesn't list a `proxy[]` resource for the operation you need but you know the underlying integration exposes the path. Custom paths are not enumerated in the capabilities response — they're defined by the integration's custom-API handler config and you (or whoever authored the integration) need to know they exist. If you're authoring a new custom-API handler, see [Authoring Custom-API Handlers](#authoring-custom-api-handlers) below.
 
 ### Base Pattern
 

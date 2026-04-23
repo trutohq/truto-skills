@@ -80,6 +80,7 @@ truto profiles use staging
 | Category | Commands | Description |
 |----------|----------|-------------|
 | **Auth** | `login`, `logout`, `whoami`, `profiles` | Authentication and profile management |
+| **Discovery** | `capabilities`, `accounts tools`, `integrations tools`, `integrations unified-apis` | Find which resources/methods an account or integration exposes — **start here before any data call** |
 | **Core Resources** | `integrations` (incl. `init`, `validate`), `accounts`, `environments`, `environment-integrations` (incl. `override-auth`, `override-pagination`, `override-rate-limit`, `override-webhook`, `show-override`), `api-tokens` | Platform entity management |
 | **Unified Model Customization** | `unified-models`, `unified-model-mappings`, `env-unified-models`, `env-unified-model-mappings` | Base + per-environment unified model definitions and field mappings |
 | **Automation** | `sync-jobs`, `sync-job-runs`, `sync-job-triggers`, `sync-job-templates`, `workflows`, `workflow-runs` | Data sync and workflow automation |
@@ -88,6 +89,93 @@ truto profiles use staging
 | **Platform** | `datastores`, `mcp-tokens`, `daemons`, `daemon-jobs`, `gates`, `docs`, `link-tokens`, `users`, `team` | Additional platform resources |
 | **Power Features** | `export`, `diff`, `open`, `interactive`, `logs`, `schema`, `files` | Bulk data, comparison, and utilities |
 | **Meta** | `upgrade`, `context` | CLI management and LLM agent reference |
+
+## Querying Data from Connected Accounts (Discovery-First)
+
+**Read this whenever the user asks you to fetch, list, create, update, delete, or otherwise query data from a connected account.** LLMs hallucinate `unified`/`proxy`/`custom` calls when they guess resource names and methods. Don't guess — discover.
+
+### The rule
+
+Never call `truto unified`, `truto proxy`, or `truto custom` blind. **Always run `truto capabilities <target>` first** to learn which resources and methods this account actually exposes. Capabilities is the source of truth — every argument you pass to a data-plane command should be copied out of its response.
+
+### The 3-step loop
+
+```bash
+# 1. Find the integrated account ID
+truto accounts list -o json
+
+# 2. Discover what THIS account can do (proxy + unified + auth + AI readiness)
+ACCOUNT=121aba7d-b4d4-4eb0-9654-2c784db5fc1f
+truto capabilities $ACCOUNT -o json
+
+# 3. Call with arguments copied from the capabilities response
+truto unified ecommerce products -a $ACCOUNT -o json    # from capabilities.unified
+truto proxy products -a $ACCOUNT -o json                 # from capabilities.proxy
+```
+
+### Capabilities response shape (real example, Bigcommerce account)
+
+```json
+{
+  "integration": { "id": "...", "name": "bigcommerce", "label": "Bigcommerce", "category": "ecommerce" },
+  "environment_id": "...",
+  "proxy": [
+    {
+      "resource": "products",
+      "methods": [
+        { "method": "list",   "name": "list_all_bigcommerce_products",        "description": "...", "has_query_schema": true,  "has_body_schema": false },
+        { "method": "get",    "name": "get_single_bigcommerce_product_by_id", "description": "...", "has_query_schema": true,  "has_body_schema": false },
+        { "method": "create", "name": "create_a_bigcommerce_product",         "description": "...", "has_query_schema": false, "has_body_schema": true  },
+        { "method": "update", "name": "update_a_bigcommerce_product_by_id",   "description": "...", "has_query_schema": false, "has_body_schema": true  },
+        { "method": "delete", "name": "delete_a_bigcommerce_product_by_id",   "description": "...", "has_query_schema": false, "has_body_schema": false }
+      ]
+    },
+    { "resource": "orders", "methods": [ ... ] }
+  ],
+  "unified": [
+    {
+      "model": "ecommerce",
+      "model_label": "Unified E-Commerce API",
+      "resource": "products",
+      "description": "...",
+      "docs_url": "https://truto.one/docs/api-reference/unified-e-commerce-api/products",
+      "methods": ["get", "list"],
+      "env_overridden": false
+    }
+  ],
+  "auth": { "formats": ["api_key"], "fields": [ { "name": "store_hash", "required": true }, ... ] },
+  "ai_readiness": { "proxy_methods": 10, "proxy_methods_with_descriptions": 5, "ai_ready_score": 0.5 },
+  "account": { "id": "...", "status": "active", "authentication_method": "api_key", "is_blocked": false }
+}
+```
+
+### How to read it
+
+| Capabilities field | Maps to CLI args |
+|--------------------|------------------|
+| `proxy[].resource` | `truto proxy <resource>` |
+| `proxy[].methods[].method` | `-m <method>` (`list` / `get` / `create` / `update` / `delete` / custom) |
+| `unified[].model` + `unified[].resource` | `truto unified <model> <resource>` |
+| `unified[].methods[]` | `-m <method>` (typically `list`, `get`, sometimes `create`/`update`/`delete`/custom) |
+| `auth.formats`, `auth.fields` | What credentials the account already has — never invent these |
+
+### `capabilities` vs `accounts tools`
+
+| Use… | When you want… |
+|------|----------------|
+| `truto capabilities <id> -o json` | The clean menu of resources × methods. **Default discovery tool.** Use this 95% of the time. |
+| `truto accounts tools <id> -o json` | The full JSON Schema (`query_schema` / `body_schema`) for one method. Reach for this only after capabilities tells you the method exists and you need to know which fields it accepts. |
+
+`capabilities` also works on an integration **slug** (no account required) — useful before connecting:
+
+```bash
+truto capabilities hubspot -o json     # what does hubspot support in general?
+truto capabilities $ACCOUNT -o json    # what does THIS connected account expose?
+```
+
+The CLI auto-detects: anything matching a UUID is treated as an account, everything else as an integration slug. Pass `--target integration` or `--target account` to force.
+
+See [references/querying-data.md](references/querying-data.md) for the full reference, copyable templates per method, pagination, and failure modes.
 
 ## Global Options
 
@@ -116,12 +204,13 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
 ## LLM Agent Tips
 
 1. **Always use `-o json` or `-o ndjson`** — the default `table` format truncates values.
-2. **Start with `truto accounts tools <id> -o json`** to discover what resources an account supports.
+2. **Always run `truto capabilities <account-id> -o json` before any data-plane call.** It tells you which `proxy` resources/methods and which `unified` model/resource/methods are available for that account. Never guess them. See [Querying Data from Connected Accounts](#querying-data-from-connected-accounts-discovery-first) above and [references/querying-data.md](references/querying-data.md). Reach for `truto accounts tools <id>` only when you need the full `query_schema`/`body_schema` for a specific method.
 3. **Use `-v` (verbose)** to debug failures — shows raw HTTP request/response on stderr.
 4. **Non-interactive login:** `truto login --token <token>` skips all prompts.
 5. **Use `truto context`** to get a full CLI reference as markdown, or `truto context --full` for the complete command tree with all flags.
 6. **Pagination:** List commands return 25 results by default. Use `truto export` for exhaustive data.
 7. **Resource path convention:** In `export`/`diff`, `crm/contacts` (with `/`) = unified API, `tickets` (no `/`) = proxy API.
+8. **Read the proxy 404 hint.** When `truto proxy` returns 404, the CLI auto-runs capabilities and prints either `Did you mean: <near-matches>?` or `Run \`truto capabilities <id> --type proxy\` to list available resources.` — follow that hint instead of switching to a different approach.
 
 ## Key Gotchas
 
@@ -133,11 +222,13 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
 - **`-mappings` is the verb-friendly alias** — `truto unified-model-mappings` and `truto env-unified-model-mappings` map to the API resources `unified-model-resource-method` and `environment-unified-model-resource-method` respectively. Use the CLI names; the long forms only appear in raw HTTP debugging.
 - **`override-*` helpers are deep patches** — `truto environment-integrations override-auth/override-pagination/override-rate-limit/override-webhook` patch the relevant key inside `override` and leave siblings alone. Use `show-override` to inspect the current state, and pass `--clear` to null out a single key.
 - **`unified test-mapping` is offline** — it evaluates a JSONata `response_mapping` against a local sample (no third-party HTTP call), so you can iterate before publishing. It cannot evaluate operator-style (object) mappings yet.
+- **Proxy 404s come with a "Did you mean…?" hint** — when `truto proxy` 404s, the CLI silently re-runs capabilities and either suggests near-matches (e.g. `Did you mean: contacts, companies?`) or points you at `truto capabilities <id> --type proxy`. The hint replaces guessing — read it instead of trying random resource names. Methods get the same treatment: `truto proxy contacts -m search` on an account that doesn't expose `search` yields `Method \`search\` is not implemented for \`contacts\`. Available: list, get, create, update, delete.`
 
 ## References
 
 | Reference | Content |
 |-----------|---------|
+| [Querying Data](references/querying-data.md) | **Discovery-first walkthrough** — capabilities reference, response decode guide, copyable command templates per method, when to escalate to `accounts tools` for schemas, pagination, failure modes (proxy 404 hint, empty filters), `jq` recipes |
 | [Admin Commands](references/admin-commands.md) | Full CRUD details for every platform resource — including `integrations init/validate`, `environment-integrations override-*`, and the `unified-models` / `unified-model-mappings` / `env-unified-models` / `env-unified-model-mappings` customization group |
 | [Data Plane](references/data-plane.md) | Unified, proxy, custom, and batch API commands; `unified test-mapping` for local JSONata iteration |
 | [Power Features](references/power-features.md) | Export, diff, interactive mode, logs, schema, open |
