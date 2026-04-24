@@ -6,14 +6,16 @@ All admin commands follow the pattern `truto <resource> <operation> [args] [opti
 
 These flags are available across all resource commands:
 
-| Flag | Operation | Description |
-|------|-----------|-------------|
-| `--limit <n>` | `list` | Results per page (default: 25) |
-| `--next-cursor <cursor>` | `list` | Paginate to next page |
-| `--stdin` | `create` | Read body from stdin (JSON array or NDJSON) |
-| `-b, --body <json>` | `create`, `update` | Inline JSON request body |
-| `-i, --interactive` | `update` | Pre-fill fields from current record for interactive editing |
-| `-f, --force` | `delete` | Skip confirmation prompt |
+
+| Flag                     | Operation          | Description                                                 |
+| ------------------------ | ------------------ | ----------------------------------------------------------- |
+| `--limit <n>`            | `list`             | Results per page (default: 25)                              |
+| `--next-cursor <cursor>` | `list`             | Paginate to next page                                       |
+| `--stdin`                | `create`           | Read body from stdin (JSON array or NDJSON)                 |
+| `-b, --body <json>`      | `create`, `update` | Inline JSON request body                                    |
+| `-i, --interactive`      | `update`           | Pre-fill fields from current record for interactive editing |
+| `-f, --force`            | `delete`           | Skip confirmation prompt                                    |
+
 
 ---
 
@@ -74,15 +76,36 @@ Live tenant connections to integrations. **Full CRUD.**
 
 ```bash
 truto accounts list
-truto accounts list --tenant_id <tid>
-truto accounts list --is_sandbox true
+truto accounts list --tenant-id <tid>
+truto accounts list --is-sandbox true
+truto accounts list --integration-name hubspot                       # filter by integration slug
+truto accounts list --status needs_reauth                            # filter by lifecycle status
+truto accounts list --integration-name front --status active         # combine filters
+truto accounts list --features-super-query wnam                      # SuperQuery accounts in a region
+truto accounts list --created-at 2024-01-01T00:00:00Z                # ISO 8601 timestamp filters
 truto accounts get <id>
 truto accounts create -b '{"environment_integration_id":"...","tenant_id":"...","context":{...},"authentication_method":"oauth2","region":"wnam"}'
 truto accounts update <id> -b '{"status":"inactive"}'
 truto accounts delete <id>
 ```
 
-**Filters:** `--tenant_id`, `--is_sandbox`
+**Filters exposed by the CLI** (CLI ≥ 0.17.0; mapped 1:1 to [the API docs](https://truto.one/docs/api-reference/admin/integrated-accounts/list.md)):
+
+
+| Flag                              | API param              | Notes                                                                                                       |
+| --------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `--tenant-id <tid>`               | `tenant_id`            | Your tenant identifier.                                                                                     |
+| `--is-sandbox <bool>`             | `is_sandbox`           | `true` / `false`.                                                                                           |
+| `--integration-name <slug>`       | `integration.name`     | Integration slug, e.g. `hubspot`, `salesforce`, `front`. Also accepts the dotted form `--integration.name`. |
+| `--status <state>`                | `status`               | One of `active`, `connecting`, `post_install_error`, `validation_error`, `needs_reauth`.                    |
+| `--features-super-query <region>` | `features.super_query` | SuperQuery region: `apac` or `wnam`. Also accepts `--features.super_query`.                                 |
+| `--created-at <ts>`               | `created_at`           | ISO 8601 timestamp.                                                                                         |
+| `--updated-at <ts>`               | `updated_at`           | ISO 8601 timestamp.                                                                                         |
+
+
+> **Heads up:** Setting `--profile` does **not** scope the listing by integration — profile only chooses the API token + URL. To narrow by integration you must pass `--integration-name`.
+
+For broader `jq` shaping recipes (group-by, fall-back labels, manual pagination loops), see [Querying Data → `jq` recipes for finding the right account](querying-data.md#jq-recipes-for-finding-the-right-account).
 
 **Create fields:** `environment_integration_id` (required), `tenant_id` (required), `context` (JSON, required), `authentication_method` (required — `oauth2`, `api_key`, `basic`, etc.), `region` (default: `wnam`)
 
@@ -120,7 +143,7 @@ Your API token is scoped to one environment — you never need to pass `environm
 
 ### Environment Integrations (`truto environment-integrations`)
 
-Install and configure integrations per environment. **Full CRUD plus `override-*` helpers.**
+Install and configure integrations per environment. **Full CRUD plus `override-`* helpers.**
 
 ```bash
 truto environment-integrations list --integration_id <id>
@@ -134,7 +157,7 @@ truto environment-integrations delete <id>
 
 **Update fields:** `is_enabled` (boolean), `show_in_catalog` (boolean), `override` (JSON)
 
-**Override helpers** — all four `override-*` commands deep-patch a single key under `override`, leaving siblings alone. Each accepts `--body <json>` / `--stdin` for the full block, or convenience flags + `--config` for the common shape, plus `--clear` to null the key out.
+**Override helpers** — all four `override-`* commands deep-patch a single key under `override`, leaving siblings alone. Each accepts `--body <json>` / `--stdin` for the full block, or convenience flags + `--config` for the common shape, plus `--clear` to null the key out.
 
 ```bash
 truto environment-integrations show-override <id>     # inspect current override block
@@ -318,12 +341,14 @@ truto notification-destinations delete <id>
 
 Four commands work together to customize unified APIs:
 
-| Command | API resource | What it scopes |
-|---|---|---|
-| `truto unified-models` | `unified-model` | Base unified model definitions (resources, scopes, docs, webhooks). Team-private. |
-| `truto unified-model-mappings` | `unified-model-resource-method` | Base per-(integration, resource, method) mapping rows (`response_mapping`, `query_mapping`, `request_body_mapping`, `error_mapping`, …). |
-| `truto env-unified-models` | `environment-unified-model` | Per-environment install of a unified model + environment-scoped overrides on the model itself. |
-| `truto env-unified-model-mappings` | `environment-unified-model-resource-method` | Per-environment overrides for individual mapping rows. The platform deep-merges these on top of the base mapping at request time. |
+
+| Command                            | API resource                                | What it scopes                                                                                                                           |
+| ---------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `truto unified-models`             | `unified-model`                             | Base unified model definitions (resources, scopes, docs, webhooks). Team-private.                                                        |
+| `truto unified-model-mappings`     | `unified-model-resource-method`             | Base per-(integration, resource, method) mapping rows (`response_mapping`, `query_mapping`, `request_body_mapping`, `error_mapping`, …). |
+| `truto env-unified-models`         | `environment-unified-model`                 | Per-environment install of a unified model + environment-scoped overrides on the model itself.                                           |
+| `truto env-unified-model-mappings` | `environment-unified-model-resource-method` | Per-environment overrides for individual mapping rows. The platform deep-merges these on top of the base mapping at request time.        |
+
 
 For workflows that string these together (when to override at base vs. environment vs. account scope, how to iterate locally with `unified test-mapping`), see the [Unified API Customization](../../truto/references/unified-api-customization.md) reference in the `truto` skill.
 
@@ -565,3 +590,4 @@ Upload files to Truto-hosted public URLs. **Upload only.**
 ```bash
 truto files upload /path/to/file.csv
 ```
+
