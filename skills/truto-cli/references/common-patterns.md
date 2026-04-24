@@ -31,11 +31,53 @@ truto workflow-runs list --status completed
 
 When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative status messages are suppressed — only structured data reaches stdout. Errors always go to stderr.
 
+> **For LLM-driven workflows, always pass `-o json` or `-o ndjson`.** The default `-o table` silently truncates IDs, URLs, and JSON/HTML bodies to fit the terminal — you'll lose data without any indication.
+
+### Pick the right format for the consumer
+
+
+| Consumer pattern                                                                          | Use…                                         | Why                                                         |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| Whole result fits in memory and stays as one document                                     | `-o json`                                    | Pretty-printed; one self-contained JSON value.              |
+| Piping to `head`, `tail`, `less`, `grep`, `jq -c`, anything that may close the pipe early | `-o ndjson`                                  | One JSON object per line — safe to truncate at any newline. |
+| Result might be larger than a screenful                                                   | Redirect to a file first                     | `truto … -o json > /tmp/out.json && jq … /tmp/out.json`     |
+| Bulk export across many pages                                                             | `truto export … -o ndjson --out file.ndjson` | Streams page-by-page; auto-paginates.                       |
+
+
+### The `-o json | head` trap (and how to avoid it)
+
+`-o json` emits one big pretty-printed document. When the downstream consumer (`head`, `less`, `jq` after a pipe close) closes the pipe early, the CLI gets SIGPIPE mid-token and you see truncated output:
+
+```bash
+truto proxy tags -a <id> -o json | head -20 | jq '.'
+# jq: parse error: Invalid numeric literal at line N column M
+# jq: parse error: Unfinished JSON term at EOF at line N
+```
+
+The data was fine; the pipe truncated it. Two correct patterns:
+
+```bash
+# Streaming consumers — use ndjson
+truto proxy tags -a <id> -o ndjson | head -20 | jq -c '{id, name}'
+
+# Larger results — redirect first, then process
+truto proxy conversation_messages -a <id> -m list \
+  -q "conversation_id=cnv_xxx" -q "limit=100" -o json > /tmp/msgs.json
+jq '.[] | {id, type}' /tmp/msgs.json | head -5
+
+# Counting? Same trap. wc -l on pretty-printed json measures whitespace, not records.
+truto proxy tags -a <id> -o ndjson | wc -l                                  # OK: counts records
+truto proxy tags -a <id> -o json > /tmp/x.json && jq 'length' /tmp/x.json   # OK: counts records
+truto proxy tags -a <id> -o json | wc -l                                    # WRONG: counts whitespace lines, often truncated
+```
+
+### Recipes
+
 ```bash
 # Get IDs of all active integrations
 truto integrations list -o json | jq '.[].id'
 
-# Count records
+# Count records (ndjson — one object per line, safe to count)
 truto export crm/contacts -a <id> -o ndjson | wc -l
 
 # Feed into another command
@@ -81,18 +123,14 @@ cat batch-requests.json | truto batch --stdin
 
 ## Profiles
 
-Profiles are stored at `~/.truto/config.json` (chmod `0600`). The `profiles` and `profile` aliases are interchangeable on every subcommand.
+Profiles are stored at `~/.truto/config.json`.
 
 ```bash
 # List all profiles
 truto profiles list
 
-# Show the active profile + authenticated user (alias for `truto whoami`)
-truto profiles current
-
 # Switch active profile
 truto profiles use <profile-name>
-truto use <profile-name>            # top-level shortcut for the same thing
 
 # Set profile-specific values
 truto profiles set api-url https://custom.truto.one
@@ -100,28 +138,14 @@ truto profiles set default-integrated-account <account-id>
 
 # Read a profile value
 truto profiles get api-url
-
-# Save a BYOK key (Anthropic or Firecrawl) — used by `truto integrations build`.
-# If <value> is omitted, prompts with input masked so the secret never lands in
-# shell history or `ps` output. The file is re-chmodded to 0600 on every write.
-truto profiles set-key anthropic <key>
-truto profiles set-key firecrawl                  # interactive password prompt
 ```
 
-`set` / `get` / `set-key` operate on the currently active profile. Switch profiles first if needed.
+`set` and `get` operate on the currently active profile. Switch profiles first if needed.
 
-**Allowed profile keys** for `set <key> <value>` (all naming formats accepted — kebab-case, snake_case, and camelCase resolve to the same field):
+**Allowed profile keys** (all naming formats accepted):
 
-
-| Key                        | Aliases                                                     | Purpose                                                                                         |
-| -------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `apiUrl`                   | `api_url` / `api-url`                                       | Override the Truto API base URL (e.g. for a custom region or self-hosted env)                   |
-| `defaultIntegratedAccount` | `default_integrated_account` / `default-integrated-account` | Default account ID used when `-a` / `--account` is omitted on data-plane commands               |
-| `anthropicApiKey`          | `anthropic_api_key` / `anthropic-api-key`                   | BYOK Anthropic key for `truto integrations build` (prefer `set-key anthropic` for masked input) |
-| `firecrawlApiKey`          | `firecrawl_api_key` / `firecrawl-api-key`                   | BYOK Firecrawl key for `truto integrations build` (prefer `set-key firecrawl` for masked input) |
-
-
-> The plain `set` command will accept the BYOK keys above too, but `set-key` is preferred for them because it (1) prompts with hidden input when `<value>` is omitted, and (2) validates the `<kind>` against the supported BYOK taxonomy before touching the file. BYOK resolution order at call time is: `--anthropic-api-key`/`--firecrawl-api-key` flag → `ANTHROPIC_API_KEY`/`FIRECRAWL_API_KEY` env → active profile field → interactive prompt (TTY only).
+- `apiUrl` / `api_url` / `api-url`
+- `defaultIntegratedAccount` / `default_integrated_account` / `default-integrated-account`
 
 ## Verbose Mode
 
@@ -165,16 +189,20 @@ For the full discovery-first walkthrough, copyable templates per method, the pro
 2. `**gates` vs `static-gates`:** The CLI command is `gates`. The API path is `static-gate`.
 3. `**export`/`diff` resource convention:** A slash in the resource name means unified API (`crm/contacts`), no slash means proxy (`tickets`). These commands do NOT work with admin resources.
 4. `**--account` vs first argument:** Most data-plane commands use `-a, --account`. But `mcp-tokens` takes the account ID as its first positional argument.
-5. **Default output format varies:**
+5. **Resource ID on `unified` / `proxy` is positional, not a flag.** `-d` / `--id` do not exist. Correct: `truto proxy contacts crd_xxx -m get -a $ACCOUNT`. Wrong: `truto proxy contacts -m get -d crd_xxx -a $ACCOUNT` (returns `error: unknown option '-d'`). Same for unified.
+6. **Default output format varies:**
   - Most commands: `table`
   - `export`: `json`
   - `get` subcommands: `json`
   - `custom`: `json`
-6. **Unified `update` without an ID:** Sends PATCH to the collection endpoint. May or may not be supported depending on the integration.
-7. **Proxy custom methods:** `-m custom-action` sends POST to `/proxy/<resource>/custom-action`. The method name becomes a path segment.
-8. **JSON export of large datasets:** `json` and `yaml` formats buffer all records in memory. Use `ndjson` or `csv` for large exports — they stream page-by-page.
-9. **Schema output is YAML:** `truto schema` returns YAML, not JSON. Use `--out` (not `-o`) to write to file.
-10. **Optimistic locking:** `integrations update` and `unified-models update` require a `version` field. Fetch current version with `get` first.
-11. `**environment_id` is implicit:** Your API token is scoped to a specific environment. All resources are automatically filtered.
-12. `**docs list` requires a filter:** A bare `truto docs list` without `--integration_id` or similar will error.
+7. `**-o table` silently truncates** IDs, URLs, and JSON/HTML bodies. Never script against it. LLM-driven workflows should always use `-o json` or `-o ndjson`.
+8. `**-o json` + `head`/`less`/early-close consumers ⇒ truncated mid-token ⇒ `jq: parse error`.** Pipe to `-o ndjson` instead, or redirect `-o json` to a file before processing. See [Output Piping → The `-o json | head` trap](#the--o-json--head-trap-and-how-to-avoid-it) above.
+9. **`truto accounts list` server-side filters** (CLI ≥ 0.17.0): `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status`, `--features-super-query` (alias `--features.super_query`), `--created-at`, `--updated-at`. Reach for these before falling back to client-side `jq` shaping. **`--profile` does NOT scope by integration** — it only swaps the token + URL. On older CLI builds only `--tenant-id` / `--is-sandbox` are exposed. See [admin-commands.md → Integrated Accounts](admin-commands.md#integrated-accounts-truto-accounts).
+10. **Unified `update` without an ID:** Sends PATCH to the collection endpoint. May or may not be supported depending on the integration.
+11. **Proxy custom methods:** `-m custom-action` sends POST to `/proxy/<resource>/custom-action`. The method name becomes a path segment.
+12. **JSON export of large datasets:** `json` and `yaml` formats buffer all records in memory. Use `ndjson` or `csv` for large exports — they stream page-by-page.
+13. **Schema output is YAML:** `truto schema` returns YAML, not JSON. Use `--out` (not `-o`) to write to file.
+14. **Optimistic locking:** `integrations update` and `unified-models update` require a `version` field. Fetch current version with `get` first.
+15. `**environment_id` is implicit:** Your API token is scoped to a specific environment. All resources are automatically filtered.
+16. `**docs list` requires a filter:** A bare `truto docs list` without `--integration_id` or similar will error.
 

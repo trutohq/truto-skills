@@ -31,33 +31,39 @@ truto unified <model> <resource> [id] -a <account-id> [options]
 
 ### Where do I get the arguments?
 
-From [`truto capabilities <account-id> -o json`](#step-0-discover-capabilities-first):
+From `[truto capabilities <account-id> -o json](#step-0-discover-capabilities-first)`:
 
-| CLI position | Capabilities field |
-|--------------|--------------------|
-| `<model>` | `unified[].model` (e.g. `crm`, `ats`, `ecommerce`) |
-| `<resource>` | `unified[].resource` (e.g. `contacts`, `products`) |
+
+| CLI position  | Capabilities field                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `<model>`     | `unified[].model` (e.g. `crm`, `ats`, `ecommerce`)                                                 |
+| `<resource>`  | `unified[].resource` (e.g. `contacts`, `products`)                                                 |
 | `-m <method>` | One of `unified[].methods[]` (typically `list`/`get`, sometimes `create`/`update`/`delete`/custom) |
+
 
 If `unified[].env_overridden` is `true` for that resource, the environment has customized the mapping — behavior may differ from the base.
 
 ### Arguments
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `<model>` | Yes | Unified model name (e.g., `crm`, `ats`, `hris`) |
-| `<resource>` | Yes | Resource name (e.g., `contacts`, `candidates`, `employees`) |
-| `[id]` | For get/update/delete | Resource ID |
+
+| Argument     | Required              | Description                                                                 |
+| ------------ | --------------------- | --------------------------------------------------------------------------- |
+| `<model>`    | Yes                   | Unified model name (e.g., `crm`, `ats`, `hris`)                             |
+| `<resource>` | Yes                   | Resource name (e.g., `contacts`, `candidates`, `employees`)                 |
+| `[id]`       | For get/update/delete | Resource ID — **positional**, not a flag. There is no `-d` / `--id` option. |
+
 
 ### Options
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `-a, --account <id>` | Integrated account ID | **Required** |
-| `-m, --method <method>` | `list`, `get`, `create`, `update`, `delete`, or custom method name | `list` |
-| `-b, --body <json>` | Request body (JSON) | — |
-| `--stdin` | Read request body from stdin | — |
-| `-q, --query <params>` | Query params as `key=value,key2=value2` | — |
+
+| Flag                    | Description                                                        | Default      |
+| ----------------------- | ------------------------------------------------------------------ | ------------ |
+| `-a, --account <id>`    | Integrated account ID                                              | **Required** |
+| `-m, --method <method>` | `list`, `get`, `create`, `update`, `delete`, or custom method name | `list`       |
+| `-b, --body <json>`     | Request body (JSON)                                                | —            |
+| `--stdin`               | Read request body from stdin                                       | —            |
+| `-q, --query <params>`  | Query params as `key=value,key2=value2`                            | —            |
+
 
 ### Examples
 
@@ -65,19 +71,19 @@ If `unified[].env_overridden` is `true` for that resource, the environment has c
 # List contacts from a CRM
 truto unified crm contacts -a <account-id>
 
-# Get a specific contact
+# Get a specific contact — ID is the third positional argument (after model + resource)
 truto unified crm contacts <contact-id> -m get -a <account-id>
 
-# Create a contact
+# Create a contact — no ID positional
 truto unified crm contacts -m create -a <account-id> -b '{"first_name":"Jane","last_name":"Doe"}'
 
-# Update a contact
+# Update a contact — ID positional, body required
 truto unified crm contacts <id> -m update -a <account-id> -b '{"last_name":"Smith"}'
 
-# Delete a contact
+# Delete a contact — ID positional, no body
 truto unified crm contacts <id> -m delete -a <account-id>
 
-# Custom method (e.g., search)
+# Custom method (e.g., search) — no ID, method becomes a path segment
 truto unified crm contacts -m search -a <account-id> -b '{"query":"Jane"}'
 
 # With query parameters
@@ -87,16 +93,20 @@ truto unified crm contacts -a <account-id> -q "limit=10,status=active"
 echo '{"first_name":"Test"}' | truto unified crm contacts -m create -a <account-id> --stdin
 ```
 
+> **Common LLM mistake:** passing the resource ID as `-d <id>` because it feels like "the thing I'm getting." There is no `-d` flag. The ID is **always** positional: `truto unified crm contacts crd_xxx -m get -a $ACCOUNT`. Misusing `-d` returns `error: unknown option '-d'`.
+
 ### How Methods Map to HTTP
 
-| Method | HTTP | Path |
-|--------|------|------|
-| `list` | GET | `/unified/<model>/<resource>` |
-| `get` | GET | `/unified/<model>/<resource>/<id>` |
-| `create` | POST | `/unified/<model>/<resource>` |
-| `update` | PATCH | `/unified/<model>/<resource>/<id>` |
-| `delete` | DELETE | `/unified/<model>/<resource>/<id>` |
-| Custom (e.g., `search`) | POST | `/unified/<model>/<resource>/<method>` |
+
+| Method                  | HTTP   | Path                                   |
+| ----------------------- | ------ | -------------------------------------- |
+| `list`                  | GET    | `/unified/<model>/<resource>`          |
+| `get`                   | GET    | `/unified/<model>/<resource>/<id>`     |
+| `create`                | POST   | `/unified/<model>/<resource>`          |
+| `update`                | PATCH  | `/unified/<model>/<resource>/<id>`     |
+| `delete`                | DELETE | `/unified/<model>/<resource>/<id>`     |
+| Custom (e.g., `search`) | POST   | `/unified/<model>/<resource>/<method>` |
+
 
 ### Pagination
 
@@ -118,27 +128,33 @@ truto unified test-mapping --model <m> --resource <r> --integration <i> [options
 
 **Mapping source (one required):**
 
-| Flag | Description |
-|------|-------------|
-| `--mapping <jsonata>` | Inline JSONata expression |
-| `--mapping-file <file>` | Path to a file containing the JSONata mapping |
-| `--model <m> --resource <r> --integration <i>` | Fetch the base mapping from `unified-model-resource-method` |
-| `--method <m>` | Method name when fetching from the platform (default `list`) |
-| `--with-overrides <env-unified-model-id>` | Also overlay environment-specific overrides on the base |
+
+| Flag                                           | Description                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------ |
+| `--mapping <jsonata>`                          | Inline JSONata expression                                    |
+| `--mapping-file <file>`                        | Path to a file containing the JSONata mapping                |
+| `--model <m> --resource <r> --integration <i>` | Fetch the base mapping from `unified-model-resource-method`  |
+| `--method <m>`                                 | Method name when fetching from the platform (default `list`) |
+| `--with-overrides <env-unified-model-id>`      | Also overlay environment-specific overrides on the base      |
+
 
 **Sample input (one required):**
 
-| Flag | Description |
-|------|-------------|
+
+| Flag             | Description                              |
+| ---------------- | ---------------------------------------- |
 | `--input <file>` | JSON file with the raw upstream response |
-| `--stdin` | Pipe the raw response on stdin |
+| `--stdin`        | Pipe the raw response on stdin           |
+
 
 **Other options:**
 
-| Flag | Description |
-|------|-------------|
+
+| Flag                   | Description                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
 | `-q, --query <params>` | Query params (`key=value,key2=value2`) — exposed in the mapping context as `$query` and `$rawQuery` |
-| `--show-mapping` | Print the resolved JSONata mapping to stderr before evaluating |
+| `--show-mapping`       | Print the resolved JSONata mapping to stderr before evaluating                                      |
+
 
 #### Examples
 
@@ -179,42 +195,57 @@ Same flags as `unified` (`-m`, `-b`, `--stdin`, `-q`), but **no model argument**
 
 ### Where do I get the arguments?
 
-From [`truto capabilities <account-id> -o json`](#step-0-discover-capabilities-first):
+From `[truto capabilities <account-id> -o json](#step-0-discover-capabilities-first)`:
 
-| CLI position | Capabilities field |
-|--------------|--------------------|
-| `<resource>` | `proxy[].resource` (e.g. `products`, `contacts`, `incidents`) |
-| `-m <method>` | One of `proxy[].methods[].method` (`list` / `get` / `create` / `update` / `delete` / any custom name) |
-| Body required? | `proxy[].methods[].has_body_schema` — if `true`, pass `-b` or `--stdin` |
+
+| CLI position            | Capabilities field                                                                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `<resource>`            | `proxy[].resource` (e.g. `products`, `contacts`, `incidents`)                                                                           |
+| `-m <method>`           | One of `proxy[].methods[].method` (`list` / `get` / `create` / `update` / `delete` / any custom name)                                   |
+| Body required?          | `proxy[].methods[].has_body_schema` — if `true`, pass `-b` or `--stdin`                                                                 |
 | Query schema available? | `proxy[].methods[].has_query_schema` — if `true`, drill into `truto accounts tools <id>` for the JSON Schema describing valid `-q` keys |
+
 
 ### 404 → "Did you mean…?" auto-hint
 
 When a proxy call returns 404, the CLI automatically re-runs capabilities for the account and appends a hint to the error before exiting. There are five outcomes — read the hint and act on it instead of guessing:
 
-| Hint | Meaning |
-|------|---------|
-| `Resource \`X\` is not exposed on this account. Did you mean: a, b, c?` | Near-match resources found. Try the suggestion. |
-| `Resource \`X\` is not exposed on this account. Run \`truto capabilities <id> --type proxy\` to list available resources.` | No near-match. Pull the full proxy resource list. |
-| `Method \`X\` is not implemented for \`<resource>\`. Did you mean: a, b?` | Resource exists, near-match methods found. Try the suggestion. |
-| `Method \`X\` is not implemented for \`<resource>\`. Available: list, get, create, update, delete.` | Resource exists, but the specific method does not. Pick from `Available:`. |
-| `Run \`truto capabilities <id> --type proxy\` to list available resources.` | Capabilities call also failed (network/auth). Run it manually first. |
+
+| Hint                                                                                                            | Meaning                                                                    |
+| --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `Resource \`X is not exposed on this account. Did you mean: a, b, c?`                                           | Near-match resources found. Try the suggestion.                            |
+| `Resource \`X is not exposed on this account. Run truto capabilities --type proxy to list available resources.` | No near-match. Pull the full proxy resource list.                          |
+| `Method \`X is not implemented for . Did you mean: a, b?`                                                       | Resource exists, near-match methods found. Try the suggestion.             |
+| `Method \`X is not implemented for . Available: list, get, create, update, delete.`                             | Resource exists, but the specific method does not. Pick from `Available:`. |
+| `Run \`truto capabilities --type proxy to list available resources.`                                            | Capabilities call also failed (network/auth). Run it manually first.       |
+
 
 This safety net is on by default. It runs against the same `/integrated-account/<id>/capabilities` endpoint, so it adds one HTTP round-trip per 404 — but it eliminates almost all blind retries.
 
 ### Examples
 
+> The resource ID is the **second positional argument** (right after `<resource>`), not a flag. `-d` / `--id` do not exist. Trying `truto proxy contacts -a $ACCOUNT -m get -d crd_xxx` returns `error: unknown option '-d'`.
+
 ```bash
-# List raw tickets
+# List raw tickets — no ID
 truto proxy tickets -a <account-id>
 
-# Get a specific ticket
+# Get a specific ticket — ID positional
 truto proxy tickets T-42 -m get -a <account-id>
 
-# Create
+# Get with a non-UUID ID (works for any string ID, e.g. Front-style alt-refs):
+truto proxy conversations 'alt:ref:imported@frontapp.com_t:50603' -a <account-id> -m get
+
+# Create — no ID
 truto proxy tickets -m create -a <account-id> -b '{"subject":"Bug report","priority":"high"}'
 
-# Custom method (sends POST /proxy/tickets/custom-action)
+# Update — ID positional, body required
+truto proxy tags tag_6bvf34 -a <account-id> -m update -b '{"name":"renamed"}'
+
+# Delete — ID positional, no body
+truto proxy conversations cnv_1mknzqn4 -a <account-id> -m delete
+
+# Custom method (sends POST /proxy/tickets/custom-action) — no ID
 truto proxy tickets -m custom-action -a <account-id> -b '{"key":"value"}'
 
 # With query parameters
@@ -239,14 +270,16 @@ truto custom <path> -a <account-id> [options]
 
 ### Options
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `-a, --account <id>` | Integrated account ID | **Required** |
-| `-m, --method <method>` | HTTP method | `GET` |
-| `-b, --body <json>` | Request body (JSON) | — |
-| `--stdin` | Read body from stdin | — |
-| `-q, --query <params>` | Query params | — |
-| `-H, --header <headers>` | Custom headers as `key=value,key2=value2` | — |
+
+| Flag                     | Description                               | Default      |
+| ------------------------ | ----------------------------------------- | ------------ |
+| `-a, --account <id>`     | Integrated account ID                     | **Required** |
+| `-m, --method <method>`  | HTTP method                               | `GET`        |
+| `-b, --body <json>`      | Request body (JSON)                       | —            |
+| `--stdin`                | Read body from stdin                      | —            |
+| `-q, --query <params>`   | Query params                              | —            |
+| `-H, --header <headers>` | Custom headers as `key=value,key2=value2` | —            |
+
 
 ### Examples
 
@@ -286,6 +319,7 @@ cat batch.json | truto batch --stdin
 ### Body Format
 
 The batch body requires:
+
 - `integrated_account_id` — the account to execute against
 - `resources` — array of operations
 
@@ -308,9 +342,12 @@ For proxy resources, set `persist: true` to include results in the response.
 
 ## When to Use Which
 
-| Command | Use when... |
-|---------|-------------|
+
+| Command   | Use when...                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------- |
 | `unified` | You want consistent field names across integrations (e.g., all CRMs use the same contacts schema) |
-| `proxy` | You need integration-specific fields not in the unified schema |
-| `custom` | You need arbitrary API paths the integration exposes but aren't mapped as resources |
-| `batch` | You need multiple operations in a single request |
+| `proxy`   | You need integration-specific fields not in the unified schema                                    |
+| `custom`  | You need arbitrary API paths the integration exposes but aren't mapped as resources               |
+| `batch`   | You need multiple operations in a single request                                                  |
+
+
