@@ -1,16 +1,19 @@
 ---
 name: truto-api-conventions
-description: Truto API conventions — base URL (https://api.truto.one), Bearer auth, unified/proxy/custom URL patterns, cursor pagination, idempotency, admin filter syntax, and skill routing between `truto` (app code) and `truto-cli` (terminal). Load whenever calling, configuring, or reasoning about any api.truto.one endpoint.
+description: Truto API conventions — base URL (https://api.truto.one), Bearer auth, unified/proxy/custom URL patterns, cursor pagination, idempotency, admin filter syntax, and routing between core Truto skills and explicit operational workflow skills. Load whenever calling, configuring, or reasoning about any api.truto.one endpoint.
 ---
 
 # Truto API Conventions
 
 ## Skill Routing
 
-This plugin has two skills with distinct roles:
+This plugin has core skills plus explicit operational workflow skills.
 
 - **Truto** skill — Use when writing code in the user's project that calls `api.truto.one`. This produces application code: `fetch()` calls, webhook handlers, connection flows.
 - **Truto CLI** skill — Use when running terminal commands to set up, explore, or debug. This runs `truto` CLI commands in the shell for admin tasks, one-time data access, and troubleshooting. Nothing the CLI does belongs in the user's codebase.
+- **truto-jsonata** — Use when writing JSONata in mappings, integration overrides, sync jobs, workflows, daemon jobs, or scheduled actions.
+- **truto-link-sdk** — Use when embedding Truto Link in a frontend.
+- **Operational workflow skills** — Use when the user explicitly names a Truto workflow such as `truto-customer-issue-debugger`, `truto-sync-job-validator`, `truto-safe-admin-operator`, `truto-mapping-tester`, `truto-account-health-auditor`, or another `truto-*` workflow skill. These skills are thin runbooks that route the agent through a specific CLI/debugging process while relying on the core skills for command and API details.
 
 ## Base URL
 

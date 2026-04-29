@@ -5,7 +5,7 @@
     {
       "name": "truto",
       "source": "./",
-      "description": "Official Truto plugin: skills for the unified API, CLI, JSONata, Link SDK, and API conventions."
+      "description": "Official Truto plugin: skills for the unified API, CLI, JSONata, Link SDK, API conventions, and explicit operational debugging workflows."
     }
   ]
 }

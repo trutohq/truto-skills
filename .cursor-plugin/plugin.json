@@ -1,9 +1,9 @@
 {
   "name": "truto",
-  "version": "0.1.0",
-  "description": "Official plugin for Truto -- the unified API platform. Helps developers integrate with third-party tools using Truto's APIs.",
+  "version": "0.4.0",
+  "description": "Official plugin for Truto -- the unified API platform. Helps developers integrate, operate, and debug third-party tool connections using Truto's APIs and CLI.",
   "author": { "name": "Truto", "url": "https://truto.one" },
   "license": "Apache-2.0",
-  "keywords": ["truto", "unified-api", "integrations", "api"],
+  "keywords": ["truto", "unified-api", "integrations", "api", "cli", "debugging"],
   "logo": "./assets/logo.png"
 }
