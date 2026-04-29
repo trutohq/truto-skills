@@ -1,7 +1,7 @@
 ---
-
-## name: Truto CLI
+name: truto-cli
 description: Admin and debugging tool for the Truto platform. Use to set up integrations, manage accounts, explore resources, export data, and debug API calls from the terminal. Does not generate application code.
+---
 
 # Truto CLI
 
@@ -10,6 +10,27 @@ Use this skill when running Truto commands in the terminal — setting up platfo
 To write integration code that calls the Truto API from the user's application, use the **Truto** skill instead.
 
 Trigger phrases: "truto cli", "truto command", "install truto", "truto login", "set up integration", "list accounts", "truto export", "debug truto".
+
+## Explicit Workflow Skills
+
+Use the Truto CLI skill for command syntax and broad CLI knowledge. Use these top-level workflow skills when the user wants a specific operating mode, especially from short Cursor Mobile prompts:
+
+| Workflow skill | Use when |
+| --- | --- |
+| `truto-cli-toolbelt` | Establishing baseline CLI rules, profiles, structured output, discovery-first calls, and evidence standards |
+| `truto-cli-investigator` | Investigating a vague Truto issue when no narrower skill owns it |
+| `truto-customer-issue-debugger` | Debugging a customer ticket or support issue end to end |
+| `truto-account-health-auditor` | Checking account auth, status, scopes, capabilities, tools, or logs |
+| `truto-api-call-reproducer` | Building the smallest CLI command that reproduces an API behavior |
+| `truto-export-diff-analyst` | Comparing records, datasets, accounts, exports, or raw-vs-unified output |
+| `truto-docs-capabilities-auditor` | Auditing docs rows, schemas, tools, MCP, AI readiness, and capabilities |
+| `truto-environment-override-auditor` | Reviewing or safely patching environment integration overrides |
+| `truto-integration-config-auditor` | Validating integration JSON or stored integration config |
+| `truto-integration-build-planner` | Planning `truto integrations build` dry runs from provider docs |
+| `truto-mapping-tester` | Testing unified mappings, JSONata response mappings, or proxy-vs-unified mismatches |
+| `truto-safe-admin-operator` | Wrapping mutating CLI actions with preflight, verification, and rollback notes |
+| `truto-sync-job-validator` | Reviewing, dry-running, or debugging sync jobs and templates |
+| `truto-webhook-workflow-debugger` | Debugging webhooks, workflows, notifications, and event delivery |
 
 ## What is the Truto CLI?
 

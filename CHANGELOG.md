@@ -8,8 +8,25 @@ Dates are `YYYY-MM-DD`.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-29
+
 ### Added
 
+- Added 14 explicit top-level operational workflow skills so agents can be directed from short prompts, Cursor Mobile, Claude Code, or any SKILL.md-compatible agent without relying on inference alone:
+  - `skills/truto-cli-toolbelt/SKILL.md`
+  - `skills/truto-cli-investigator/SKILL.md`
+  - `skills/truto-customer-issue-debugger/SKILL.md`
+  - `skills/truto-account-health-auditor/SKILL.md`
+  - `skills/truto-api-call-reproducer/SKILL.md`
+  - `skills/truto-export-diff-analyst/SKILL.md`
+  - `skills/truto-docs-capabilities-auditor/SKILL.md`
+  - `skills/truto-environment-override-auditor/SKILL.md`
+  - `skills/truto-integration-config-auditor/SKILL.md`
+  - `skills/truto-integration-build-planner/SKILL.md`
+  - `skills/truto-mapping-tester/SKILL.md`
+  - `skills/truto-safe-admin-operator/SKILL.md`
+  - `skills/truto-sync-job-validator/SKILL.md`
+  - `skills/truto-webhook-workflow-debugger/SKILL.md`
 - `skills/truto/references/authoring-integrations.md` — End-to-end reference for authoring a brand-new integration definition (the customer-side equivalent of what Truto does for built-ins). Covers the full `integration.config` schema documented through the W1-typed OpenAPI components (`IntegrationConfig`, `IntegrationCredential`, `IntegrationResourceMethod`, `IntegrationPagination`, `IntegrationRateLimit`, `IntegrationWebhookConfig`, `IntegrationAction`, etc.), the recommended `truto integrations init` → `validate` → `create` workflow, all five credential formats (`api_key`, `oauth2`, `oauth2_client_credentials`, `oauth`, `keka_oauth`) plus the `basic` shortcut and BYOA semantics, the three authorization formats, the full per-method `IntegrationResourceMethod` field reference (including custom non-CRUD methods), the six pagination strategies, the inbound webhook receiver (`signature_verification` / `handle_verification` / `payload_transform`), the four reserved lifecycle actions (`post_install`, `validation`, `refresh_token`, `post_connect_user_form`) with a worked `post_install` example, and an end-to-end **Acme CRM** worked example (API-key auth, two resources with one read-only, an HMAC-signed webhook receiver, custom rate-limit detection). Closes the §3.2 audit gap; links into the typed OpenAPI components instead of duplicating the schema.
 - `skills/truto/references/getting-started.md` — Day-1 tutorial that strings the `truto` CLI together with the application code: install → `truto login` → connect a sandbox → write the link-token route → first unified API call → port the same call into your app. Includes Express, Next.js Route Handler, and Hono / Cloudflare Workers variants of the link-token route.
 - `skills/truto/references/customizing-integrations.md` — Per-environment integration overrides for the HTTP layer: authorization, pagination, rate-limit detection, and inbound webhook handling. Documents the new `truto environment-integrations override-*` CLI helpers, the JSONata scope variables for each surface, inspect/remove/test workflows, and a direct-HTTP appendix.
@@ -18,6 +35,11 @@ Dates are `YYYY-MM-DD`.
 
 ### Changed
 
+- `.cursor-plugin/plugin.json` and `.claude-plugin/plugin.json` — Bumped plugin version to `0.4.0` and updated descriptions/keywords to reflect operational debugging workflows.
+- `README.md` — Split the skills list into core skills and operational workflow skills so users can discover and explicitly invoke the right skill.
+- `skills/truto-api-conventions/SKILL.md` — Updated skill routing language so it no longer claims the plugin only has two skills and now explains the role of explicit workflow skills.
+- `skills/truto-cli/SKILL.md` — Added an "Explicit Workflow Skills" routing table for the new top-level Truto CLI workflow skills.
+- `skills/truto-cli/SKILL.md` — Fixed malformed skill frontmatter so the CLI skill can be parsed consistently by SKILL.md-compatible agents.
 - `skills/truto/references/unified-api-customization.md` — Rewritten so the `truto` CLI is the primary path for every workflow (listing mappings, scoping overrides, creating custom unified models, updating per-account overrides, iterating locally with `truto unified test-mapping`). All `curl` examples moved to a "Direct HTTP API" appendix that maps each CLI command to the underlying request. "Common gotchas" updated for optimistic locking on `unified-models update` (`version` field) and CLI-first workflows.
 - `skills/truto/SKILL.md` — Added a top-level **"Install the Truto CLI (recommended)"** section right after "When to Use" so the CLI install is the first actionable step before writing any code, with cross-links to the Truto CLI skill and the Day-1 `getting-started.md` walkthrough. Reorganized the `## References` table into logical groupings (Start here / Customization / Core API surface / Automation & data movement / Operational), promoting `getting-started.md`, `authoring-integrations.md`, `customizing-integrations.md`, and `unified-api-customization.md` to the top. Added a "Day 0 — install the CLI first" preface above the Quick Start, an `integrated_account_id` development tip after Step 4, and a callout in Step 5 pointing to the Next.js / Hono variants of the link-token route in `getting-started.md`. Updated the Proxy & Custom API row to highlight the new authoring section.
 - `skills/truto-cli/SKILL.md` — Quick Reference table updated with a new "Unified Model Customization" row (`unified-models`, `unified-model-mappings`, `env-unified-models`, `env-unified-model-mappings`) and inline call-outs for `integrations init/validate`, `environment-integrations override-*`/`show-override`, and `unified test-mapping`. New "Key Gotchas" entries cover the `-mappings` ↔ `-resource-method` aliasing, the deep-patch semantics of `override-*` helpers, and the offline scope of `unified test-mapping`. Reference table descriptions updated.
@@ -77,7 +99,8 @@ Initial release.
 - `LICENSE` — Apache-2.0.
 - `README.md`, `assets/logo.png` — Project README and logo.
 
-[Unreleased]: https://github.com/trutohq/truto-skills/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/trutohq/truto-skills/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/trutohq/truto-skills/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/trutohq/truto-skills/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/trutohq/truto-skills/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/trutohq/truto-skills/compare/v0.1.0...v0.2.0
