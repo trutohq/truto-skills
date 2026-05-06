@@ -72,7 +72,7 @@ For the full `integration.config` schema, all five credential formats (`api_key`
 
 Live tenant connections to integrations. **Full CRUD.**
 
-> The CLI command is `accounts`, not `integrated-accounts`. This is intentional for brevity.
+> The CLI command is `accounts` for brevity. `integrated-accounts`, `integrated-account`, and `account` all work as aliases.
 
 ```bash
 truto accounts list
@@ -114,13 +114,22 @@ For broader `jq` shaping recipes (group-by, fall-back labels, manual pagination 
 **Extra commands:**
 
 ```bash
+# Quick summary — "what is this account?" in one call
+truto accounts identify <id> -o json
+# Returns: id, tenant_id, integration_name, integration_label, status,
+#          authentication_method, is_sandbox, created_at, plus connection
+#          hint fields (subdomain, domain, site_url, etc.) when present.
+
+# Compact get — only list-view columns
+truto accounts get <id> --brief -o json
+
+# Pick specific fields
+truto accounts get <id> --select id,integration.name,status,tenant_id -o json
+
 # Refresh OAuth credentials
 truto accounts refresh-credentials <id>
 
 # Mint a short-lived (15 min) token scoped to one account
-# Useful for embedding RapidForm post-connect, or making proxy/unified
-# calls scoped to a single account without exposing your env-wide API token.
-# Returns: { "integrated_account_token": "<uuid>" }
 truto accounts create-token <id>
 truto accounts create-token <id> -o json
 
@@ -128,6 +137,15 @@ truto accounts create-token <id> -o json
 truto accounts tools <id>
 truto accounts tools <id> --methods list,get --tags contacts,deals
 ```
+
+**`get` output control:**
+
+| Flag | Effect |
+|---|---|
+| `--brief` | Return only the summary fields shown by `list` (client-side projection) |
+| `--select <fields>` | Return only the named fields (comma-separated, dotted paths supported) |
+
+These flags are available on `get` for **all** resource commands, not just `accounts`.
 
 ### Environments (`truto environments`)
 
@@ -143,7 +161,7 @@ Your API token is scoped to one environment — you never need to pass `environm
 
 ### Environment Integrations (`truto environment-integrations`)
 
-Install and configure integrations per environment. **Full CRUD plus `override-`* helpers.**
+Install and configure integrations per environment. **Full CRUD plus `override-`* helpers.** Aliases: `env-integrations`, `env-integration`.
 
 ```bash
 truto environment-integrations list --integration_id <id>

@@ -81,8 +81,8 @@ truto profiles use staging
 | Category                        | Commands                                                                                                                                                                                                                   | Description                                                                                          |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | **Auth**                        | `login`, `logout`, `whoami`, `profiles`                                                                                                                                                                                    | Authentication and profile management                                                                |
-| **Discovery**                   | `capabilities`, `accounts tools`, `integrations tools`, `integrations unified-apis`                                                                                                                                        | Find which resources/methods an account or integration exposes — **start here before any data call** |
-| **Core Resources**              | `integrations` (incl. `init`, `validate`), `accounts`, `environments`, `environment-integrations` (incl. `override-auth`, `override-pagination`, `override-rate-limit`, `override-webhook`, `show-override`), `api-tokens` | Platform entity management                                                                           |
+| **Discovery**                   | `capabilities`, `accounts tools`, `accounts identify`, `integrations tools`, `integrations unified-apis`                                                                                                                   | Find which resources/methods an account or integration exposes — **start here before any data call** |
+| **Core Resources**              | `integrations` (incl. `init`, `validate`), `accounts` (aliases: `integrated-accounts`), `environments`, `environment-integrations` (aliases: `env-integrations`; incl. `override-auth`, `override-pagination`, `override-rate-limit`, `override-webhook`, `show-override`), `api-tokens` | Platform entity management                                                                           |
 | **Unified Model Customization** | `unified-models`, `unified-model-mappings`, `env-unified-models`, `env-unified-model-mappings`                                                                                                                             | Base + per-environment unified model definitions and field mappings                                  |
 | **Automation**                  | `sync-jobs`, `sync-job-runs`, `sync-job-triggers`, `sync-job-templates`, `workflows`, `workflow-runs`                                                                                                                      | Data sync and workflow automation                                                                    |
 | **Data Plane**                  | `unified` (incl. `test-mapping`), `proxy`, `custom`, `batch`                                                                                                                                                               | Access third-party data; iterate on JSONata mappings locally                                         |
@@ -224,6 +224,9 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
 7. **Pagination:** List commands return 25 results by default. Use `truto export` for exhaustive data.
 8. **Resource path convention:** In `export`/`diff`, `crm/contacts` (with `/`) = unified API, `tickets` (no `/`) = proxy API.
 9. **Read the proxy 404 hint.** When `truto proxy` returns 404, the CLI auto-runs capabilities and prints either `Did you mean: <near-matches>?` or `Run \`truto capabilities  --type proxy to list available resources.` — follow that hint instead of switching to a different approach.
+10. **Use `truto accounts identify <id>`** to quickly answer "what is this account?" — returns `integration_name`, `tenant_id`, `status`, and a connection hint (subdomain, domain, etc.) in a single compact JSON response. Much faster than parsing the full `accounts get` output.
+11. **Use `--brief` or `--select` on `get`** to cut down output. `truto accounts get <id> --brief -o json` returns only the list-view columns. `truto accounts get <id> --select id,integration.name,status -o json` returns only the named fields. Both avoid the full 100KB+ JSON dump.
+12. **Command name aliases:** `truto integrated-accounts` and `truto env-integrations` work as aliases. The canonical names are `accounts` and `environment-integrations`, but the aliases exist so you don't need to remember which got abbreviated.
 
 ## Key Gotchas
 
@@ -239,8 +242,12 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
   - `truto accounts list --integration-name hubspot --status active -o json`
   - `truto accounts list --integration-name front --created-at 2024-01-01T00:00:00Z -o json`
   - On older CLI versions, fall back to `truto accounts list -o json > /tmp/accs.json && jq '.[] | select(.integration.name=="front")' /tmp/accs.json`.
-- `**accounts**` not `integrated-accounts` — CLI uses the short name for brevity.
-- `**gates**` not `static-gates` — CLI is `gates`, API path is `static-gate`.
+- **Command name aliases** — Several CLI commands have shorter names than their API/docs counterparts. All aliases work interchangeably:
+  - `accounts` (primary) = `integrated-accounts` = `integrated-account` = `account`
+  - `environment-integrations` (primary) = `env-integrations` = `env-integration` = `environment-integration`
+  - `notification-destinations` (primary) = `notifications` = `notification-destination`
+  - `gates` (primary) — API path is `static-gate`
+  - `docs` (primary) — singular alias `documentation`
 - **Optimistic locking** — `integrations update`, `unified-models update`, `unified-model-mappings update`, and `env-unified-model-mappings update` all require a `version` field. Fetch current version with `get` first.
 - `**environment_id` is implicit** — your API token is scoped to one environment.
 - **MCP tokens use positional args** — `mcp-tokens` takes account ID as first positional argument, not `--account`.

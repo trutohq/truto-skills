@@ -183,26 +183,70 @@ When you need the full JSON Schema for a specific method's query params or reque
 
 For the full discovery-first walkthrough, copyable templates per method, the proxy 404 → "Did you mean…?" hint, and `jq` recipes against the capabilities payload, see [Querying Data](querying-data.md).
 
+## Compact Output
+
+### `--brief` on `get`
+
+`get` subcommands return the full API response by default, which can be very large (100KB+ for accounts). Use `--brief` to return only the summary fields shown by `list`:
+
+```bash
+truto accounts get <id> --brief -o json
+# Returns: id, integration.name, context.label, tenant_id, authentication_method, status, created_at
+```
+
+### `--select` on `get`
+
+Pick specific fields by name. Supports dotted paths for nested values:
+
+```bash
+truto accounts get <id> --select id,integration.name,status,tenant_id -o json
+truto integrations get <id> --select id,name,category -o json
+```
+
+### `--select` on `list`
+
+List commands also support `--select` for server-side column projection:
+
+```bash
+truto accounts list --select id,tenant_id,status -o json
+```
+
+### `accounts identify`
+
+One-shot summary of an integrated account — flattens the key fields into a compact object:
+
+```bash
+truto accounts identify <id> -o json
+# Returns: id, tenant_id, integration_name, integration_label, status,
+#          authentication_method, is_sandbox, created_at, plus any
+#          connection hint (subdomain, domain, site_url, etc.)
+```
+
+This replaces the pattern of `accounts get <id> -o json | jq '{...}'` for the "what is this account?" question.
+
 ## Gotchas
 
-1. `**accounts` vs `integrated-accounts`:** The CLI command is `accounts` for brevity. The API path is `integrated-account`.
-2. `**gates` vs `static-gates`:** The CLI command is `gates`. The API path is `static-gate`.
-3. `**export`/`diff` resource convention:** A slash in the resource name means unified API (`crm/contacts`), no slash means proxy (`tickets`). These commands do NOT work with admin resources.
-4. `**--account` vs first argument:** Most data-plane commands use `-a, --account`. But `mcp-tokens` takes the account ID as its first positional argument.
-5. **Resource ID on `unified` / `proxy` is positional, not a flag.** `-d` / `--id` do not exist. Correct: `truto proxy contacts crd_xxx -m get -a $ACCOUNT`. Wrong: `truto proxy contacts -m get -d crd_xxx -a $ACCOUNT` (returns `error: unknown option '-d'`). Same for unified.
-6. **Default output format varies:**
+1. **Command name aliases:** Several CLI commands accept multiple names. All resolve to the same command:
+   - `accounts` = `integrated-accounts` = `integrated-account` = `account`
+   - `environment-integrations` = `env-integrations` = `env-integration` = `environment-integration`
+   - `notification-destinations` = `notifications` = `notification-destination`
+   - `gates` (API path: `static-gate`), `docs` (singular: `documentation`)
+2. `**export`/`diff` resource convention:** A slash in the resource name means unified API (`crm/contacts`), no slash means proxy (`tickets`). These commands do NOT work with admin resources.
+3. `**--account` vs first argument:** Most data-plane commands use `-a, --account`. But `mcp-tokens` takes the account ID as its first positional argument.
+4. **Resource ID on `unified` / `proxy` is positional, not a flag.** `-d` / `--id` do not exist. Correct: `truto proxy contacts crd_xxx -m get -a $ACCOUNT`. Wrong: `truto proxy contacts -m get -d crd_xxx -a $ACCOUNT` (returns `error: unknown option '-d'`). Same for unified.
+5. **Default output format varies:**
   - Most commands: `table`
   - `export`: `json`
   - `get` subcommands: `json`
   - `custom`: `json`
-7. `**-o table` silently truncates** IDs, URLs, and JSON/HTML bodies. Never script against it. LLM-driven workflows should always use `-o json` or `-o ndjson`.
-8. `**-o json` + `head`/`less`/early-close consumers ⇒ truncated mid-token ⇒ `jq: parse error`.** Pipe to `-o ndjson` instead, or redirect `-o json` to a file before processing. See [Output Piping → The `-o json | head` trap](#the--o-json--head-trap-and-how-to-avoid-it) above.
-9. **`truto accounts list` server-side filters** (CLI ≥ 0.17.0): `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status`, `--features-super-query` (alias `--features.super_query`), `--created-at`, `--updated-at`. Reach for these before falling back to client-side `jq` shaping. **`--profile` does NOT scope by integration** — it only swaps the token + URL. On older CLI builds only `--tenant-id` / `--is-sandbox` are exposed. See [admin-commands.md → Integrated Accounts](admin-commands.md#integrated-accounts-truto-accounts).
-10. **Unified `update` without an ID:** Sends PATCH to the collection endpoint. May or may not be supported depending on the integration.
-11. **Proxy custom methods:** `-m custom-action` sends POST to `/proxy/<resource>/custom-action`. The method name becomes a path segment.
-12. **JSON export of large datasets:** `json` and `yaml` formats buffer all records in memory. Use `ndjson` or `csv` for large exports — they stream page-by-page.
-13. **Schema output is YAML:** `truto schema` returns YAML, not JSON. Use `--out` (not `-o`) to write to file.
-14. **Optimistic locking:** `integrations update` and `unified-models update` require a `version` field. Fetch current version with `get` first.
-15. `**environment_id` is implicit:** Your API token is scoped to a specific environment. All resources are automatically filtered.
-16. `**docs list` requires a filter:** A bare `truto docs list` without `--integration_id` or similar will error.
+6. `**-o table` silently truncates** IDs, URLs, and JSON/HTML bodies. Never script against it. LLM-driven workflows should always use `-o json` or `-o ndjson`.
+7. `**-o json` + `head`/`less`/early-close consumers ⇒ truncated mid-token ⇒ `jq: parse error`.** Pipe to `-o ndjson` instead, or redirect `-o json` to a file before processing. See [Output Piping → The `-o json | head` trap](#the--o-json--head-trap-and-how-to-avoid-it) above.
+8. `**truto accounts list` server-side filters** (CLI ≥ 0.17.0): `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status`, `--features-super-query` (alias `--features.super_query`), `--created-at`, `--updated-at`. Reach for these before falling back to client-side `jq` shaping. `**--profile` does NOT scope by integration** — it only swaps the token + URL. On older CLI builds only `--tenant-id` / `--is-sandbox` are exposed. See [admin-commands.md → Integrated Accounts](admin-commands.md#integrated-accounts-truto-accounts).
+9. **Unified `update` without an ID:** Sends PATCH to the collection endpoint. May or may not be supported depending on the integration.
+10. **Proxy custom methods:** `-m custom-action` sends POST to `/proxy/<resource>/custom-action`. The method name becomes a path segment.
+11. **JSON export of large datasets:** `json` and `yaml` formats buffer all records in memory. Use `ndjson` or `csv` for large exports — they stream page-by-page.
+12. **Schema output is YAML:** `truto schema` returns YAML, not JSON. Use `--out` (not `-o`) to write to file.
+13. **Optimistic locking:** `integrations update` and `unified-models update` require a `version` field. Fetch current version with `get` first.
+14. `**environment_id` is implicit:** Your API token is scoped to a specific environment. All resources are automatically filtered.
+15. `**docs list` requires a filter:** A bare `truto docs list` without `--integration_id` or similar will error.
 
