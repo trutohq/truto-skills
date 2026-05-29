@@ -250,6 +250,7 @@ Functions are grouped by preset. Each function points to its detailed reference.
 - Wrap multi-statement expressions in `( ... ; ... ; finalExpression )` — JSONata uses `;` as a statement separator inside parens; the last expression is the result.
 - Variable bindings: `$name := value`. Function definitions: `function ($args) { body }`.
 - Backtick-quote keys (and resource paths) that contain hyphens or other special characters: `` resources.`knowledge-base`.`page-content` ``.
+- **Test before publish:** use `truto jsonata eval --expression '<jsonata>' --input context.json` (or `--expression-file` / `--context` / `--stdin`) to evaluate locally with the correct top-level bindings (`response`, `error`, `query`, `body`, etc.). For **`response_mapping` only**, when `--input` is just the raw API body, `truto unified test-mapping` is equivalent but can also fetch the mapping from the platform. **Do not** spin up ad-hoc Node scripts — use the CLI (`@truto/truto-jsonata`, no API token).
 
 ## References
 
@@ -264,5 +265,5 @@ Functions are grouped by preset. Each function points to its detailed reference.
 
 ## Related Skills
 
-- **Truto** — overall platform skill; covers unified API, sync jobs, webhooks, workflows where these expressions are used
-- **Truto CLI** — for testing JSONata expressions against sample data from the terminal
+- **Truto** — overall platform skill; covers unified API, sync jobs, webhooks, workflows where these expressions are used. [Unified API Customization → Iterate locally](../truto/references/unified-api-customization.md#3-iterate-locally) documents `truto jsonata eval` vs `truto unified test-mapping`.
+- **Truto CLI** — command reference for `truto jsonata eval` and `truto unified test-mapping` ([Data Plane](../truto-cli/references/data-plane.md))

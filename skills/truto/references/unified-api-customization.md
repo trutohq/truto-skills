@@ -94,7 +94,8 @@ All CLI commands accept the global flags from the Truto CLI skill — most impor
 
 | Command | Use |
 |---|---|
-| `truto unified test-mapping --model crm --resource contacts --integration salesforce --input sample.json` | Fetch a base mapping and evaluate it against a sample raw response — no third-party call, no platform write. The fastest way to iterate on a `response_mapping`. |
+| `truto jsonata eval --expression '<jsonata>' --input context.json` | Evaluate **any** JSONata expression against a JSON context you control (`response`, `error`, `query`, `body`, etc.). No API token, no platform fetch. Use for `query_mapping`, `error_mapping`, sync transforms, or draft expressions. |
+| `truto unified test-mapping --model crm --resource contacts --integration salesforce --input sample.json` | Fetch a platform `response_mapping` (optional) and evaluate it with the raw response wrapped as `response` — no third-party call, no platform write. Best for iterating on `response_mapping` only. |
 
 ---
 
@@ -536,7 +537,47 @@ Use a sandbox or staging account first. If the response shape isn't what you exp
 
 ### 3. Iterate locally
 
-While iterating on a complex `response_mapping`, the round trip "publish → make a unified API call → look at result" is slow. Use `truto unified test-mapping` to evaluate a JSONata response_mapping against a sample raw response on your machine — no third-party call, no platform write.
+While iterating on mappings, the round trip "publish → make a unified API call → look at result" is slow. Use the CLI to evaluate JSONata on your machine — no third-party call, no platform write.
+
+**Choose the command:**
+
+| Goal | Command |
+|---|---|
+| Any mapping field (`response_mapping`, `query_mapping`, `error_mapping`, sync `transform`, etc.) | `truto jsonata eval` — you supply the full evaluation context JSON |
+| `response_mapping` only, optionally fetched from the platform | `truto unified test-mapping` — `--input` is the raw response body (CLI wraps it as `response`) |
+
+#### `truto jsonata eval` (generic)
+
+Pass the same top-level bindings production uses (see [truto-jsonata → Usage in Truto](../../truto-jsonata/references/usage-in-truto.md#1-unified-api-mapping-overrides--the-main-jsonata-surface)). No API token required.
+
+```bash
+# response_mapping-style context
+cat > context.json <<'EOF'
+{
+  "response": { "users": [{ "id": 1, "name": "Alice" }] },
+  "query": {},
+  "headers": {},
+  "body": {}
+}
+EOF
+
+truto jsonata eval \
+  --expression 'response.users.{"id": id, "name": name}' \
+  --input context.json
+
+# error_mapping-style context
+truto jsonata eval \
+  --expression '{ "status": 404, "message": error.message }' \
+  --context error-context.json
+
+# expression + context from files / stdin
+truto jsonata eval --expression-file draft.jsonata --input context.json
+cat context.json | truto jsonata eval --expression-file draft.jsonata --stdin
+```
+
+**Agents:** prefer `truto jsonata eval` over ad-hoc Node/`trutoJsonata` scripts — same `@truto/truto-jsonata` runtime, predictable CLI errors.
+
+#### `truto unified test-mapping` (`response_mapping` only)
 
 ```bash
 # Capture a raw response from the proxy API (the same payload the mapping will run against)
@@ -668,7 +709,7 @@ This is the source of truth at runtime — if a field appears here, the unified 
 - **`unified-models update` requires `version`.** The platform uses optimistic locking on this resource. Fetch the current row with `truto unified-models get <id>` first and include its `version` in the body. (Mapping rows don't require this — only the model itself.)
 - **The base unified model is shared across teams.** If you're customizing a Truto-shipped unified model (e.g. `crm`), all of your changes go into the **environment** override or the per-account override — not into the base. Only your custom unified models can have their base mappings edited directly.
 - **Custom unified models are team-private.** Only your team can see and use them; you can't share a custom unified model across teams.
-- **`test-mapping` evaluates JSONata, not the full pipeline.** The meta endpoint and the real unified call are still the source of truth for the merged config and `before` / `after` hooks. Use `test-mapping` for quick iteration on the JSONata expression itself.
+- **Local eval commands don't run the full pipeline.** `truto jsonata eval` and `truto unified test-mapping` only run JSONata — not auth, `before`/`after` hooks, or operator-based mappings (`test-mapping` warns on object-form mappings). The meta endpoint and a real unified call are still the source of truth after the expression looks right.
 
 ---
 

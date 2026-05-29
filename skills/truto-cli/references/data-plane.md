@@ -116,6 +116,60 @@ Next cursor is printed to stderr when more pages exist. Pass it via query params
 truto unified crm contacts -a <id> -q "next_cursor=abc123"
 ```
 
+### Evaluate JSONata Locally (`truto jsonata eval`)
+
+Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata` (same runtime as production).
+
+```bash
+truto jsonata eval --expression <jsonata> [options]
+truto jsonata eval --expression-file mapping.jsonata [options]
+```
+
+**Expression source (one required):**
+
+
+| Flag                      | Description                                   |
+| ------------------------- | --------------------------------------------- |
+| `--expression <jsonata>`  | Inline JSONata expression                     |
+| `--expression-file <file>` | Path to a file containing the JSONata expression |
+
+
+**Context input (one required):**
+
+
+| Flag               | Description                                                                 |
+| ------------------ | --------------------------------------------------------------------------- |
+| `--input <file>`   | JSON file — top-level keys become bindings (`response`, `error`, `query`, …) |
+| `--context <file>` | Alias for `--input`                                                         |
+| `--stdin`          | Pipe the context JSON on stdin                                              |
+
+
+#### Examples
+
+```bash
+truto jsonata eval \
+  --expression 'response.{"id": Id, "name": Name}' \
+  --input ./context-with-response-key.json
+
+truto jsonata eval \
+  --expression '{ "status": 404, "message": error.message }' \
+  --context ./error-context.json
+
+cat context.json | truto jsonata eval --expression-file ./draft.jsonata --stdin
+```
+
+#### When to use vs. `unified test-mapping`
+
+| Use `jsonata eval` | Use `unified test-mapping` |
+| ------------------ | -------------------------- |
+| `query_mapping`, `error_mapping`, sync `transform`, any custom context | `response_mapping` only |
+| You build the full context JSON (all bindings) | `--input` is the raw upstream body (CLI sets `response:`) |
+| Drafting before anything is on the platform | Fetch mapping from platform (`--model`, `--resource`, `--integration`) |
+
+**Agents:** prefer `truto jsonata eval` over ad-hoc Node/`trutoJsonata` scripts.
+
+---
+
 ### Iterate on a Mapping Locally (`truto unified test-mapping`)
 
 Evaluate a JSONata `response_mapping` against a local sample raw response — no third-party HTTP call. Use this to iterate on a mapping before publishing it via `unified-model-mappings` / `env-unified-model-mappings`.

@@ -416,7 +416,7 @@ truto env-unified-models list -o json
 truto env-unified-model-mappings list --env_unified_model_id <id> -o json
 ```
 
-To iterate on a unified mapping locally without making real API calls, use `[truto unified test-mapping](data-plane.md#iterate-on-a-mapping-locally-truto-unified-test-mapping)`.
+To iterate on JSONata locally without making real API calls, use [`truto jsonata eval`](data-plane.md#evaluate-jsonata-locally-truto-jsonata-eval) for any expression + context, or [`truto unified test-mapping`](data-plane.md#iterate-on-a-mapping-locally-truto-unified-test-mapping) for `response_mapping` only.
 
 ### Account is blocked or expired
 
