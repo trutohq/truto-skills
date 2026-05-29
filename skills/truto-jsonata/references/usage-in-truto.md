@@ -825,4 +825,4 @@ See [Integrated Account Context — In Workflows / Scheduled Actions](../../trut
 
 7. **Returning `null` from a `transform` or unified `response_mapping` array map drops that record.** Useful for filtering inline.
 
-8. **Test mapping changes against a real account before rolling them out.** The Truto CLI's data-plane commands (see the **Truto CLI** skill) let you fetch a sample response and iterate on the JSONata locally without re-deploying anything.
+8. **Test expressions locally before rolling them out.** Use `truto jsonata eval` for any field — pass a context JSON whose top-level keys match the [per-field scope tables](#quick-reference-which-fields-use-jsonata) above (`--expression` / `--expression-file`, `--input` / `--context` / `--stdin`). No API token. For `response_mapping` when `--input` is only the raw provider body, `truto unified test-mapping` also works and can fetch the mapping from the platform (`--model`, `--resource`, `--integration`). See [Unified API Customization → Iterate locally](../../truto/references/unified-api-customization.md#3-iterate-locally). Prefer the CLI over ad-hoc Node/`trutoJsonata` scripts in agents.
