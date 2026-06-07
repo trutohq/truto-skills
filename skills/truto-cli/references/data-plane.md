@@ -258,6 +258,7 @@ From `[truto capabilities <account-id> -o json](#step-0-discover-capabilities-fi
 | `-m <method>`           | One of `proxy[].methods[].method` (`list` / `get` / `create` / `update` / `delete` / any custom name)                                   |
 | Body required?          | `proxy[].methods[].has_body_schema` — if `true`, pass `-b` or `--stdin`                                                                 |
 | Query schema available? | `proxy[].methods[].has_query_schema` — if `true`, drill into `truto accounts tools <id>` for the JSON Schema describing valid `-q` keys |
+| Response schema available? | `proxy[].methods[].has_response_schema` — if `true`, `truto accounts tools <id>` includes `response_schema` for the method output shape |
 
 
 ### 404 → "Did you mean…?" auto-hint

@@ -125,11 +125,11 @@ truto proxy products -a $ACCOUNT -o json                 # from capabilities.pro
     {
       "resource": "products",
       "methods": [
-        { "method": "list",   "name": "list_all_bigcommerce_products",        "description": "...", "has_query_schema": true,  "has_body_schema": false },
-        { "method": "get",    "name": "get_single_bigcommerce_product_by_id", "description": "...", "has_query_schema": true,  "has_body_schema": false },
-        { "method": "create", "name": "create_a_bigcommerce_product",         "description": "...", "has_query_schema": false, "has_body_schema": true  },
-        { "method": "update", "name": "update_a_bigcommerce_product_by_id",   "description": "...", "has_query_schema": false, "has_body_schema": true  },
-        { "method": "delete", "name": "delete_a_bigcommerce_product_by_id",   "description": "...", "has_query_schema": false, "has_body_schema": false }
+        { "method": "list",   "name": "list_all_bigcommerce_products",        "description": "...", "has_query_schema": true,  "has_body_schema": false, "has_response_schema": true  },
+        { "method": "get",    "name": "get_single_bigcommerce_product_by_id", "description": "...", "has_query_schema": true,  "has_body_schema": false, "has_response_schema": true  },
+        { "method": "create", "name": "create_a_bigcommerce_product",         "description": "...", "has_query_schema": false, "has_body_schema": true,  "has_response_schema": true  },
+        { "method": "update", "name": "update_a_bigcommerce_product_by_id",   "description": "...", "has_query_schema": false, "has_body_schema": true,  "has_response_schema": true  },
+        { "method": "delete", "name": "delete_a_bigcommerce_product_by_id",   "description": "...", "has_query_schema": false, "has_body_schema": false, "has_response_schema": false }
       ]
     },
     { "resource": "orders", "methods": [ ... ] }

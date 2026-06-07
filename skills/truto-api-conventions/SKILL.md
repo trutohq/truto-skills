@@ -95,7 +95,7 @@ GET https://api.truto.one/integrated-account/{integrated_account_id}/capabilitie
 ```json
 {
   "integration": { "name": "<slug>", "label": "...", "category": "..." },
-  "proxy":   [ { "resource": "...", "methods": [ { "method": "list|get|create|update|delete|<custom>", "name": "...", "description": "...", "has_query_schema": true, "has_body_schema": false } ] } ],
+  "proxy":   [ { "resource": "...", "methods": [ { "method": "list|get|create|update|delete|<custom>", "name": "...", "description": "...", "has_query_schema": true, "has_body_schema": false, "has_response_schema": true } ] } ],
   "unified": [ { "model": "...", "resource": "...", "methods": ["..."], "env_overridden": false, "docs_url": "..." } ],
   "auth":    { "formats": ["..."], "fields": [ { "name": "...", "required": true } ] },
   "ai_readiness": { "proxy_methods": 10, "proxy_methods_with_descriptions": 5, "ai_ready_score": 0.5 },

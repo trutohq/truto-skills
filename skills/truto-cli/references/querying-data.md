@@ -175,6 +175,7 @@ Real captured response, trimmed for readability (Bigcommerce account, `--resourc
 | `proxy[].methods[].description`          | What the method actually does — read this before deciding whether it fits the user's intent                                                                |
 | `proxy[].methods[].has_query_schema`     | If `true`, `truto accounts tools <id>` returns a `query_schema` describing valid `-q` keys for this method                                                 |
 | `proxy[].methods[].has_body_schema`      | If `true`, the method takes a request body (`-b`/`--stdin`) — required for `create`/`update`/most custom methods                                           |
+| `proxy[].methods[].has_response_schema`  | If `true`, `truto accounts tools <id>` returns a `response_schema` describing fields in the method response                                                |
 | `unified[].model` + `unified[].resource` | The two positionals in `truto unified <model> <resource>`                                                                                                  |
 | `unified[].methods[]`                    | The `-m <method>` value for `truto unified` (typically `list`/`get`, sometimes `create`/`update`/`delete`/custom)                                          |
 | `unified[].docs_url`                     | Public docs page for the unified model resource — link to it when explaining results                                                                       |
