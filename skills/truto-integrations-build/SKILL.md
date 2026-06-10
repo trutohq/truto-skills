@@ -112,7 +112,7 @@ Special commands during Phase B:
 | `:edit` | Opens the working file in your editor (`$VISUAL` / `$EDITOR` / `--editor` flag) for manual editing |
 | *(empty input)* | Exits Phase B and proceeds to the docs phase |
 
-After Phase B, the build runs a **docs phase** that generates per-method documentation rows (descriptions, query schemas, body schemas). These ride alongside the config in the output file.
+After Phase B, the build runs a **docs phase** that generates per-method documentation rows (descriptions, query schemas, body schemas, response schemas). These ride alongside the config in the output file.
 
 ### Lint
 
@@ -180,7 +180,7 @@ The produced `<slug>.integration.json` is an **IntegrationFile** with these top-
 | `label` | string? | Human-readable label (e.g. `"Acme CRM"`) |
 | `category` | string? | Integration category (e.g. `"crm"`, `"ticketing"`) |
 | `config` | object | The `integration.config` payload -- credentials, authorization, resources, pagination, rate limiting, webhooks, actions |
-| `documentation` | array? | Per-method doc rows (description, query_schema, body_schema) + integration-wide rows (readme, oauth_*) |
+| `documentation` | array? | Per-method doc rows (description, query_schema, body_schema, response_schema) + integration-wide rows (readme, oauth_*) |
 | `audit_notes` | array? | Audit findings carried alongside the config for reference |
 
 See [references/integration-file.md](references/integration-file.md) for the full shape and tips on hand-editing.

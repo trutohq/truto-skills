@@ -77,6 +77,7 @@ type CapabilitiesResponse = {
       has_description: boolean;
       has_query_schema: boolean;
       has_body_schema: boolean;
+      has_response_schema: boolean;
       api_documentation_url: string | null;
     }>;
   }>;

@@ -142,6 +142,7 @@ After Phase B, the build silently generates per-method documentation rows:
 - **description** -- one-sentence summary per method
 - **query_schema** -- YAML-encoded JSON Schema for query parameters
 - **body_schema** -- YAML-encoded JSON Schema for request body
+- **response_schema** -- YAML-encoded JSON Schema for the response shape (post `response_path` unwrap, per-record). Consumed by the SuperAI / MCP toolset.
 
 Plus integration-wide documentation rows when applicable:
 

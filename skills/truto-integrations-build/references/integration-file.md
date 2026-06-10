@@ -43,6 +43,7 @@ The IntegrationFile is the JSON artifact produced by `truto integrations build` 
     { "type": "description", "resource": "contacts", "method": "list", "content": "List all contacts with optional filtering." },
     { "type": "query_schema", "resource": "contacts", "method": "list", "content": "type: object\nproperties:\n  page:\n    type: integer\n  ..." },
     { "type": "body_schema", "resource": "contacts", "method": "create", "content": "type: object\nrequired:\n  - email\n  ..." },
+    { "type": "response_schema", "resource": "contacts", "method": "list", "content": "type: object\nproperties:\n  id:\n    type: integer\n  email:\n    type: string\n  ..." },
     { "type": "readme", "content": "# Acme CRM\n\nAccess contacts, deals, and activities via the Acme REST API." },
     { "type": "oauth_documentation_link", "content": "https://docs.acme.com/oauth" }
   ],
@@ -80,6 +81,7 @@ Per-method rows (have `resource` and `method`):
 | `description` | plain text | One-sentence summary of what the method does |
 | `query_schema` | YAML string (JSON Schema) | Schema for query parameters |
 | `body_schema` | YAML string (JSON Schema) | Schema for request body |
+| `response_schema` | YAML string (JSON Schema) | Schema for the response shape (post `response_path` unwrap, per-record). Consumed by the SuperAI / MCP toolset so LLMs know which fields the method returns. |
 
 Integration-wide rows (no `resource` or `method`):
 
