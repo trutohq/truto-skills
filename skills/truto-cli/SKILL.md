@@ -1,6 +1,7 @@
 ---
 
 ## name: Truto CLI
+
 description: Admin and debugging tool for the Truto platform. Use to set up integrations, manage accounts, explore resources, export data, and debug API calls from the terminal. Does not generate application code.
 
 # Truto CLI
@@ -21,11 +22,21 @@ The Truto CLI is a terminal tool for administering the [Truto](https://truto.one
 
 ## Installation
 
+**Linux / macOS:**
+
 ```bash
 curl -fsSL https://cli.truto.one/install.sh | bash
 ```
 
 This detects your OS/architecture, downloads the correct binary, and installs to `~/.truto/bin/truto`.
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://cli.truto.one/install.ps1 | iex
+```
+
+Installs to `%USERPROFILE%\.truto\bin\truto.exe`. Open a new terminal after install.
 
 **Options:**
 
@@ -33,8 +44,13 @@ This detects your OS/architecture, downloads the correct binary, and installs to
 # Specific version
 TRUTO_VERSION=0.1.0 curl -fsSL https://cli.truto.one/install.sh | bash
 
-# Custom install directory
+# Custom install directory (Linux / macOS)
 TRUTO_INSTALL_DIR=/usr/local/bin curl -fsSL https://cli.truto.one/install.sh | bash
+```
+
+```powershell
+# Specific version (Windows)
+$env:TRUTO_VERSION='0.27.1'; irm https://cli.truto.one/install.ps1 | iex
 ```
 
 **Upgrade:**
@@ -65,11 +81,12 @@ truto whoami
 truto whoami -o json        # machine-readable
 ```
 
-Credentials are stored in `~/.truto/config.json`. Manage multiple profiles:
+Credentials are stored in `~/.truto/config.json` on macOS/Linux (`%USERPROFILE%\.truto\config.json` on Windows). Manage multiple profiles:
 
 ```bash
 truto profiles list
 truto profiles use staging
+truto use staging
 ```
 
 **Token resolution:** `--token` flag > active profile's token > error.
@@ -77,20 +94,18 @@ truto profiles use staging
 
 ## Quick Reference
 
-
-| Category                        | Commands                                                                                                                                                                                                                   | Description                                                                                          |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Auth**                        | `login`, `logout`, `whoami`, `profiles`                                                                                                                                                                                    | Authentication and profile management                                                                |
-| **Discovery**                   | `capabilities`, `accounts tools`, `accounts identify`, `integrations tools`, `integrations unified-apis`                                                                                                                   | Find which resources/methods an account or integration exposes — **start here before any data call** |
+| Category                        | Commands                                                                                                                                                                                                                                                                                 | Description                                                                                          |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Auth**                        | `login`, `logout`, `whoami`, `profiles`                                                                                                                                                                                                                                                  | Authentication and profile management                                                                |
+| **Discovery**                   | `capabilities`, `accounts tools`, `accounts identify`, `integrations tools`, `integrations unified-apis`                                                                                                                                                                                 | Find which resources/methods an account or integration exposes — **start here before any data call** |
 | **Core Resources**              | `integrations` (incl. `init`, `validate`), `accounts` (aliases: `integrated-accounts`), `environments`, `environment-integrations` (aliases: `env-integrations`; incl. `override-auth`, `override-pagination`, `override-rate-limit`, `override-webhook`, `show-override`), `api-tokens` | Platform entity management                                                                           |
-| **Unified Model Customization** | `unified-models`, `unified-model-mappings`, `env-unified-models`, `env-unified-model-mappings`                                                                                                                             | Base + per-environment unified model definitions and field mappings                                  |
-| **Automation**                  | `sync-jobs`, `sync-job-runs`, `sync-job-triggers`, `sync-job-templates`, `workflows`, `workflow-runs`                                                                                                                      | Data sync and workflow automation                                                                    |
-| **Data Plane**                  | `unified` (incl. `test-mapping`), `proxy`, `custom`, `batch`                                                                                                                                                               | Access third-party data; iterate on JSONata mappings locally                                         |
-| **Webhooks & Alerts**           | `webhooks`, `notification-destinations`                                                                                                                                                                                    | Event delivery and alerting                                                                          |
-| **Platform**                    | `datastores`, `mcp-tokens`, `daemons`, `daemon-jobs`, `gates`, `docs`, `link-tokens`, `users`, `team`                                                                                                                      | Additional platform resources                                                                        |
-| **Power Features**              | `jsonata` (incl. `eval`), `export`, `diff`, `open`, `interactive`, `logs`, `schema`, `files`                                                                                                                               | Local JSONata evaluation; bulk data, comparison, and utilities                                       |
-| **Meta**                        | `upgrade`, `context`                                                                                                                                                                                                       | CLI management and LLM agent reference                                                               |
-
+| **Unified Model Customization** | `unified-models`, `unified-model-mappings`, `env-unified-models`, `env-unified-model-mappings`                                                                                                                                                                                           | Base + per-environment unified model definitions and field mappings                                  |
+| **Automation**                  | `sync-jobs`, `sync-job-runs`, `sync-job-run-states`, `sync-job-triggers`, `sync-job-templates`, `workflows`, `workflow-runs`                                                                                                                                                             | Data sync and workflow automation                                                                    |
+| **Data Plane**                  | `unified` (incl. `test-mapping`), `proxy`, `custom`, `batch`                                                                                                                                                                                                                             | Access third-party data; iterate on JSONata mappings locally                                         |
+| **Webhooks & Alerts**           | `webhooks`, `notification-destinations`                                                                                                                                                                                                                                                  | Event delivery and alerting                                                                          |
+| **Platform**                    | `datastores`, `mcp-tokens`, `daemons`, `daemon-jobs`, `gates`, `docs`, `link-tokens`, `users`, `team`                                                                                                                                                                                    | Additional platform resources                                                                        |
+| **Power Features**              | `jsonata` (incl. `eval`), `export`, `diff`, `open`, `interactive`, `logs`, `schema`, `files`                                                                                                                                                                                             | Local JSONata evaluation; bulk data, comparison, and utilities                                       |
+| **Meta**                        | `upgrade`, `context`                                                                                                                                                                                                                                                                     | CLI management and LLM agent reference                                                               |
 
 ## Querying Data from Connected Accounts (Discovery-First)
 
@@ -153,7 +168,6 @@ truto proxy products -a $ACCOUNT -o json                 # from capabilities.pro
 
 ### How to read it
 
-
 | Capabilities field                       | Maps to CLI args                                                                     |
 | ---------------------------------------- | ------------------------------------------------------------------------------------ |
 | `proxy[].resource`                       | `truto proxy <resource>`                                                             |
@@ -162,15 +176,12 @@ truto proxy products -a $ACCOUNT -o json                 # from capabilities.pro
 | `unified[].methods[]`                    | `-m <method>` (typically `list`, `get`, sometimes `create`/`update`/`delete`/custom) |
 | `auth.formats`, `auth.fields`            | What credentials the account already has — never invent these                        |
 
-
 ### `capabilities` vs `accounts tools`
-
 
 | Use…                                | When you want…                                                                                                                                                                         |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `truto capabilities <id> -o json`   | The clean menu of resources × methods. **Default discovery tool.** Use this 95% of the time.                                                                                           |
 | `truto accounts tools <id> -o json` | The full JSON Schema (`query_schema` / `body_schema`) for one method. Reach for this only after capabilities tells you the method exists and you need to know which fields it accepts. |
-
 
 `capabilities` also works on an integration **slug** (no account required) — useful before connecting:
 
@@ -187,7 +198,6 @@ See [references/querying-data.md](references/querying-data.md) for the full refe
 
 Every command accepts these flags:
 
-
 | Flag                    | Description                              | Default                                  |
 | ----------------------- | ---------------------------------------- | ---------------------------------------- |
 | `-p, --profile <name>`  | Use a specific profile                   | Active profile                           |
@@ -196,9 +206,7 @@ Every command accepts these flags:
 | `-o, --output <format>` | `json`, `table`, `yaml`, `csv`, `ndjson` | `table`                                  |
 | `-v, --verbose`         | Print request/response details to stderr | Off                                      |
 
-
 ## Output Formats
-
 
 | Format   | Best for                                                | Notes                                                                                                                                                                |
 | -------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -207,7 +215,6 @@ Every command accepts these flags:
 | `ndjson` | Streaming, `head`/`tail`/`grep`/`jq -c`, log processing | One JSON object per line — safe to truncate at any newline. Ideal for `export` and any LLM-driven pipe.                                                              |
 | `csv`    | Spreadsheets, data analysis                             | Auto-detects columns. Streams page-by-page for `export`.                                                                                                             |
 | `yaml`   | Config files, human-readable                            | Uses yaml library. Buffered.                                                                                                                                         |
-
 
 When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are suppressed — only structured data reaches stdout.
 
@@ -223,18 +230,18 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
 6. **Use `truto context`** to get a full CLI reference as markdown, or `truto context --full` for the complete command tree with all flags.
 7. **Pagination:** List commands return 25 results by default. Use `truto export` for exhaustive data.
 8. **Resource path convention:** In `export`/`diff`, `crm/contacts` (with `/`) = unified API, `tickets` (no `/`) = proxy API.
-9. **Read the proxy 404 hint.** When `truto proxy` returns 404, the CLI auto-runs capabilities and prints either `Did you mean: <near-matches>?` or `Run \`truto capabilities  --type proxy to list available resources.` — follow that hint instead of switching to a different approach.
+9. **Read the proxy 404 hint.** When `truto proxy` returns 404, the CLI auto-runs capabilities and prints either `Did you mean: <near-matches>?` or `Run \`truto capabilities --type proxy to list available resources.` — follow that hint instead of switching to a different approach.
 10. **Use `truto accounts identify <id>`** to quickly answer "what is this account?" — returns `integration_name`, `tenant_id`, `status`, and a connection hint (subdomain, domain, etc.) in a single compact JSON response. Much faster than parsing the full `accounts get` output.
 11. **Use `--brief` or `--select` on `get`** to cut down output. `truto accounts get <id> --brief -o json` returns only the list-view columns. `truto accounts get <id> --select id,integration.name,status -o json` returns only the named fields. Both avoid the full 100KB+ JSON dump.
 12. **Command name aliases:** `truto integrated-accounts` and `truto env-integrations` work as aliases. The canonical names are `accounts` and `environment-integrations`, but the aliases exist so you don't need to remember which got abbreviated.
 
 ## Key Gotchas
 
-- **Resource ID is positional on `unified` / `proxy**` — for `-m get|update|delete`, the ID is the second positional argument, **not** a flag. There is no `-d` or `--id` flag.
+- **Resource ID is positional on `unified` / `proxy**`— for`-m get|update|delete`, the ID is the second positional argument, **not** a flag. There is no `-d`or`--id` flag.
   - Correct: `truto proxy conversations cnv_1mknzqn4 -a $ACCOUNT -m get`
   - Wrong: `truto proxy conversations -a $ACCOUNT -m get -d cnv_1mknzqn4` → `error: unknown option '-d'`
   - Same shape for unified: `truto unified crm contacts <id> -m get -a $ACCOUNT`. The full list-style CRUD is in [references/querying-data.md → Worked examples per method](references/querying-data.md#worked-examples-per-method).
-- `**-o json` + `head`/`less`/early-close consumers ⇒ truncated JSON ⇒ `jq: parse error`.** When the consumer closes the pipe early, the CLI's pretty-printed JSON is cut mid-token. Two safe patterns:
+- `**-o json` + `head`/`less`/early-close consumers ⇒ truncated JSON ⇒ `jq: parse error`.\*\* When the consumer closes the pipe early, the CLI's pretty-printed JSON is cut mid-token. Two safe patterns:
   - Streaming consumers: use `-o ndjson` and pipe to `head`, `jq -c`, `grep`, etc. — one JSON object per line, safe to truncate.
   - Anything that might be larger than a screen: redirect to a file first, then process. `truto … -o json > /tmp/out.json && jq … /tmp/out.json`.
   - The default `-o table` also truncates values silently — never rely on it for IDs, URLs, or anything you'll feed back into another command.
@@ -249,25 +256,23 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
   - `gates` (primary) — API path is `static-gate`
   - `docs` (primary) — singular alias `documentation`
 - **Optimistic locking** — `integrations update`, `unified-models update`, `unified-model-mappings update`, and `env-unified-model-mappings update` all require a `version` field. Fetch current version with `get` first.
-- `**environment_id` is implicit** — your API token is scoped to one environment.
+- `**environment_id` is implicit\*\* — your API token is scoped to one environment.
 - **MCP tokens use positional args** — `mcp-tokens` takes account ID as first positional argument, not `--account`.
-- `**-mappings` is the verb-friendly alias** — `truto unified-model-mappings` and `truto env-unified-model-mappings` map to the API resources `unified-model-resource-method` and `environment-unified-model-resource-method` respectively. Use the CLI names; the long forms only appear in raw HTTP debugging.
-- `**override-*` helpers are deep patches** — `truto environment-integrations override-auth/override-pagination/override-rate-limit/override-webhook` patch the relevant key inside `override` and leave siblings alone. Use `show-override` to inspect the current state, and pass `--clear` to null out a single key.
+- `**-mappings` is the verb-friendly alias** — `truto unified-model-mappings` and `truto env-unified-model-mappings` map to the API resources `unified-model-resource-method` and `environment-unified-model-resource-method` respectively. Use the CLI names; the long forms only appear in raw HTTP debugging. **Hallucinated spellings still work:\*\* `unified-model-resource-methods`, `environment-unified-models`, and `environment-unified-model-resource-methods` are registered aliases.
+- `**override-*` helpers are deep patches\*\* — `truto environment-integrations override-auth/override-pagination/override-rate-limit/override-webhook` patch the relevant key inside `override` and leave siblings alone. Use `show-override` to inspect the current state, and pass `--clear` to null out a single key.
 - **`truto jsonata eval` is offline and generic** — evaluates any JSONata expression against a context JSON you supply (`--expression` / `--expression-file`, `--input` / `--context` / `--stdin`). No API token. Prefer this over ad-hoc Node scripts for JSONata checks.
 - **`unified test-mapping` is offline (`response_mapping` only)** — evaluates a JSONata `response_mapping` against a local sample raw body (no third-party HTTP call), optionally fetched from the platform. It cannot evaluate operator-style (object) mappings yet.
 - **Proxy 404s come with a "Did you mean…?" hint** — when `truto proxy` 404s, the CLI silently re-runs capabilities and either suggests near-matches (e.g. `Did you mean: contacts, companies?`) or points you at `truto capabilities <id> --type proxy`. The hint replaces guessing — read it instead of trying random resource names. Methods get the same treatment: `truto proxy contacts -m search` on an account that doesn't expose `search` yields `Method \`search is not implemented for contacts. Available: list, get, create, update, delete.`
 
 ## References
 
-
-| Reference                                        | Content                                                                                                                                                                                                                                                      |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [Querying Data](references/querying-data.md)     | **Discovery-first walkthrough** — capabilities reference, response decode guide, copyable command templates per method, when to escalate to `accounts tools` for schemas, pagination, failure modes (proxy 404 hint, empty filters), `jq` recipes            |
-| [Admin Commands](references/admin-commands.md)   | Full CRUD details for every platform resource — including `integrations init/validate`, `environment-integrations override-`*, and the `unified-models` / `unified-model-mappings` / `env-unified-models` / `env-unified-model-mappings` customization group |
-| [Data Plane](references/data-plane.md)           | Unified, proxy, custom, and batch API commands; `jsonata eval` for any local JSONata expression; `unified test-mapping` for `response_mapping` iteration                                                                                                                                                           |
-| [Power Features](references/power-features.md)   | Export, diff, interactive mode, logs, schema, open                                                                                                                                                                                                           |
-| [Common Patterns](references/common-patterns.md) | Pagination, filtering, piping, stdin, profiles, scripting                                                                                                                                                                                                    |
-
+| Reference                                        | Content                                                                                                                                                                                                                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Querying Data](references/querying-data.md)     | **Discovery-first walkthrough** — capabilities reference, response decode guide, copyable command templates per method, when to escalate to `accounts tools` for schemas, pagination, failure modes (proxy 404 hint, empty filters), `jq` recipes             |
+| [Admin Commands](references/admin-commands.md)   | Full CRUD details for every platform resource — including `integrations init/validate`, `environment-integrations override-`\*, and the `unified-models` / `unified-model-mappings` / `env-unified-models` / `env-unified-model-mappings` customization group |
+| [Data Plane](references/data-plane.md)           | Unified, proxy, custom, and batch API commands; `jsonata eval` for any local JSONata expression; `unified test-mapping` for `response_mapping` iteration                                                                                                      |
+| [Power Features](references/power-features.md)   | Export, diff, interactive mode, logs, schema, open                                                                                                                                                                                                            |
+| [Common Patterns](references/common-patterns.md) | Pagination, filtering, piping, stdin, profiles, scripting                                                                                                                                                                                                     |
 
 ## Companion: Truto API
 

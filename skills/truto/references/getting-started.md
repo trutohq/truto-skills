@@ -26,11 +26,21 @@ By the end of this tutorial you'll have:
 
 ## Step 1 — Install and authenticate the CLI
 
+**Linux / macOS:**
+
 ```bash
 curl -fsSL https://cli.truto.one/install.sh | bash
 ```
 
 This drops the `truto` binary in `~/.truto/bin`. Add it to your `PATH` if your shell didn't pick it up.
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://cli.truto.one/install.ps1 | iex
+```
+
+Installs to `%USERPROFILE%\.truto\bin\truto.exe`. Open a new terminal after install.
 
 Authenticate with the API token from the dashboard:
 
@@ -38,6 +48,8 @@ Authenticate with the API token from the dashboard:
 truto login --token "$TRUTO_API_TOKEN"
 truto whoami -o json
 ```
+
+On Windows PowerShell, use `$env:TRUTO_API_TOKEN` instead of `"$TRUTO_API_TOKEN"`.
 
 `truto whoami` prints your team, environment, and token info. If you see your team name, you're in.
 

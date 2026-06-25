@@ -8,6 +8,14 @@ Dates are `YYYY-MM-DD`.
 
 ## [Unreleased]
 
+### Changed
+
+- `skills/truto-cli/SKILL.md` — Windows install (`install.ps1`), `truto use`, config path on Windows, note that hallucinated unified-model command spellings are CLI aliases.
+- `skills/truto-integrations-build/SKILL.md` — Fix profile setup (`profiles set-key` not `profiles set anthropicApiKey=…`); document `--only-missing`, `--legacy-discovery`, `--no-spec-web-search`, `apply --docs-only`.
+- `skills/truto/SKILL.md`, `skills/truto/references/getting-started.md` — Windows install blocks.
+- `skills/truto-cli/references/power-features.md` — Windows `open` behavior.
+- `skills/truto-cli/references/admin-commands.md` — `sync-job-run-states` CLI section; alias notes on unified model commands.
+
 ### Added
 
 - `skills/truto-integrations-build/SKILL.md` — New skill for the LLM-first `truto integrations build` workflow. Covers the full build → lint → apply loop: one-time setup (profile keys, `integrationConfigDir`), source-tier selection (OpenAPI / Postman / Mintlify / GraphQL / generic docs), Phase A (autonomous agentic build with 15 tools), Phase B (interactive refinement with `:edit`), the docs phase, `truto integrations lint` (static auditor with exit-code contract), and `truto integrations apply` (non-interactive push with `--dry-run` support). Key flags reference, iterating on existing integrations, docs-only mode, catalog awareness, troubleshooting and cost control knobs.

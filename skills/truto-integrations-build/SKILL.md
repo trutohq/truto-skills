@@ -28,18 +28,27 @@ Trigger phrases: "integrations build", "build an integration", "scaffold integra
 
 ### 1. Install and authenticate the CLI
 
+**Linux / macOS:**
+
 ```bash
 curl -fsSL https://cli.truto.one/install.sh | bash
 truto login --token <your-api-token>
 ```
 
+**Windows (PowerShell):**
+
+```powershell
+irm https://cli.truto.one/install.ps1 | iex
+truto login --token $env:TRUTO_API_TOKEN
+```
+
 ### 2. Store API keys and config directory in your profile
 
 ```bash
-truto profiles set anthropicApiKey=sk-ant-...
-truto profiles set firecrawlApiKey=fc-...        # optional but recommended
-truto profiles set openaiApiKey=sk-...            # optional; enables hybrid search
-truto profiles set integrationConfigDir=/path/to/truto/src/integration/integrationConfig
+truto profiles set-key anthropic                # interactive, masked
+truto profiles set-key firecrawl sk-...         # non-interactive
+truto profiles set-key openai sk-...            # optional; enables hybrid search
+truto profiles set integrationConfigDir /path/to/truto/src/integration/integrationConfig
 ```
 
 | Key | Purpose | Without it |
@@ -164,6 +173,7 @@ truto integrations apply acme.integration.json
 |------|--------|
 | `--dry-run` | Validate the file and print a summary; no API calls |
 | `--slug-override <slug>` | Override the file's `name` on CREATE only (ignored on UPDATE) |
+| `--docs-only` | Push only per-method documentation rows (integration must already exist) |
 
 Apply is non-interactive by design -- there is no `--yes` flag because there is no interactive prompt to skip. The operator already decided what to push during `build`. It exits 0 on success, 1 on any failure.
 
@@ -195,7 +205,17 @@ Pass an existing slug as a positional argument; the build loop pulls the live co
 truto integrations build https://api.acme.com/openapi.json acme
 ```
 
-When `acme` already exists on the platform, the build resumes from the existing config rather than starting from scratch. Phase A is skipped when resuming from a working file that already has 3+ sections with meaningful content -- the CLI goes straight to Phase B for refinement.
+When `acme` already exists on the platform, the build resumes from the existing config rather than starting from scratch. Phase A is skipped when resuming from a working file that already has 3+ sections with meaningful content — the CLI goes straight to Phase B for refinement.
+
+### Only missing methods (`--only-missing`)
+
+On an existing integration slug, add API methods that appear in the source but are not yet on the live integration — without changing existing methods, auth, or pagination:
+
+```bash
+truto integrations build https://api.acme.com/openapi.json acme --only-missing
+```
+
+Incompatible with `--legacy-flow` and `--docs-only`. Phase B refinement is skipped in this mode.
 
 ---
 
@@ -261,7 +281,10 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--editor <cmd>` | `$VISUAL` / `$EDITOR` / profile | Editor for `:edit` command |
 | `--no-editor` | -- | Don't spawn an editor |
 | `--source-tier <tier>` | `auto` | Pin extraction tier |
+| `--legacy-discovery` | agentic (default) | Force legacy deterministic discovery instead of the agentic loop |
+| `--no-spec-web-search` | -- | Skip web search when hunting for an OpenAPI spec URL |
 | `--max-pages <n>` | 200 | Cap on doc pages |
+| `--only-missing` | -- | UPDATE mode: add missing methods only; requires existing slug |
 | `--companion-docs <url>` | -- | Explicit doc-site root to crawl alongside a spec (repeatable) |
 | `--no-companion-docs` | -- | Don't crawl companion doc pages |
 | `--docs-only <file-or-slug>` | -- | Skip build loop; regenerate only documentation rows |

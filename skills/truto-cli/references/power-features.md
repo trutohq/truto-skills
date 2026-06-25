@@ -169,7 +169,7 @@ truto open logs                     # logs page
 
 **Supported resource names:** `integrations`, `accounts`, `integrated-accounts`, `environments`, `sync-jobs`, `workflows`, `webhooks`, `api-tokens`, `mcp-tokens`, `unified-models`, `datastores`, `logs`, `team`, `link-tokens`, `notifications`
 
-Uses `open` on macOS and `xdg-open` on Linux.
+Uses `open` on macOS, `xdg-open` on Linux, and the system default browser on Windows.
 
 ---
 
