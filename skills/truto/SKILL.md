@@ -24,8 +24,16 @@ This skill is about **code that lives in the user's codebase**. For admin setup,
 Before writing any code, install the **Truto CLI** — it's the fastest way to discover what an integration supports, connect a sandbox account, and try a unified API call without touching your application. Every workflow in this skill (calling the unified API, customizing mappings, overriding integrations per environment, debugging webhooks) has a CLI shortcut you can run in a single line, then port into code once it works.
 
 ```bash
+# Linux / macOS
 curl -fsSL https://cli.truto.one/install.sh | bash
 truto login --token "$TRUTO_API_TOKEN"
+truto whoami -o json
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://cli.truto.one/install.ps1 | iex
+truto login --token $env:TRUTO_API_TOKEN
 truto whoami -o json
 ```
 

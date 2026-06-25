@@ -257,6 +257,18 @@ truto sync-job-runs delete <id>
 
 Both `sync_job_id` and `integrated_account_id` are required when creating a run.
 
+### Sync Job Run States (`truto sync-job-run-states`)
+
+Key-value checkpoint data for incremental sync jobs, namespaced by `state_key` from the sync job definition:
+
+```bash
+truto sync-job-run-states list --state-key <state_key>
+truto sync-job-run-states get <entry-key> --state-key <state_key>
+truto sync-job-run-states create --state-key <state_key> --key cursor --value "..."
+truto sync-job-run-states update <entry-key> --state-key <state_key> --value "..."
+truto sync-job-run-states delete <entry-key> --state-key <state_key> -f
+```
+
 ### Sync Job Triggers (`truto sync-job-triggers`)
 
 Cron-based triggers for sync jobs. **Full CRUD.** API path: `sync-job-cron-trigger`.
@@ -363,9 +375,9 @@ Four commands work together to customize unified APIs:
 | Command                            | API resource                                | What it scopes                                                                                                                           |
 | ---------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `truto unified-models`             | `unified-model`                             | Base unified model definitions (resources, scopes, docs, webhooks). Team-private.                                                        |
-| `truto unified-model-mappings`     | `unified-model-resource-method`             | Base per-(integration, resource, method) mapping rows (`response_mapping`, `query_mapping`, `request_body_mapping`, `error_mapping`, …). |
-| `truto env-unified-models`         | `environment-unified-model`                 | Per-environment install of a unified model + environment-scoped overrides on the model itself.                                           |
-| `truto env-unified-model-mappings` | `environment-unified-model-resource-method` | Per-environment overrides for individual mapping rows. The platform deep-merges these on top of the base mapping at request time.        |
+| `truto unified-model-mappings`     | `unified-model-resource-method`             | Base per-(integration, resource, method) mapping rows (`response_mapping`, `query_mapping`, `request_body_mapping`, `error_mapping`, …). **Aliases:** `unified-model-resource-methods`, `unified-model-resource-method`. |
+| `truto env-unified-models`         | `environment-unified-model`                 | Per-environment install of a unified model + environment-scoped overrides on the model itself. **Aliases:** `environment-unified-models`, `environment-unified-model`.                                           |
+| `truto env-unified-model-mappings` | `environment-unified-model-resource-method` | Per-environment overrides for individual mapping rows. The platform deep-merges these on top of the base mapping at request time. **Aliases:** `environment-unified-model-mappings`, `environment-unified-model-resource-methods`.        |
 
 
 For workflows that string these together (when to override at base vs. environment vs. account scope, how to iterate locally with `unified test-mapping`), see the [Unified API Customization](../../truto/references/unified-api-customization.md) reference in the `truto` skill.
