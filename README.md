@@ -13,7 +13,7 @@ Add this repo as a plugin marketplace, then install the plugin:
 /plugin install truto@truto-skills
 ```
 
-Skills become namespaced as `truto:truto`, `truto:truto-cli`, `truto:truto-jsonata`, `truto:truto-link-sdk`, and `truto:truto-api-conventions`. To try it locally before installing, run `claude --plugin-dir /path/to/truto-skills`.
+Skills become namespaced as `truto:truto`, `truto:truto-cli`, `truto:truto-operator`, `truto:truto-jsonata`, `truto:truto-link-sdk`, `truto:truto-integrations-build`, and `truto:truto-api-conventions`. To try it locally before installing, run `claude --plugin-dir /path/to/truto-skills`.
 
 ### Cursor
 
@@ -42,6 +42,7 @@ Works for Cursor, Claude Code, and any other agent supported by the [`skills`](h
 | [truto](./skills/truto/SKILL.md) | Build integrations with third-party tools using Truto's unified API platform |
 | [truto-link-sdk](./skills/truto-link-sdk/SKILL.md) | Embed the Truto connection flow in your frontend using `@truto/truto-link-sdk` |
 | [truto-cli](./skills/truto-cli/SKILL.md) | Install, authenticate, and use the Truto CLI for managing integrations and accessing data |
+| [truto-operator](./skills/truto-operator/SKILL.md) | Operate and debug a live Truto workspace from the in-dashboard Platform Assistant — adaptive playbooks for triaging issues and debugging proxy, unified/mapping, sync-job, webhook, and account failures, then making safe, approval-gated admin changes |
 | [truto-jsonata](./skills/truto-jsonata/SKILL.md) | Write JSONata expressions for Truto config (mappings, sync jobs, workflows) using the custom `$functions` from `@truto/truto-jsonata` |
 | [truto-integrations-build](./skills/truto-integrations-build/SKILL.md) | Generate a new Truto integration from API docs using the agentic `truto integrations build` loop, then lint and apply |
 | [truto-api-conventions](./skills/truto-api-conventions/SKILL.md) | Truto API conventions — base URL, auth, URL patterns, pagination, idempotency, and skill routing |
