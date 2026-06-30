@@ -44,6 +44,7 @@ Works for Cursor, Claude Code, and any other agent supported by the [`skills`](h
 | [truto-cli](./skills/truto-cli/SKILL.md) | Install, authenticate, and use the Truto CLI for managing integrations and accessing data |
 | [truto-jsonata](./skills/truto-jsonata/SKILL.md) | Write JSONata expressions for Truto config (mappings, sync jobs, workflows) using the custom `$functions` from `@truto/truto-jsonata` |
 | [truto-integrations-build](./skills/truto-integrations-build/SKILL.md) | Generate a new Truto integration from API docs using the agentic `truto integrations build` loop, then lint and apply |
+| [truto-unified-mappings](./skills/truto-unified-mappings/SKILL.md) | Generate unified API mapping rows (JSONata) for an integration using the agentic `truto unified-mappings build` loop, then validate and apply |
 | [truto-api-conventions](./skills/truto-api-conventions/SKILL.md) | Truto API conventions — base URL, auth, URL patterns, pagination, idempotency, and skill routing |
 
 ## Rules (Cursor only)
