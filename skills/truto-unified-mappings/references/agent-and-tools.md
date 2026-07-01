@@ -27,10 +27,11 @@ conversation drives:
 If the agent produces zero cells, the build falls back to the structured
 pipeline automatically.
 
-### `--structured`: deterministic per-cell pipeline
+### `--structured`: fixed per-cell pipeline
 
 Skips the orchestration model and runs a fixed pipeline (Sonnet tier) for each
-planned cell:
+planned cell. The JSONata is still LLM-generated (steps 1 and 3 below); only the
+control flow, sampling order, and the finalize/validate steps are deterministic:
 
 1. `matchProxyToUnified` — proxy resource/method routing.
 2. Sample — live proxy and/or docs; pick whichever has richer field coverage
