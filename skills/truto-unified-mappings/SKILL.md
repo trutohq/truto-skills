@@ -109,8 +109,9 @@ truto unified-mappings build acme crm --resources contacts,accounts --methods li
 ```
 
 The default flow is **agentic**: Claude (Opus) orchestrates routing, sampling,
-generation, validation, and commit through tools. Pass `--structured` for the
-deterministic per-cell pipeline. See
+generation, validation, and commit through tools. Pass `--structured` for a
+fixed per-cell pipeline — still LLM-generated (Sonnet), only the orchestration
+is fixed, not the JSONata output. See
 [references/agent-and-tools.md](references/agent-and-tools.md) for the loop, the
 full tool list, and the sampling ladder.
 
@@ -215,7 +216,7 @@ The refinement loop is skipped in this mode.
 | `--source-url <url>` | -- | API docs URL for response examples (ladder: live → DB → source) |
 | `--resources <list>` | all planned | Comma-separated unified resources to build |
 | `--methods <list>` | all | Comma-separated methods (`list,get,create,update,delete,…`) |
-| `--structured` | agentic | Use the deterministic per-cell pipeline instead of the agentic loop |
+| `--structured` | agentic | Run a fixed per-cell pipeline instead of the agentic loop (still LLM-generated; only the orchestration is fixed) |
 | `--no-web-search` | -- | Disable `web_search` / `web_fetch` tools and the source web-search rung |
 | `--fresh` | -- | Ignore an existing working/final file and start from scratch |
 | `--only-missing` | -- | Build only absent cells; don't retry failures or modify existing cells |
