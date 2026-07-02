@@ -71,7 +71,7 @@ Per cell, generation is grounded on the richest sample available, in order:
    examples stored on the platform's doc rows.
 3. **Source index** (`search_source_docs`) — the `--source-url` you passed,
    extracted and indexed (OpenAPI, `llms-full.txt`, crawl). Hybrid BM25+cosine
-   when an OpenAI key is set; BM25-only otherwise.
+   via local ONNX embeddings (automatic).
 4. **Single-page scrape** (`scrape_doc_page`) — last resort, needs Firecrawl.
 
 Write cells (`create`/`update`/`delete`) do not need a response sample — they are

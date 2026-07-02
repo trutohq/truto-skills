@@ -58,7 +58,6 @@ truto login --token $env:TRUTO_API_TOKEN
 ```bash
 truto profiles set-key anthropic                 # interactive, masked
 truto profiles set-key firecrawl sk-...           # only if you crawl a --source-url docs site
-truto profiles set-key openai sk-...              # optional; enables hybrid source search
 truto profiles set unifiedMappingDir /path/to/truto/src/unified-model/mappings
 truto profiles set integrationConfigDir /path/to/truto/src/integration/integrationConfig
 ```
@@ -67,7 +66,6 @@ truto profiles set integrationConfigDir /path/to/truto/src/integration/integrati
 |-----|---------|------------|
 | `anthropicApiKey` | Powers the agentic build loop (Claude) | Build cannot start |
 | `firecrawlApiKey` | Crawls a `--source-url` docs site into clean markdown | Source crawling falls back to cheaper extraction |
-| `openaiApiKey` | Embeds the source index for hybrid BM25+cosine search | BM25-only search (still works) |
 | `unifiedMappingDir` | Corpus of unified mapping exemplars (other integrations' `.mappings`/model files) | Falls back to a bundled subset; fewer exemplars to crib from |
 | `integrationConfigDir` | Proxy-config corpus for exemplars | Fewer proxy exemplars |
 
