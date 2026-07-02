@@ -2,7 +2,7 @@
 
 A **sync job** is a declarative pipeline that pulls data from one or more integrated accounts and writes it to one or more destinations (webhook URLs, datastores like S3 / GCS / Qdrant / MongoDB, or SuperQuery tables). A sync job is defined once and executed many times — each execution is a **sync job run**.
 
-> **This reference covers V4 (`default_runtime_version: 4`) only.** V4 is the current runtime and is what you should use for any new sync job. Older runtimes (V1–V3) have a different, weaker resource model and are not documented here.
+> **This reference covers V4 (`default_runtime_version: 4`) — the current runtime, and what every *new* sync job should use.** Older jobs may still run on V1–V3, which use a different, weaker resource model (a flat request/transform list, not the typed DAG below). Before you **debug or edit an existing** job, `GET /sync-job/{id}` and check its `default_runtime_version` first — the config shape and available node types differ by version. To operate/debug an existing job as the in-dashboard assistant, see the operator playbooks [Debug a sync job](../../truto-operator/references/debug-sync-jobs.md) and [Create / generate a sync job](../../truto-operator/references/create-sync-jobs.md).
 
 ---
 
@@ -55,7 +55,7 @@ curl -X POST https://api.truto.one/sync-job \
 |-------|------|----------|-------------|
 | `label` | string | No | Human-readable label (default: `"Untitled"`) |
 | `integration_name` | string | No | Integration this sync job is associated with. Leave empty (`""`) for multi-integration jobs that take the integrated account from `args` |
-| `default_runtime_version` | number | No | **Set to `4`.** Defaults to `2` for legacy reasons — always set explicitly |
+| `default_runtime_version` | number | No | **Set to `4` explicitly.** If you omit it, `POST /sync-job` stamps a legacy default (currently `3`; the create schema's own default is `2`) — so a job created without this field will **not** be V4. Always set it. |
 | `args_schema` | object | No | JSON-Schema-like definition of `args` (see [Args Schema](#args-schema)) |
 | `args_validation` | string | No | JSONata expression evaluated against `args` to gate the run (see [Args Validation](#args-validation)) |
 | `mutex_key` | string \| null | No | Placeholder-templated key. Two runs with the same `mutex_key` cannot execute concurrently |
@@ -572,7 +572,9 @@ A sync job run is a single execution of a sync job for a specific integrated acc
 | `GET` | `/sync-job-run/:id` | Get a run |
 | `POST` | `/sync-job-run` | Trigger a run |
 | `PATCH` | `/sync-job-run/:id` | Update a run (e.g. set status) |
-| `DELETE` | `/sync-job-run/:id` | Delete a run |
+| `DELETE` | `/sync-job-run/:id` | Stop / delete a run |
+
+> **In-dashboard assistant note:** the Platform Assistant's API catalog exposes only `GET`, `POST`, and `DELETE` on sync-job runs — **not `PATCH`**. To **re-run** a job, `POST /sync-job-run` (a fresh run); to **stop** an in-progress run, `DELETE /sync-job-run/:id`. Don't reach for `PATCH` to change a run's status from the assistant.
 
 ### Trigger a Sync Job Run
 
