@@ -1,6 +1,6 @@
 ---
 name: truto-operator
-description: Operate and debug a live Truto workspace from the in-dashboard Platform Assistant. Adaptive playbooks for triaging vague issues and debugging proxy, unified/mapping, sync-job, webhook, and integrated-account failures, then making safe, approval-gated admin changes through the assistant's admin meta-tools. For application code see the `truto` skill; for the terminal see `truto-cli`.
+description: Operate and debug a live Truto workspace from the in-dashboard Platform Assistant. Adaptive playbooks for triaging vague issues and debugging proxy, unified/mapping, sync-job, webhook, and integrated-account failures, creating and test-running sync jobs (any runtime version V1–V4), then making safe, approval-gated admin changes through the assistant's admin meta-tools. For application code see the `truto` skill; for the terminal see `truto-cli`.
 ---
 
 # Truto Operator — Debugging & Safe-Change Playbooks
@@ -16,6 +16,7 @@ This skill is **not** about writing application code (that's the [`truto`](../tr
 - A customer reports something vague — "Salesforce isn't working", "my sync is broken", "data is missing", "the connection stopped" — and you need to scope it before acting → [Triage & scope](./references/triage-and-scope.md).
 - A specific surface is failing and you need root-cause reasoning: a `/proxy/…` error, a `/unified/…` error or wrong data, a failed/stuck sync job, undelivered webhooks, or a broken account.
 - An investigation has concluded and a config/mapping/account change is needed — you need the write discipline and the real approval rules → [Make a safe admin change](./references/safe-admin-changes.md).
+- The customer wants a **new sync job built**, or an existing one extended — "set up a nightly HubSpot → S3 sync", "generate a Salesforce contacts sync" → [Create / generate a sync job](./references/create-sync-jobs.md).
 - You need the error model that isn't in your other docs — `truto_is_remote_error`, the `truto_error_insight` keys, status-code semantics, rate limits, retry rules, and the `/log` map → [Error & evidence model](./references/error-and-evidence-model.md).
 
 **Not covered here** (route elsewhere): writing customer application code → [`truto`](../truto/SKILL.md); authoring a new integration from vendor docs → [`truto-integrations-build`](../truto-integrations-build/SKILL.md); embedding the connection UI → [`truto-link-sdk`](../truto-link-sdk/SKILL.md). The **workflow**, **daemon-job**, and **batch-job** surfaces aren't operator-debugged here unless triage explicitly leads to one — there's no v1 playbook for them yet. A `/custom/{path}` call is debugged as a proxy error ([P2](./references/debug-proxy-api.md)); MCP tool-call failures debug as the underlying proxy/unified error plus the `mcp` logs.
@@ -70,6 +71,7 @@ You do not hold complete Truto knowledge in context. **Never invent** field name
 | A sync job failed, stalled, rate-limited, or the destination got nothing | [P4 · Debug a sync job](./references/debug-sync-jobs.md) |
 | The customer's endpoint isn't receiving webhook/event deliveries | [P5 · Debug webhook delivery](./references/debug-webhook-delivery.md) |
 | 401/403, "needs reauth", validation/post-install error, "connection stopped" | [P6 · Diagnose an integrated account](./references/diagnose-integrated-account.md) |
+| The customer wants a **new sync job built**, or an existing one extended | [P7 · Create / generate a sync job](./references/create-sync-jobs.md) |
 
 P0 and P1 are the **spine**: P0 routes a vague report to the right surface playbook; every surface playbook hands a concluded fix to P1. The five surface playbooks branch into each other (a "unified is wrong" investigation often ends in P6 account reauth; a "sync produced nothing" often ends in P5 webhook delivery).
 
@@ -91,6 +93,12 @@ P0 and P1 are the **spine**: P0 routes a vague report to the right surface playb
 | [P4 · Debug a sync job](./references/debug-sync-jobs.md) | Run status + stop-point + cause class; rate-limit self-heal; the 5-minute stuck threshold; cron misses. |
 | [P5 · Debug webhook delivery](./references/debug-webhook-delivery.md) | Exists/active/subscribed → attempted → accepted-by-endpoint; reading the customer endpoint's response. |
 | [P6 · Diagnose an integrated account](./references/diagnose-integrated-account.md) | Account status + reason + who must act; why the fix is almost always an end-user reconnect, not an admin write. |
+
+### Authoring
+
+| Document | What it covers |
+| --- | --- |
+| [P7 · Create / generate a sync job](./references/create-sync-jobs.md) | Author a new (V4) sync job through the meta-tools: capabilities → compose the DAG → create → test-run → verify. The one authoring playbook; hands the final write to P1. |
 
 ### Shared model
 
