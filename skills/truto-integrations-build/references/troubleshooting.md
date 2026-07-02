@@ -159,8 +159,9 @@ The legacy flow will be removed once the agentic flow is fully validated.
 
 ## Embedding errors
 
-If you see `OpenAI embedding failed` warnings:
+As of CLI 0.29.0, embeddings run locally via ONNX (`all-MiniLM-L6-v2`). If you see `[embeddings]` errors:
 
 - The build falls back to BM25-only search automatically. Results are slightly less accurate but the build still works.
-- Common cause: invalid or expired `openaiApiKey`. Update it with `truto profiles set openaiApiKey=sk-...`.
-- To suppress the warning entirely: `--no-embeddings`.
+- `tokenizer load failed` or `ONNX session creation failed`: delete `~/.truto/models/` and `~/.truto/ort/` and re-run to trigger a fresh download.
+- `Checksum mismatch`: a corrupted download. Delete the cache dirs above and retry.
+- `embedding generation failed`: typically a transient WASM error. The build continues with BM25-only; retry for hybrid search.

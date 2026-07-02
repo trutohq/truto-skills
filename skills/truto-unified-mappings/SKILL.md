@@ -58,7 +58,6 @@ truto login --token $env:TRUTO_API_TOKEN
 ```bash
 truto profiles set-key anthropic                 # interactive, masked
 truto profiles set-key firecrawl sk-...           # only if you crawl a --source-url docs site
-truto profiles set-key openai sk-...              # optional; enables hybrid source search
 truto profiles set unifiedMappingDir /path/to/truto/src/unified-model/mappings
 truto profiles set integrationConfigDir /path/to/truto/src/integration/integrationConfig
 ```
@@ -67,11 +66,12 @@ truto profiles set integrationConfigDir /path/to/truto/src/integration/integrati
 |-----|---------|------------|
 | `anthropicApiKey` | Powers the agentic build loop (Claude) | Build cannot start |
 | `firecrawlApiKey` | Crawls a `--source-url` docs site into clean markdown | Source crawling falls back to cheaper extraction |
-| `openaiApiKey` | Embeds the source index for hybrid BM25+cosine search | BM25-only search (still works) |
 | `unifiedMappingDir` | Corpus of unified mapping exemplars (other integrations' `.mappings`/model files) | Falls back to a bundled subset; fewer exemplars to crib from |
 | `integrationConfigDir` | Proxy-config corpus for exemplars | Fewer proxy exemplars |
 
 Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$TRUTO_UNIFIED_MAPPING_DIR`, …) > active profile (`~/.truto/config.json`) > interactive prompt (Anthropic always).
+
+> **Note:** Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`, ~35 MB) downloaded automatically on first use. No external API key is required for embeddings.
 
 ---
 
@@ -81,6 +81,7 @@ Three commands, in order:
 
 ```bash
 # 1. Build — generates <integration>.<model>.mappings.json
+#    At least one of --account or --source-url is required
 truto unified-mappings build acme crm --account <integrated-account-id>
 
 # 2. Validate — deterministic audit, no LLM, no writes
@@ -104,6 +105,12 @@ truto unified-mappings build acme crm --account $ACCOUNT
 # Doc-grounded: no account, ground response shapes on an API docs URL
 truto unified-mappings build acme crm --source-url https://docs.acme.com/openapi.json --yes
 
+# Multiple sources: remote URL + local files + glob
+truto unified-mappings build acme crm \
+  --source-url https://docs.acme.com/api \
+  --source-url ./specs/acme-openapi.json \
+  --source-url './notes/*.md' --yes
+
 # Scope to specific resources/methods
 truto unified-mappings build acme crm --resources contacts,accounts --methods list,get
 ```
@@ -124,9 +131,10 @@ request body, so they do not need a live response sample.
 
 In an interactive terminal the build ends in a **refinement loop**: type a
 free-form instruction (for example `engagements.create: strip the trailing Z
-from start times`) and the agent rebuilds the affected cell. Press Enter on an
-empty line to finish. The loop is skipped with `--no-refine`, `--yes`,
-`--only-missing`, or when output is piped.
+from start times`) and the agent rebuilds the affected cell. Type `:show` to
+print the full per-cell review in the terminal. Press Enter on an empty line to
+finish. The loop is skipped with `--no-refine`, `--yes`, `--only-missing`, or
+when output is piped.
 
 ### Validate
 
@@ -191,14 +199,17 @@ before `apply`.
 
 ## Iterating on an existing file
 
-The build keeps a working file (`<integration>.<model>.mappings.working.json`)
-next to the output. If it already has built cells, the build **resumes** from it
-instead of starting over. Pass `--fresh` to ignore it.
+If the final MappingFile at `--out` (default `<integration>.<model>.mappings.json`)
+already exists, the build **resumes** from it — existing cells are kept and
+failed/empty cells are retried. It also carries forward mappings already applied
+on the platform (local cells win on conflict). The `.working.json` file is only
+used for incremental writes during a run and is removed when the build finishes.
+Pass `--fresh` to ignore existing seeds and start from scratch.
 
 ### Only missing cells (`--only-missing`)
 
-Build only the cells not yet present in the existing file — without retrying
-failures or modifying cells already on disk:
+Build only the cells absent from the existing file — existing cells and skipped
+cells are untouched, failures are not retried:
 
 ```bash
 truto unified-mappings build acme crm --only-missing
@@ -213,7 +224,11 @@ The refinement loop is skipped in this mode.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-a, --account <id>` | -- | Integrated account ID for live (read-only) proxy samples |
-| `--source-url <url>` | -- | API docs URL for response examples (ladder: live → DB → source) |
+| `--source-url <url\|path>` | -- | API docs URL or local file path (repeatable, comma-separated; merged into one source index). Supports glob patterns (e.g. `'./specs/*.json'`). At least one of `--account` or `--source-url` is required. |
+| `--yes` | -- | Non-interactive: skip account/docs prompts. Requires `--account` and/or `--source-url`. |
+| `--anthropic-api-key <key>` | env / profile / prompt | Override Anthropic API key |
+| `--firecrawl-api-key <key>` | env / profile / prompt | Override Firecrawl API key |
+| `--no-firecrawl` | -- | Skip Firecrawl; use cheaper extraction only for doc sites |
 | `--resources <list>` | all planned | Comma-separated unified resources to build |
 | `--methods <list>` | all | Comma-separated methods (`list,get,create,update,delete,…`) |
 | `--structured` | agentic | Run a fixed per-cell pipeline instead of the agentic loop (still LLM-generated; only the orchestration is fixed) |

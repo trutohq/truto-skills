@@ -47,7 +47,6 @@ truto login --token $env:TRUTO_API_TOKEN
 ```bash
 truto profiles set-key anthropic                # interactive, masked
 truto profiles set-key firecrawl sk-...         # non-interactive
-truto profiles set-key openai sk-...            # optional; enables hybrid search
 truto profiles set integrationConfigDir /path/to/truto/src/integration/integrationConfig
 ```
 
@@ -55,10 +54,11 @@ truto profiles set integrationConfigDir /path/to/truto/src/integration/integrati
 |-----|---------|------------|
 | `anthropicApiKey` | Powers the agentic build loop (Claude) | Build cannot start |
 | `firecrawlApiKey` | Crawls generic doc sites into clean markdown | Falls back to `llms-full.txt` / `.md` trick / Turndown (lower tiers) |
-| `openaiApiKey` | Embeds the source index for hybrid BM25+cosine search | BM25-only search (still works, slightly less accurate) |
 | `integrationConfigDir` | Directory of existing `<slug>.json` configs for pattern matching | `pattern_match` audit findings skip; other audit sources still run |
 
-Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, etc.) > active profile (`~/.truto/config.json`) > interactive prompt (Anthropic always; Firecrawl when crawling is needed; OpenAI never).
+Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, etc.) > active profile (`~/.truto/config.json`) > interactive prompt (Anthropic always; Firecrawl when crawling is needed).
+
+> Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`) downloaded automatically on first use (~35 MB). No external API key is required.
 
 ---
 
@@ -87,6 +87,9 @@ truto integrations build \
   https://docs.crisp.chat/guides/rest-api/ \
   https://docs.crisp.chat/static/data/collections/rest-api-v1.postman \
   crisp
+
+# Local OpenAPI/Postman file as source
+truto integrations build ./vendor-openapi.json acme
 
 # Skip the interactive instructions prompt (useful for scripting)
 truto integrations build https://api.acme.com/openapi.json --instructions "all endpoints follow /id patterns"
@@ -253,7 +256,7 @@ The static auditor runs several checks that shape the build output:
 | Flag | Effect |
 |------|--------|
 | `--no-firecrawl` | Skip Firecrawl entirely; use only higher-tier sources (`llms-full.txt`, `.md` trick, etc.) |
-| `--no-embeddings` | Skip OpenAI embedding; use BM25-only search |
+| ~~`--no-embeddings`~~ | Removed in 0.29.0; embeddings are now local and automatic |
 | `--no-llm-cache` | Disable the on-disk Anthropic response cache |
 | `--refresh-firecrawl-cache` | Force a fresh Firecrawl crawl (bypasses 24h TTL cache) |
 | `--refresh-llm-cache` | Force fresh Anthropic responses (bypasses 7d TTL cache) |
@@ -274,7 +277,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--anthropic-api-key <key>` | Profile / env / prompt | Anthropic API key |
 | `--anthropic-model <model>` | Tiered: opus (build), sonnet (extraction), haiku (classification) | Override model for all tasks |
 | `--firecrawl-api-key <key>` | Profile / env / prompt | Firecrawl API key |
-| `--openai-api-key <key>` | Profile / env | OpenAI API key for embeddings |
+| ~~`--openai-api-key`~~ | Removed in 0.29.0 | Embeddings are now local (ONNX) |
 | `--integration-config-dir <path>` | Profile / env / walk-up | Existing config corpus for pattern matching |
 | `--out <file>` | `<slug>.integration.json` | Output file path |
 | `--instructions <text>` | Interactive prompt | Skip the instructions prompt |
