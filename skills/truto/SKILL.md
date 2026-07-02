@@ -49,7 +49,7 @@ For the full command surface, output formats, and admin workflows, see the [**Tr
 | **Integration**             | A third-party tool definition (e.g., Salesforce, Jira, Slack).                       | [Core Resources](./references/core-resources.md)                       |
 | **Environment Integration** | An integration installed into a specific environment with optional config overrides. | [Core Resources](./references/core-resources.md)                       |
 | **Integrated Account**      | A connected instance of an integration for a specific tenant (end-user).             | [Core Resources](./references/core-resources.md)                       |
-| **Tenant**                  | Your end-user or customer, identified by `tenant_id` on integrated accounts.         | [Core Resources](./references/core-resources.md)                       |
+| **Tenant**                  | An environment-scoped external identity (your customer / end-user) that owns integrated accounts. Managed via `/tenant` — created explicitly or auto-materialized on first connection. | [Core Resources](./references/core-resources.md#tenants)               |
 | **Unified API**             | Standardized CRUD endpoints across integrations using a common schema.               | [Unified API](./references/unified-api.md)                             |
 | **Proxy API**               | Pass-through to the native API of the underlying tool.                               | [Proxy & Custom API](./references/proxy-and-custom-api.md)             |
 | **Custom API**              | User-defined API endpoints with custom routing logic.                                | [Proxy & Custom API](./references/proxy-and-custom-api.md)             |

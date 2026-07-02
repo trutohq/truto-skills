@@ -147,6 +147,57 @@ truto accounts tools <id> --methods list,get --tags contacts,deals
 
 These flags are available on `get` for **all** resource commands, not just `accounts`.
 
+### Tenants (`truto tenants`)
+
+External identities that own integrated accounts. One tenant, many connected accounts. **Full CRUD, plus bulk create.**
+
+> The CLI command is `tenants` (plural). The singular `tenant` is registered as an alias by `createResourceCommand`. API path is `/tenant`.
+
+```bash
+truto tenants list
+truto tenants list --name acme
+truto tenants get <id>
+truto tenants create -b '{"id":"acme-corp","name":"Acme Corp","metadata":{"tier":"gold"}}'
+truto tenants update <id> -b '{"name":"Acme Corp","metadata":{"tier":"platinum"}}'
+truto tenants delete <id>
+```
+
+**Filters:** `--id`, `--name`
+
+**Create fields:** `id` (required — URL-path-safe: letters, digits, `. _ : @ + -`, up to 256 chars; immutable), `name` (optional; defaults to `id`), `metadata` (optional JSON object)
+
+**Update fields:** `name`, `metadata` (`PATCH` replaces the whole metadata object; merge client-side for partial updates)
+
+**Extra commands:**
+
+```bash
+# Bulk create up to 1000 tenants in a single request (POST /tenant/bulk)
+truto tenants create-bulk -b '[{"id":"acme"},{"id":"globex"}]'
+cat tenants.ndjson | truto tenants create-bulk --stdin
+```
+
+`create-bulk` uses `INSERT ... ON CONFLICT DO NOTHING` server-side, so re-runs are idempotent: rows that already exist come back in `skipped` instead of failing the whole request. The client-side cap (1000) matches the server-side limit.
+
+> **Delete guard:** `truto tenants delete <id>` returns `409 Conflict` if the tenant still has any connected integrated accounts. List them with `truto accounts list --tenant-id <id>` and delete them first — or use the bulk endpoint `POST /integrated-account/bulk-delete` with `{"tenant_id":"<id>"}` to wipe them all in one call.
+
+> **Auto-materialization:** Tenants can also be auto-created by the platform when a link token or integrated account is created with a `tenant_id` matching the allowed pattern. Explicit `truto tenants create` is preferred when you want to attach `metadata` before the customer connects.
+
+**Related endpoint** — bulk delete integrated accounts (no dedicated CLI subcommand; call the API directly):
+
+```bash
+# Delete every account for a tenant
+curl -X POST https://api.truto.one/integrated-account/bulk-delete \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"tenant_id":"acme-corp"}'
+
+# Or delete a specific list
+curl -X POST https://api.truto.one/integrated-account/bulk-delete \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"ids":["acc_1","acc_2"]}'
+```
+
+Exactly one of `tenant_id` or `ids` must be supplied. Returns `{ matched_count, deleted_count }`.
+
 ### Environments (`truto environments`)
 
 Isolated scopes within a team. **List, get, update only** (create/delete requires dashboard).
