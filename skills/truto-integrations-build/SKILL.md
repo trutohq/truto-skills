@@ -88,6 +88,9 @@ truto integrations build \
   https://docs.crisp.chat/static/data/collections/rest-api-v1.postman \
   crisp
 
+# Local OpenAPI/Postman file as source
+truto integrations build ./vendor-openapi.json acme
+
 # Skip the interactive instructions prompt (useful for scripting)
 truto integrations build https://api.acme.com/openapi.json --instructions "all endpoints follow /id patterns"
 

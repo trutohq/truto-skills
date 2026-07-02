@@ -31,7 +31,7 @@ pipeline automatically.
 
 Skips the orchestration model and runs a fixed pipeline (Sonnet tier) for each
 planned cell. The JSONata is still LLM-generated (steps 1 and 3 below); only the
-control flow, sampling order, and the finalize/validate steps are deterministic:
+orchestration is fixed (per-cell Sonnet routing + generation); steps 4–5 (finalize/validate) are deterministic, but the JSONata output is still LLM-generated:
 
 1. `matchProxyToUnified` — proxy resource/method routing.
 2. Sample — live proxy and/or docs; pick whichever has richer field coverage
@@ -69,9 +69,10 @@ Per cell, generation is grounded on the richest sample available, in order:
    single `GET` for `list` or `get`.
 2. **DB documentation** examples (`read_doc_response_example`) — response
    examples stored on the platform's doc rows.
-3. **Source index** (`search_source_docs`) — the `--source-url` you passed,
-   extracted and indexed (OpenAPI, `llms-full.txt`, crawl). Hybrid BM25+cosine
-   via local ONNX embeddings (automatic).
+3. **Source index** (`search_source_docs`) — the `--source-url` value(s) you
+   passed (repeatable URLs and/or local paths, merged into one index). Local glob
+   tokens (`'*.md'`, `'**/*.json'`) are expanded by the CLI before indexing; empty
+   globs error. Hybrid BM25+cosine via local ONNX embeddings (automatic).
 4. **Single-page scrape** (`scrape_doc_page`) — last resort, needs Firecrawl.
 
 Write cells (`create`/`update`/`delete`) do not need a response sample — they are
