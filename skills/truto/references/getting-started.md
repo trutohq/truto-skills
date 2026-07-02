@@ -134,6 +134,8 @@ Now move from the terminal into your application code. Your backend needs **one*
 
 The route handles **both** new connections (pass `tenant_id`) and reconnections (pass `integrated_account_id` instead). Wiring both from the start prevents users from creating duplicate accounts when an existing connection fails.
 
+`tenant_id` refers to a [tenant](./core-resources.md#tenants) — the environment-scoped identity that owns integrated accounts. If a tenant with that ID doesn't exist yet, Truto auto-creates one when the account connects (as long as the ID matches `[A-Za-z0-9._:@+\-]{1,256}`). Pre-create via `POST /tenant` or `truto tenants create` first when you need `metadata` (tier, region, billing plan) attached before the customer's first connection.
+
 ### Express
 
 ```typescript
