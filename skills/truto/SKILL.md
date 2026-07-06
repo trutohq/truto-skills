@@ -348,7 +348,7 @@ All API requests use Bearer token authentication. The API token must only be use
 | [Authentication](./references/authentication.md)                         | API tokens, link tokens, integrated account tokens, auth patterns                       |
 | [MCP Tokens](./references/mcp-tokens.md)                                 | MCP protocol tokens for AI agents, tool filtering, expiration                           |
 | [Connection Flow](./references/connection-flow.md)                       | Connection lifecycle, reconnecting accounts, webhook events, post-connection automation |
-| [Core Resources](./references/core-resources.md)                         | Environments, integrations, integrated accounts, teams                                  |
+| [Core Resources](./references/core-resources.md)                         | Environments, integrations, integrated accounts, tenants, teams                          |
 | [Integrated Account Context](./references/integrated-account-context.md) | Context field lifecycle, credentials, instance config, usage in APIs/sync/workflows     |
 
 ### Automation & data movement

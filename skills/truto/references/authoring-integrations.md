@@ -770,7 +770,7 @@ The response includes the integration's `id`. Save it as `$INTEGRATION_ID`.
 truto environment-integrations create -b "{\"integration_id\":\"$INTEGRATION_ID\",\"is_enabled\":true,\"show_in_catalog\":true}"
 ```
 
-The new integration now appears in your environment's Link UI. Generate a link token, open Link with `truto link-tokens create -b '{"tenant_id":"acme-test","is_sandbox":true}'`, paste your test API key, and the connection should land. Confirm with:
+The new integration now appears in your environment's Link UI. Generate a link token, open Link with `truto link-tokens create -b '{"tenant_id":"acme-test","is_sandbox":true}'` (the `tenant_id` auto-creates a [tenant](./core-resources.md#tenants) on first use, or pre-create one with `truto tenants create --id acme-test` if you want metadata attached first), paste your test API key, and the connection should land. Confirm with:
 
 ```bash
 truto accounts list --is_sandbox true -o json | jq '.result[0].id'

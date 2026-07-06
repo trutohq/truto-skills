@@ -242,7 +242,7 @@ curl -X POST https://api.truto.one/integrated-account \
 
 | Field                        | Type   | Required | Description                                      |
 | ---------------------------- | ------ | -------- | ------------------------------------------------ |
-| `tenant_id`                  | string | Yes      | Your identifier for the end-user                 |
+| `tenant_id`                  | string | Yes      | References a [Tenant](#tenants) row; auto-created on first use or pre-create via `POST /tenant` |
 | `environment_integration_id` | uuid   | Yes      | Environment integration to connect               |
 | `context`                    | object | Yes      | Integration-specific configuration               |
 | `authentication_method`      | string | Yes      | Auth method (e.g., `oauth2`, `api_key`, `basic`) |
@@ -255,7 +255,7 @@ curl -X POST https://api.truto.one/integrated-account \
 | Field            | Type     | Description                       |
 | ---------------- | -------- | --------------------------------- |
 | `id`             | uuid     | Account identifier                |
-| `tenant_id`      | string   | Your tenant identifier            |
+| `tenant_id`      | string   | FK to the [Tenant](#tenants) that owns this account |
 | `environment_id` | uuid     | Parent environment                |
 | `status`         | string   | Connection status                 |
 | `is_sandbox`     | boolean  | Whether this is a sandbox account |
