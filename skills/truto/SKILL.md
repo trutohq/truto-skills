@@ -1,6 +1,7 @@
 ---
 name: truto
 description: Write application code that integrates with third-party tools via the Truto unified API. Covers API calls, webhook handlers, connection flows, and data access patterns for use in the user's codebase.
+whenToUse: Application code calling api.truto.one — unified/proxy/custom APIs, webhooks, OAuth connection flows, integrated accounts from a customer app perspective.
 ---
 
 # Truto — Unified API Platform

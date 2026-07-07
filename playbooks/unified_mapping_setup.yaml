@@ -1,0 +1,39 @@
+kind: unified_mapping_setup
+steps:
+  - id: read_mapping_guide
+    label: Read unified mappings skill
+    tool:
+      name: read_platform_resource
+      args:
+        uri: truto://skill/truto-unified-mappings
+  - id: list_unified_models
+    label: List unified models
+    tool:
+      name: call_platform_api
+      args:
+        method: GET
+        path: /unified-model
+        query:
+          limit: 50
+  - id: list_env_mappings
+    label: List environment unified model mappings
+    tool:
+      name: call_platform_api
+      args:
+        method: GET
+        path: /environment-unified-model-mapping
+        query:
+          unified_model.resource_name: '{{ctx.resource_name}}'
+          unified_model.method_name: '{{ctx.method_name}}'
+          limit: 20
+  - id: list_global_mappings
+    label: List global unified model mappings
+    tool:
+      name: call_platform_api
+      args:
+        method: GET
+        path: /unified-model-mapping
+        query:
+          unified_model.resource_name: '{{ctx.resource_name}}'
+          unified_model.method_name: '{{ctx.method_name}}'
+          limit: 20

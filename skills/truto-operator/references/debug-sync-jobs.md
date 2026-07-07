@@ -92,6 +92,6 @@ Recovering a genuinely-stuck run is a **platform/admin** matter, not an assistan
 
 ## Supersedes / Reuses
 
-- **Supersedes** the four-bullet `truto://guide/sync-debugging` stub.
-- **Reuses** [Sync Jobs](../../truto/references/sync-jobs.md), [Files & Logs](../../truto/references/files-and-logs.md), and the [Error & evidence model](./error-and-evidence-model.md). The backend `truto://reference/incremental-sync-job-v4-s3-parquet` covers the V4 runtime in depth.
+- **Supersedes** the former short sync-debugging cheat sheet with real failure-mode reasoning.
+- **Reuses** [Sync Jobs](../../truto/references/sync-jobs.md), [Files & Logs](../../truto/references/files-and-logs.md), and the [Error & evidence model](./error-and-evidence-model.md). For V4 runtime details, read `truto://skill/truto/references/sync-jobs`.
 - To **create or generate** a sync job (rather than debug one), see [P7 · Create / generate a sync job](./create-sync-jobs.md).

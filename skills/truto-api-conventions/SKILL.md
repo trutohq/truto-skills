@@ -1,6 +1,7 @@
 ---
 name: truto-api-conventions
 description: Truto API conventions — base URL (https://api.truto.one), Bearer auth, unified/proxy/custom URL patterns, cursor pagination, idempotency, admin filter syntax, and skill routing between `truto` (app code) and `truto-cli` (terminal). Load whenever calling, configuring, or reasoning about any api.truto.one endpoint.
+whenToUse: Truto API URL patterns, Bearer auth, pagination, idempotency keys, admin list filter syntax. Read before call_platform_api on unfamiliar endpoints.
 ---
 
 # Truto API Conventions

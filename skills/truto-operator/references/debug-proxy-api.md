@@ -30,7 +30,7 @@
 | `5xx` **with** `truto_is_remote_error` | The provider is failing | Treat as a flaky upstream — backoff, capped; not a Truto bug |
 | `400` / `409` / `422` | The provider rejected the request shape/values (`raw_response` has the detail) | Fix the request; don't retry unchanged |
 
-If the cause is a config gap (the integration genuinely lacks the resource/method the user needs), that's an **authoring** change, not a debug fix — hand the *scoped* change to [P1](./safe-admin-changes.md); adding a new proxy resource is covered by the `truto://guide/adding-proxy-resources` stub and the [truto-integrations-build](../../truto-integrations-build/SKILL.md) skill.
+If the cause is a config gap (the integration genuinely lacks the resource/method the user needs), that's an **authoring** change, not a debug fix — hand the *scoped* change to [P1](./safe-admin-changes.md); adding a new proxy resource is covered by the [truto-integrations-build](../../truto-integrations-build/SKILL.md) skill.
 
 **Custom API.** A `/custom/{path}` call runs through the same pipeline as proxy — same per-account rate limiter, same error envelope — and shows up in `unified_proxy_api` logs as `request_type: proxy`. Debug it exactly like a proxy error here; there is no separate custom log type.
 
@@ -48,5 +48,5 @@ If the cause is a config gap (the integration genuinely lacks the resource/metho
 
 ## Supersedes / Reuses
 
-- **Supersedes** the thin `truto://guide/proxy-api` and `truto://guide/integration-troubleshooting` stubs with real failure-mode reasoning.
+- **Supersedes** the former thin proxy-api and integration-troubleshooting cheat sheets with real failure-mode reasoning.
 - **Reuses** [Proxy & Custom API](../../truto/references/proxy-and-custom-api.md), [Discovering Capabilities](../../truto/references/discovering-capabilities.md), [Files & Logs](../../truto/references/files-and-logs.md), and the [Error & evidence model](./error-and-evidence-model.md).

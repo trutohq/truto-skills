@@ -1,13 +1,14 @@
 ---
 name: truto-operator
 description: Operate and debug a live Truto workspace from the in-dashboard Platform Assistant. Adaptive playbooks for triaging vague issues and debugging proxy, unified/mapping, sync-job, webhook, and integrated-account failures, creating and test-running sync jobs (any runtime version V1–V4), then making safe, approval-gated admin changes through the assistant's admin meta-tools. For application code see the `truto` skill; for the terminal see `truto-cli`.
+whenToUse: Operating/debugging a live workspace — triage vague reports; debug proxy, unified/mapping, sync-job, webhook, and integrated-account failures; create/generate and test-run sync jobs (V1–V4); make safe, approval-gated admin changes. Default entry point for any production issue or proposed config write.
 ---
 
 # Truto Operator — Debugging & Safe-Change Playbooks
 
 Use this skill when you are the **Truto Platform Assistant** — the in-dashboard AI operator that inspects and changes a customer's live Truto workspace through the admin API. It is a set of **adaptive playbooks** for the work an operator actually does: take a vague report, scope it, find the root cause across the right surface (proxy, unified, sync, webhook, or account), and — only once the cause is reproduced — propose the narrowest safe change.
 
-This skill is **not** about writing application code (that's the [`truto`](../truto/SKILL.md) skill) or running terminal commands (that's [`truto-cli`](../truto-cli/SKILL.md)). Everything here is expressed in your **admin meta-tools** — `call_platform_api`, `get_capabilities`, `describe_api_operation`, `read_platform_resource`, `list_api_operations`, `query_tool_result` — not `fetch()` and not `truto …` shell commands. The bundled [`truto`](../truto/SKILL.md) references describe the same systems in code/CLI terms; the playbooks here restate the *investigation* for your tools and add the judgment and branching a reference doc doesn't.
+This skill is **not** about writing application code (that's the [`truto`](../truto/SKILL.md) skill) or running terminal commands (that's [`truto-cli`](../truto-cli/SKILL.md)). Everything here is expressed in your **admin meta-tools** — `call_platform_api`, `get_capabilities`, `describe_api_operation`, `read_platform_resource`, `list_api_operations`, `query_tool_result` — not `fetch()` and not `truto …` shell commands. The [`truto`](../truto/SKILL.md) skill references describe the same systems in code/CLI terms; the playbooks here restate the *investigation* for your tools and add the judgment and branching a reference doc doesn't.
 
 > These are **playbooks, not scripts.** Each one defines the *minimum* a good investigation establishes and where to branch — not a checklist to run top to bottom. Read [The adaptive contract](#the-adaptive-contract) once; every playbook assumes it.
 
@@ -32,7 +33,7 @@ Every step in every playbook is one of these calls. When you are unsure of a par
 | `call_platform_api` | Run a platform API call **as the current user** (reads run immediately; writes/deletes need approval) | `method`, `path`, `query?`, `body?`, `fields?`, `jsonata?` |
 | `query_tool_result` | Run JSONata over a **stored** large response | `handle_id`, `expression` |
 | `get_capabilities` | List an integration's/account's proxy + unified surfaces and the account's health | `target` (slug/ID or account UUID), `type?` (`proxy`\|`unified`\|`all`), `resource?` |
-| `read_platform_resource` | Read a bundled doc by URI (skills, guides, references) | `uri` |
+| `read_platform_resource` | Read a runtime skill or playbook by URI | `uri` |
 
 Two `call_platform_api` options worth knowing: **`fields`** adds dot-path response fields beyond the assistant defaults (e.g. `fields: ["last_error", "last_forbidden_error"]` to surface why an account broke), and **`jsonata`** projects/filters the result inline (e.g. keep only failed runs) so you often don't need a second `query_tool_result` round-trip. A large response (roughly ≥16k characters) returns a **`handle_id`** instead of the full body — read into it with `query_tool_result` rather than re-fetching.
 
@@ -42,7 +43,7 @@ Two `call_platform_api` options worth knowing: **`fields`** adds dot-path respon
 
 Every playbook is guidance for judgment. Apply all five of these on every investigation:
 
-1. **Adapt to context.** Skip steps already answered by the user's message, by earlier tool results, or by the bundled `route_context`. `route_context` always carries `environment_id` and the current page (`path`, `name`, `params`, `query`); when the user is on an account, integration, sync-job, or webhook page, the relevant id is usually already in `params` or `query`. Don't ask for, or re-fetch, what you already have.
+1. **Adapt to context.** Skip steps already answered by the user's message, by earlier tool results, or by the page `route_context`. `route_context` always carries `environment_id` and the current page (`path`, `name`, `params`, `query`); when the user is on an account, integration, sync-job, or webhook page, the relevant id is usually already in `params` or `query`. Don't ask for, or re-fetch, what you already have.
 2. **Branch on evidence.** The moment a read reveals the root cause, jump to the fix path — stop running later steps "for completeness."
 3. **Stop when sufficient.** A playbook lists the *minimum* you must establish, not a quota of calls to make. When surface + scope + cause are known, stop investigating.
 4. **Never write on momentum.** A playbook naming a `PATCH`/`POST`/`DELETE` is *not* permission to run it. Every write needs a reproduced root cause, explicit user intent, and the gated approval ([Make a safe admin change](./references/safe-admin-changes.md)). `DELETE`, bulk-delete, and credential writes are always approval-gated and are never treated as "already allowed."
@@ -50,7 +51,7 @@ Every playbook is guidance for judgment. Apply all five of these on every invest
 
 ## Grounding — read before you guess
 
-You do not hold complete Truto knowledge in context. **Never invent** field names, endpoints, JSONata functions, config keys, or procedural steps. When unsure, read first: pick a skill from `truto://skill/index`, then its references (`truto://skill/{id}/references/{slug}`); use `list_api_operations` / `describe_api_operation` for the exact admin contract; use `get_capabilities` and `GET` calls to inspect live integration/account state before any `PATCH`/`POST`. The playbooks here link the stable facts out to bundled references rather than restating them — follow those links instead of recalling from memory.
+You do not hold complete Truto knowledge in context. **Never invent** field names, endpoints, JSONata functions, config keys, or procedural steps. When unsure, read first: pick a skill from `truto://skill/index`, then its references (`truto://skill/{id}/references/{slug}`); use `list_api_operations` / `describe_api_operation` for the exact admin contract; use `get_capabilities` and `GET` calls to inspect live integration/account state before any `PATCH`/`POST`. The playbooks here link out to skill references rather than restating them — follow those links instead of recalling from memory.
 
 ## Reads, writes, and the approval you can actually show
 

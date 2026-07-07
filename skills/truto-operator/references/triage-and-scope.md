@@ -32,7 +32,7 @@ Stop reading the moment surface + scope + symptom are settled. You are sampling 
 | "Scheduled/bulk data didn't arrive", "the nightly sync is empty" | sync, then delivery | [P4](./debug-sync-jobs.md) first; if the run completed, [P5](./debug-webhook-delivery.md) |
 | "Our endpoint stopped getting events / webhooks" | webhook delivery | [P5](./debug-webhook-delivery.md) |
 | "Can't connect", "needs reauth", 401/403, "the connection stopped working" | account/auth | [P6](./diagnose-integrated-account.md) |
-| An AI agent's MCP tool calls into Truto are failing | MCP (transport over proxy/unified) | Underlying error debugs as [P2](./debug-proxy-api.md)/[P3](./debug-unified-api.md); add `mcp` logs (`mcp_server_id`, `tool_name`). Background: `truto://reference/mcp-servers` |
+| An AI agent's MCP tool calls into Truto are failing | MCP (transport over proxy/unified) | Underlying error debugs as [P2](./debug-proxy-api.md)/[P3](./debug-unified-api.md); add `mcp` logs (`mcp_server_id`, `tool_name`). Background: `truto://skill/truto/references/mcp-tokens` |
 | Surface still genuinely unclear after the reads above | — | Ask **one** targeted question (the specific error text, or which screen/action), not a checklist |
 
 A `/custom/{path}` call behaves like proxy — same error envelope, same per-account rate limit — and logs as `request_type: proxy`, so debug it through [P2](./debug-proxy-api.md), not as its own surface.
