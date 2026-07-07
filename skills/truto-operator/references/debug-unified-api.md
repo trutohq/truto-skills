@@ -84,5 +84,5 @@ So an override that sets `response_mapping` does **not** "add a field" to the ba
 
 ## Supersedes / Reuses
 
-- **Supersedes** the `truto://guide/mapping-changes` stub and the mapping half of `truto://guide/sync-debugging`.
+- **Supersedes** the former mapping-changes and sync-debugging cheat sheets for unified/mapping issues.
 - **Reuses** [Unified API](../../truto/references/unified-api.md), [Unified API Customization](../../truto/references/unified-api-customization.md), the [truto-jsonata](../../truto-jsonata/SKILL.md) skill, and the [Error & evidence model](./error-and-evidence-model.md).

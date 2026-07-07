@@ -1,11 +1,11 @@
 kind: proxy_api_setup
 steps:
   - id: read_proxy_guide
-    label: Read proxy API guide
+    label: Read proxy API debugging playbook
     tool:
       name: read_platform_resource
       args:
-        uri: truto://guide/proxy-api
+        uri: truto://skill/truto-operator/references/debug-proxy-api
   - branch:
       when: '{{ctx.integration_name}}'
       then:

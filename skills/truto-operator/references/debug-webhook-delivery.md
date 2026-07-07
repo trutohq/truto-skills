@@ -4,7 +4,7 @@
 
 > Judgment, not a script — apply [the adaptive contract](../SKILL.md#the-adaptive-contract). The decisive question is *whose* fault: did Truto fail to deliver, or did the customer's endpoint reject what Truto sent? The `webhook_endpoint_status` field answers it directly — don't guess.
 
-**Outbound vs inbound — make sure you're in the right playbook.** This is about Truto's **outbound** delivery *to* the customer's endpoint (`log_type: webhook`). If the problem is the opposite direction — a third-party provider isn't delivering events *into* Truto (an integrated-account or environment inbound webhook) — that's a different surface: see [Inbound Webhooks](../../truto/references/webhooks-and-notifications.md#inbound-webhooks) and the backend `truto://reference/third-party-webhooks`. A missing *inbound* event usually surfaces as `record:*` events never firing, not as a non-2xx `webhook_endpoint_status`.
+**Outbound vs inbound — make sure you're in the right playbook.** This is about Truto's **outbound** delivery *to* the customer's endpoint (`log_type: webhook`). If the problem is the opposite direction — a third-party provider isn't delivering events *into* Truto (an integrated-account or environment inbound webhook) — that's a different surface: see [Inbound Webhooks](../../truto/references/webhooks-and-notifications.md#inbound-webhooks) and `truto://skill/truto/references/webhooks-and-notifications`. A missing *inbound* event usually surfaces as `record:*` events never firing, not as a non-2xx `webhook_endpoint_status`.
 
 ## What you must establish
 
@@ -45,5 +45,5 @@ When `webhook_endpoint_status` shows the customer's endpoint returned the error,
 
 ## Supersedes / Reuses
 
-- **Extends** the `truto://guide/webhook-setup` stub (which only covers *creating* and testing) with the *delivery-debugging* path.
-- **Reuses** [Webhooks & Notifications](../../truto/references/webhooks-and-notifications.md), [Files & Logs](../../truto/references/files-and-logs.md), and the [Error & evidence model](./error-and-evidence-model.md). The backend `truto://reference/third-party-webhooks` covers inbound webhook receipt.
+- **Extends** basic webhook setup (create + test) with the *delivery-debugging* path.
+- **Reuses** [Webhooks & Notifications](../../truto/references/webhooks-and-notifications.md), [Files & Logs](../../truto/references/files-and-logs.md), and the [Error & evidence model](./error-and-evidence-model.md). Inbound webhook receipt: `truto://skill/truto/references/webhooks-and-notifications`.

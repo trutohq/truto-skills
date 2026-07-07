@@ -1,11 +1,11 @@
 kind: unified_mapping_setup
 steps:
   - id: read_mapping_guide
-    label: Read unified mapping guide
+    label: Read unified mappings skill
     tool:
       name: read_platform_resource
       args:
-        uri: truto://reference/unified-api
+        uri: truto://skill/truto-unified-mappings
   - id: list_unified_models
     label: List unified models
     tool:
