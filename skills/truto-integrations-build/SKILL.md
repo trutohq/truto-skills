@@ -7,6 +7,7 @@ description: >-
   when the user asks to build, scaffold, or author a new Truto integration,
   mentions `integrations build`, `integrations apply`, `integrations lint`, or
   wants to convert vendor API docs into a Truto IntegrationFile.
+whenToUse: Building new integrations from vendor API docs via truto integrations build. Not for debugging live workspace issues.
 ---
 
 # Truto Integrations Build

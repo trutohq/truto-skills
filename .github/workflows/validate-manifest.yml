@@ -1,0 +1,19 @@
+name: Validate skills manifest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Regenerate and validate manifest
+        run: node scripts/generate-manifest.mjs
+      - name: Fail if manifest is stale
+        run: git diff --exit-code manifest/skills.json

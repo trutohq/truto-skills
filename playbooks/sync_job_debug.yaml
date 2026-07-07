@@ -1,0 +1,49 @@
+kind: sync_job_debug
+requires:
+  sync_job_id: true
+steps:
+  - id: fetch_job
+    label: Fetch sync job
+    tool:
+      name: call_platform_api
+      args:
+        method: GET
+        path: /sync-job/{{ctx.sync_job_id}}
+  - id: list_runs
+    label: List recent sync job runs
+    tool:
+      name: call_platform_api
+      args:
+        method: GET
+        path: /sync-job-run
+        query:
+          sync_job_id: '{{ctx.sync_job_id}}'
+          limit: 5
+          sort: '-created_at'
+  - id: poll_latest_run
+    label: Wait for latest run to finish
+    poll:
+      method: GET
+      path: /sync-job-run
+      query:
+        sync_job_id: '{{ctx.sync_job_id}}'
+        limit: 1
+        sort: '-created_at'
+      status_field: body.results.0.status
+      terminal_values:
+        - completed
+        - failed
+        - stopped
+      interval_ms: 15000
+      max_attempts: 40
+  - id: fetch_latest_run
+    label: Fetch latest run details
+    tool:
+      name: call_platform_api
+      args:
+        method: GET
+        path: /sync-job-run
+        query:
+          sync_job_id: '{{ctx.sync_job_id}}'
+          limit: 1
+          sort: '-created_at'

@@ -1,8 +1,8 @@
 ---
-
-## name: Truto CLI
-
+name: Truto CLI
 description: Admin and debugging tool for the Truto platform. Use to set up integrations, manage accounts, explore resources, export data, and debug API calls from the terminal. Does not generate application code.
+whenToUse: Terminal admin with the Truto CLI — list integrations, connect accounts, export data, debug API calls, run integration build loops locally.
+---
 
 # Truto CLI
 

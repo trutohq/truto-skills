@@ -1,0 +1,46 @@
+kind: proxy_api_setup
+steps:
+  - id: read_proxy_guide
+    label: Read proxy API guide
+    tool:
+      name: read_platform_resource
+      args:
+        uri: truto://guide/proxy-api
+  - branch:
+      when: '{{ctx.integration_name}}'
+      then:
+        - id: fetch_capabilities
+          label: Fetch capabilities for {{ctx.integration_name}}
+          tool:
+            name: get_capabilities
+            args:
+              integration: '{{ctx.integration_name}}'
+        - id: list_proxy_apis
+          label: List existing proxy APIs
+          tool:
+            name: call_platform_api
+            args:
+              method: GET
+              path: /proxy-api
+              query:
+                integration.name: '{{ctx.integration_name}}'
+      else:
+        - id: list_integrations
+          label: List integrations
+          tool:
+            name: call_platform_api
+            args:
+              method: GET
+              path: /integration
+              query:
+                limit: 20
+  - branch:
+      when: '{{ctx.proxy_path}}'
+      then:
+        - id: describe_proxy_path
+          label: Describe proxy API operation
+          tool:
+            name: call_platform_api
+            args:
+              method: GET
+              path: '{{ctx.proxy_path}}'

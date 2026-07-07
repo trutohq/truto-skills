@@ -1,6 +1,7 @@
 ---
 name: Truto Link SDK
 description: Embed the Truto connection flow in your frontend using @truto/truto-link-sdk. Covers account connection, RapidForm, file pickers, display modes, and error handling.
+whenToUse: Frontend connection UI with @truto/truto-link-sdk — authenticate users, RapidForm, file pickers, embedding the link flow.
 ---
 
 # Truto Link SDK

@@ -9,6 +9,7 @@ description: >-
   apply`, a `.mappings.json` MappingFile, `response_mapping` /
   `request_body_mapping` for a unified model; or wants to map an integration's
   proxy responses into a unified API schema.
+whenToUse: Generating unified API mapping rows (JSONata) for an integration via truto unified-mappings build — validate and apply mapping config.
 ---
 
 # Truto Unified Mappings Build

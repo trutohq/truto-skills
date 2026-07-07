@@ -1,0 +1,52 @@
+{
+  "skills": [
+    {
+      "id": "truto",
+      "title": "truto",
+      "whenToUse": "Application code calling api.truto.one — unified/proxy/custom APIs, webhooks, OAuth connection flows, integrated accounts from a customer app perspective.",
+      "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto/SKILL.md"
+    },
+    {
+      "id": "truto-api-conventions",
+      "title": "truto-api-conventions",
+      "whenToUse": "Truto API URL patterns, Bearer auth, pagination, idempotency keys, admin list filter syntax. Read before call_platform_api on unfamiliar endpoints.",
+      "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto-api-conventions/SKILL.md"
+    },
+    {
+      "id": "truto-cli",
+      "title": "Truto CLI",
+      "whenToUse": "Terminal admin with the Truto CLI — list integrations, connect accounts, export data, debug API calls, run integration build loops locally.",
+      "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto-cli/SKILL.md"
+    },
+    {
+      "id": "truto-integrations-build",
+      "title": "truto-integrations-build",
+      "whenToUse": "Building new integrations from vendor API docs via truto integrations build. Not for debugging live workspace issues.",
+      "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto-integrations-build/SKILL.md"
+    },
+    {
+      "id": "truto-jsonata",
+      "title": "truto-jsonata",
+      "whenToUse": "JSONata in mappings, env-integration overrides, sync jobs, workflows, daemon jobs — read before writing expressions or using $ functions; covers @truto/truto-jsonata builtins.",
+      "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto-jsonata/SKILL.md"
+    },
+    {
+      "id": "truto-link-sdk",
+      "title": "Truto Link SDK",
+      "whenToUse": "Frontend connection UI with @truto/truto-link-sdk — authenticate users, RapidForm, file pickers, embedding the link flow.",
+      "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto-link-sdk/SKILL.md"
+    },
+    {
+      "id": "truto-operator",
+      "title": "truto-operator",
+      "whenToUse": "Operating/debugging a live workspace — triage vague reports; debug proxy, unified/mapping, sync-job, webhook, and integrated-account failures; create/generate and test-run sync jobs (V1–V4); make safe, approval-gated admin changes. Default entry point for any production issue or proposed config write.",
+      "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto-operator/SKILL.md"
+    },
+    {
+      "id": "truto-unified-mappings",
+      "title": "truto-unified-mappings",
+      "whenToUse": "Generating unified API mapping rows (JSONata) for an integration via truto unified-mappings build — validate and apply mapping config.",
+      "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto-unified-mappings/SKILL.md"
+    }
+  ]
+}

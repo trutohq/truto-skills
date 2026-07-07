@@ -1,6 +1,7 @@
 ---
 name: truto-operator
 description: Operate and debug a live Truto workspace from the in-dashboard Platform Assistant. Adaptive playbooks for triaging vague issues and debugging proxy, unified/mapping, sync-job, webhook, and integrated-account failures, creating and test-running sync jobs (any runtime version V1–V4), then making safe, approval-gated admin changes through the assistant's admin meta-tools. For application code see the `truto` skill; for the terminal see `truto-cli`.
+whenToUse: Operating/debugging a live workspace — triage vague reports; debug proxy, unified/mapping, sync-job, webhook, and integrated-account failures; create/generate and test-run sync jobs (V1–V4); make safe, approval-gated admin changes. Default entry point for any production issue or proposed config write.
 ---
 
 # Truto Operator — Debugging & Safe-Change Playbooks
