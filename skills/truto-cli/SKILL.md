@@ -42,7 +42,7 @@ Installs to `%USERPROFILE%\.truto\bin\truto.exe`. Open a new terminal after inst
 
 ```bash
 # Specific version
-TRUTO_VERSION=0.1.0 curl -fsSL https://cli.truto.one/install.sh | bash
+TRUTO_VERSION=1.0.1 curl -fsSL https://cli.truto.one/install.sh | bash
 
 # Custom install directory (Linux / macOS)
 TRUTO_INSTALL_DIR=/usr/local/bin curl -fsSL https://cli.truto.one/install.sh | bash
@@ -50,7 +50,7 @@ TRUTO_INSTALL_DIR=/usr/local/bin curl -fsSL https://cli.truto.one/install.sh | b
 
 ```powershell
 # Specific version (Windows)
-$env:TRUTO_VERSION='0.27.1'; irm https://cli.truto.one/install.ps1 | iex
+$env:TRUTO_VERSION='1.0.1'; irm https://cli.truto.one/install.ps1 | iex
 ```
 
 **Upgrade:**

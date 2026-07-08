@@ -54,13 +54,13 @@ The CLI caches two categories of expensive operations:
 - **What's cached:** The crawled + converted markdown for each source URL
 - **Clear:** `--refresh-firecrawl-cache` forces a fresh crawl
 
-### Anthropic response cache
+### LLM response cache
 
 - **Location:** `~/.truto/cache/anthropic/<sha256>.json`
 - **TTL:** 7 days
-- **What's cached:** LLM responses keyed by (model + system prompt + messages hash)
+- **What's cached:** LLM responses keyed by (provider + model + system prompt + messages hash). Despite the `anthropic/` directory name, the cache is shared by both providers — Fireworks calls go through the same Anthropic-compatible adapter, so the on-disk path is the same. Switching models or providers invalidates automatically.
 - **Clear:** `--refresh-llm-cache` forces fresh responses (still writes new ones back)
-- **Disable entirely:** `--no-llm-cache` (no reads, no writes)
+- **Disable entirely:** `--no-llm-cache` (no reads, no writes; works for both Anthropic and Fireworks)
 
 ### When to clear caches
 
@@ -159,9 +159,47 @@ The legacy flow will be removed once the agentic flow is fully validated.
 
 ## Embedding errors
 
-As of CLI 0.29.0, embeddings run locally via ONNX (`all-MiniLM-L6-v2`). If you see `[embeddings]` errors:
+Hybrid source search defaults to a **local ONNX** model (`all-MiniLM-L6-v2`, ~35 MB, no API key). If you see `[embeddings]` errors under the default `--embedding-provider local`:
 
 - The build falls back to BM25-only search automatically. Results are slightly less accurate but the build still works.
 - `tokenizer load failed` or `ONNX session creation failed`: delete `~/.truto/models/` and `~/.truto/ort/` and re-run to trigger a fresh download.
 - `Checksum mismatch`: a corrupted download. Delete the cache dirs above and retry.
 - `embedding generation failed`: typically a transient WASM error. The build continues with BM25-only; retry for hybrid search.
+
+To use **Fireworks-hosted embeddings** instead (requires `FIREWORKS_API_KEY`):
+
+```bash
+truto integrations build https://docs.example.com acme \
+  --embedding-provider fireworks \
+  --embedding-model qwen3-embedding-8b
+```
+
+`--embedding-provider fireworks` uses `accounts/fireworks/models/qwen3-embedding-8b` by default. If you see 401 / authentication errors, verify `FIREWORKS_API_KEY` is set (the same key powers `--llm-provider fireworks`). The CLI batches embedding calls adaptively; transient capacity errors on the AI Gateway are retried with backoff.
+
+---
+
+## Fireworks provider
+
+### Authentication failures
+
+`Fireworks AI authentication failed (401)` — the API key is missing or invalid. Fix with:
+
+```bash
+truto profiles set-key fireworks       # interactive, masked
+# or
+export FIREWORKS_API_KEY=...
+```
+
+Create a key at <https://app.fireworks.ai/settings/users/api-keys>.
+
+### Missing web tools
+
+If a Fireworks build skips `web_search` / `web_fetch` or the OpenAPI spec hunt, you're missing a Firecrawl key. Under `--llm-provider fireworks`, those tools run **client-side via Firecrawl** and require `FIRECRAWL_API_KEY` in addition to `FIREWORKS_API_KEY`. Without it, the build still runs but cannot hunt for specs online or fetch live doc pages. Pass `--no-firecrawl` to silence the warning when you intentionally accept a docs-only path.
+
+### Capacity-exceeded errors
+
+Fireworks (and the AI Gateway in front of it) can return capacity-exceeded errors under load. The CLI recognizes these and retries with adaptive backoff; in unattended / non-TTY runs it skips the interactive retry prompt and continues with whatever was already built. If you see persistent capacity errors, switch workhorse model (`--llm-model glm-5p2` or `--llm-model minimax-m3`) or fall back to `--llm-provider anthropic`.
+
+### Mixing `--anthropic-model` with Fireworks
+
+The CLI hard-errors if you pass `--anthropic-model` together with `--llm-provider fireworks` (or `--llm-model` together with `--llm-provider anthropic`). Use `--llm-model` (or `--llm-agent-model` / `--llm-extraction-model` / `--llm-classification-model`) for Fireworks, and `--anthropic-model` for Anthropic.
