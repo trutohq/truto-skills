@@ -46,20 +46,22 @@ truto login --token $env:TRUTO_API_TOKEN
 ### 2. Store API keys and config directory in your profile
 
 ```bash
-truto profiles set-key anthropic                # interactive, masked
-truto profiles set-key firecrawl sk-...         # non-interactive
+truto profiles set-key anthropic                # interactive, masked (default LLM provider)
+truto profiles set-key fireworks                # interactive, masked (optional LLM provider)
+truto profiles set-key firecrawl sk-...         # non-interactive (web crawl + Fireworks web tools)
 truto profiles set integrationConfigDir /path/to/truto/src/integration/integrationConfig
 ```
 
 | Key | Purpose | Without it |
 |-----|---------|------------|
-| `anthropicApiKey` | Powers the agentic build loop (Claude) | Build cannot start |
-| `firecrawlApiKey` | Crawls generic doc sites into clean markdown | Falls back to `llms-full.txt` / `.md` trick / Turndown (lower tiers) |
+| `anthropicApiKey` | Powers the agentic build loop when `--llm-provider anthropic` (the default) | Build cannot start under the Anthropic provider |
+| `fireworksApiKey` | Powers the agentic build loop when `--llm-provider fireworks`; also used by `--embedding-provider fireworks` | Required only if you pick the Fireworks provider |
+| `firecrawlApiKey` | Crawls generic doc sites into clean markdown; also backs `web_search` / `web_fetch` when running on Fireworks | Falls back to `llms-full.txt` / `.md` trick / Turndown (lower tiers); Fireworks builds lose `web_search` / `web_fetch` |
 | `integrationConfigDir` | Directory of existing `<slug>.json` configs for pattern matching | `pattern_match` audit findings skip; other audit sources still run |
 
-Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, etc.) > active profile (`~/.truto/config.json`) > interactive prompt (Anthropic always; Firecrawl when crawling is needed).
+Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$FIREWORKS_API_KEY`, `$FIRECRAWL_API_KEY`, etc.) > active profile (`~/.truto/config.json`) > interactive prompt (Anthropic and Fireworks always; Firecrawl when crawling is needed).
 
-> Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`) downloaded automatically on first use (~35 MB). No external API key is required.
+> Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`) downloaded automatically on first use (~35 MB). No external API key is required. To use Fireworks-hosted `qwen3-embedding-8b` embeddings instead, pass `--embedding-provider fireworks` (requires `FIREWORKS_API_KEY`).
 
 ---
 
@@ -81,6 +83,8 @@ truto integrations apply acme.integration.json
 ### Build
 
 The `build` command accepts one or more source URLs (OpenAPI spec, Postman collection, Mintlify/Readme docs, GraphQL endpoint, or a generic doc page) and an optional integration slug. It auto-selects the highest-fidelity source (openapi > postman > graphql > docs).
+
+By default the build runs on **Anthropic Claude** (tiered: Opus for the agent loop, Sonnet for extraction/docs, Haiku for classification). To run on **Fireworks AI** instead, pass `--llm-provider fireworks` and pick a workhorse model with `--llm-model` (see [LLM providers](#llm-providers) below).
 
 ```bash
 # Multiple sources — the CLI picks the best one as primary
@@ -105,7 +109,7 @@ The build runs in three phases. See [references/orchestrator-phases.md](referenc
 
 **Phase A -- autonomous build.** The agent reads the source index, inspects the pattern catalog, and builds the entire IntegrationFile autonomously. It emits cascade patches (multi-section updates) that are applied silently. Phase A ends when the agent signals `build_complete` or the turn budget is exhausted.
 
-The agent has access to 15 tools (13 local + 2 server-side):
+The agent has access to 15 tools (13 local + 2 web):
 
 | Group | Tools |
 |-------|-------|
@@ -114,7 +118,7 @@ The agent has access to 15 tools (13 local + 2 server-side):
 | In-progress | `read_current` |
 | Reference docs | `list_patterns`, `read_pattern` |
 | Validation | `validate_integration` |
-| Server (Anthropic) | `web_search`, `web_fetch` |
+| Web | `web_search`, `web_fetch` — Anthropic **server-side** under `--llm-provider anthropic` (default); **client-side via Firecrawl** under `--llm-provider fireworks` (requires `FIRECRAWL_API_KEY`) |
 
 **Phase B -- interactive refinement.** After Phase A, the CLI opens your editor on the working JSON and enters a refinement loop. You type a free-text instruction; the agent proposes patches; you accept, reject, or refine further. Press Enter with no input to finish.
 
@@ -242,6 +246,82 @@ The source URL is still required (the docs phase uses Orama source snippets to g
 
 ---
 
+## LLM providers
+
+The build loop supports two LLM providers, picked interactively when you omit `--llm-provider` on a TTY (defaults to `anthropic` in CI / non-TTY):
+
+| Provider | Flag | Models | Web tools | Notes |
+|----------|------|--------|-----------|-------|
+| **Anthropic** (default) | `--llm-provider anthropic` | Tiered Claude (`claude-opus-4-6` agent, `claude-sonnet-4-6` extraction, `claude-haiku-4-5` classification) | Anthropic **server-side** `web_search` / `web_fetch` | Adaptive thinking, `cache_control` blocks, container metadata |
+| **Fireworks AI** | `--llm-provider fireworks` | One shared **workhorse** model for agent + extraction, plus a separate cheap **classification** model | **Client-side** `web_search` / `web_fetch` via Firecrawl (requires `FIRECRAWL_API_KEY`) | No adaptive thinking, no Anthropic server tools, no `cache_control`; Fireworks prompt caching is automatic (CLI sends `x-session-affinity`) |
+
+### Picking Fireworks
+
+```bash
+# Interactive — the CLI prompts for provider when --llm-provider is omitted on a TTY
+truto integrations build https://docs.example.com acme
+
+# Non-interactive — pin Fireworks and a workhorse model
+export FIREWORKS_API_KEY=...
+truto integrations build https://docs.example.com acme \
+  --llm-provider fireworks \
+  --llm-model kimi-k2p7
+```
+
+### Fireworks model presets
+
+Fireworks uses a **shared workhorse model** for agent + extraction, plus a separate cheap **classification** model. Pin the workhorse with `--llm-model` (or the aliases `--llm-agent-model` / `--llm-extraction-model` — they set the same shared model). Override classification with `--llm-classification-model`.
+
+| Tier | Claude default | Fireworks default | Used for |
+|------|----------------|-------------------|----------|
+| Agent + extraction | Opus + Sonnet | `kimi-k2p7` (one model for both) | Discovery agent, build loop, docs, schemas |
+| Classification | `claude-haiku-4-5` | `deepseek-v4-flash` | Page classification, routing |
+
+**Workhorse presets** (pick one for agent + extraction):
+
+| Preset | Fireworks model | Notes |
+|--------|-----------------|-------|
+| `kimi-k2p7` | `accounts/fireworks/models/kimi-k2p7-code` | Coding specialist, MCP workflows (default) |
+| `glm-5p2` | `accounts/fireworks/models/glm-5p2` | 1M context flagship agent |
+| `minimax-m3` | `accounts/fireworks/models/minimax-m3` | K2.7-class agent, 512k context |
+| `qwen3p7-plus` | `accounts/fireworks/models/qwen3p7-plus` | Strong structured JSON for docs/schemas |
+| `deepseek-v4-pro` | `accounts/fireworks/models/deepseek-v4-pro` | 1M context reasoning |
+
+**Classification presets:** `deepseek-v4-flash` (default) or `gpt-oss-20b`. Raw `accounts/.../models/...` IDs also work on any tier flag.
+
+> **Don't mix `--anthropic-model` with `--llm-provider fireworks`** — the CLI hard-errors. With Fireworks, use `--llm-model` or the tier flags. With Anthropic, use `--anthropic-model`.
+
+### Embedding provider
+
+Hybrid source search (BM25 + cosine) defaults to a **local ONNX** model (`all-MiniLM-L6-v2`, ~35 MB, no API key). To use Fireworks-hosted embeddings instead:
+
+```bash
+truto integrations build https://docs.example.com acme \
+  --embedding-provider fireworks \
+  --embedding-model qwen3-embedding-8b
+```
+
+`--embedding-provider fireworks` requires `FIREWORKS_API_KEY`. Supported `--embedding-model` presets: `local-minilm`, `qwen3-embedding-8b` (and aliases `qwen3`, `best`). The default for `--embedding-provider fireworks` is `qwen3-embedding-8b`.
+
+### Web tools and Firecrawl
+
+`web_search` / `web_fetch` are always exposed to the agent, but the backend depends on the LLM provider:
+
+| | Anthropic (default) | Fireworks |
+|---|---------------------|-----------|
+| `web_search` / `web_fetch` | Anthropic server tools | Firecrawl-backed **client-side** tools |
+| Required keys | `ANTHROPIC_API_KEY` | `FIREWORKS_API_KEY` **and** `FIRECRAWL_API_KEY` |
+| Per-run budgets (build / discovery) | 10 search / 20 fetch | 10 search / 20 fetch |
+| OpenAPI spec hunt (`find_openapi_spec`) | 5 search / 5 fetch per invocation | 5 search / 5 fetch per invocation |
+
+Without a Firecrawl key, **Fireworks builds still run** but cannot use `web_search` or `web_fetch`. Doc crawling via `map_doc_site` / `scrape_pages` also requires Firecrawl. Use `--no-firecrawl` only when you accept a docs-only path without live web tools.
+
+### LLM response cache
+
+The on-disk LLM cache (`~/.truto/cache/anthropic/<sha256>.json`, 7-day TTL) is keyed by model + system prompt + inputs and applies to **both** providers (Fireworks calls go through the same Anthropic-compatible adapter, so the cache path is shared despite the name). `--no-llm-cache` / `--refresh-llm-cache` work for both providers; switching models or providers invalidates automatically.
+
+---
+
 ## Catalog awareness and audit checks
 
 The static auditor runs several checks that shape the build output:
@@ -256,16 +336,18 @@ The static auditor runs several checks that shape the build output:
 
 | Flag | Effect |
 |------|--------|
-| `--no-firecrawl` | Skip Firecrawl entirely; use only higher-tier sources (`llms-full.txt`, `.md` trick, etc.) |
-| ~~`--no-embeddings`~~ | Removed in 0.29.0; embeddings are now local and automatic |
-| `--no-llm-cache` | Disable the on-disk Anthropic response cache |
+| `--no-firecrawl` | Skip Firecrawl entirely; use only higher-tier sources (`llms-full.txt`, `.md` trick, etc.). Also disables `web_search` / `web_fetch` under `--llm-provider fireworks` |
+| `--no-embeddings` | Skip embedding the source index for this build (BM25-only search). Cached embeddings still survive for future runs |
+| `--no-llm-cache` | Disable the on-disk LLM response cache (works for both Anthropic and Fireworks) |
 | `--refresh-firecrawl-cache` | Force a fresh Firecrawl crawl (bypasses 24h TTL cache) |
-| `--refresh-llm-cache` | Force fresh Anthropic responses (bypasses 7d TTL cache) |
+| `--refresh-llm-cache` | Force fresh LLM responses (bypasses 7d TTL cache; still writes new responses back) |
 | `--source-tier <tier>` | Pin the extraction tier instead of auto-detecting |
 | `--max-pages <n>` | Cap doc pages walked (default 200) |
 | `--legacy-flow` | Use the older section-by-section orchestrator (escape hatch) |
+| `--embedding-provider <provider>` | `local` (default, MiniLM ONNX) or `fireworks` (Qwen3, requires `FIREWORKS_API_KEY`) |
+| `--embedding-model <model>` | Embedding model preset (e.g. `local-minilm`, `qwen3-embedding-8b`) |
 
-Cache locations: `~/.truto/cache/firecrawl/<sha256>.json` (24h TTL), `~/.truto/cache/anthropic/<sha256>.json` (7d TTL).
+Cache locations: `~/.truto/cache/firecrawl/<sha256>.json` (24h TTL), `~/.truto/cache/anthropic/<sha256>.json` (7d TTL — shared by both LLM providers).
 
 See [references/troubleshooting.md](references/troubleshooting.md) for source-tier selection, Firecrawl-tier gotchas, and debugging stuck builds.
 
@@ -275,10 +357,17 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--anthropic-api-key <key>` | Profile / env / prompt | Anthropic API key |
-| `--anthropic-model <model>` | Tiered: opus (build), sonnet (extraction), haiku (classification) | Override model for all tasks |
-| `--firecrawl-api-key <key>` | Profile / env / prompt | Firecrawl API key |
-| ~~`--openai-api-key`~~ | Removed in 0.29.0 | Embeddings are now local (ONNX) |
+| `--llm-provider <provider>` | `anthropic` (CI / non-TTY) | `anthropic` (Claude) or `fireworks` (Fireworks AI). Prompts interactively when omitted on a TTY |
+| `--anthropic-api-key <key>` | Profile / env / prompt | Anthropic API key (default provider) |
+| `--anthropic-model <model>` | Tiered: `claude-opus-4-6` (agent), `claude-sonnet-4-6` (extraction), `claude-haiku-4-5` (classification) | Override Claude model for all tasks (Anthropic provider only) |
+| `--fireworks-api-key <key>` | Profile / env / prompt | Fireworks API key (required for `--llm-provider fireworks`) |
+| `--llm-model <model>` | `kimi-k2p7` (Fireworks) | Pin Fireworks agent + extraction to one model. Presets: `kimi-k2p7`, `glm-5p2`, `minimax-m3`, `qwen3p7-plus`, `deepseek-v4-pro`, or a raw `accounts/.../models/...` ID |
+| `--llm-agent-model <model>` | same as `--llm-model` | Alias for `--llm-model` (agent and extraction share one model) |
+| `--llm-extraction-model <model>` | same as `--llm-model` | Alias for `--llm-model` |
+| `--llm-classification-model <model>` | `deepseek-v4-flash` (Fireworks) | Fireworks classification-tier model. Presets: `deepseek-v4-flash`, `gpt-oss-20b` |
+| `--embedding-provider <provider>` | `local` | `local` (MiniLM ONNX, no API key) or `fireworks` (Qwen3, requires `FIREWORKS_API_KEY`) |
+| `--embedding-model <model>` | `local-minilm` (local), `qwen3-embedding-8b` (fireworks) | Embedding model preset |
+| `--firecrawl-api-key <key>` | Profile / env / prompt | Firecrawl API key (web crawl + Fireworks web tools) |
 | `--integration-config-dir <path>` | Profile / env / walk-up | Existing config corpus for pattern matching |
 | `--out <file>` | `<slug>.integration.json` | Output file path |
 | `--instructions <text>` | Interactive prompt | Skip the instructions prompt |
@@ -293,6 +382,14 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--no-companion-docs` | -- | Don't crawl companion doc pages |
 | `--docs-only <file-or-slug>` | -- | Skip build loop; regenerate only documentation rows |
 | `--resource <names>` | all | Comma-separated resources for `--docs-only` mode |
+| `--no-firecrawl` | -- | Skip Firecrawl entirely; disables Fireworks `web_search` / `web_fetch` |
+| `--no-embeddings` | -- | Skip embedding the source index (BM25-only search) |
+| `--no-llm-cache` | -- | Disable the on-disk LLM response cache (both providers) |
+| `--refresh-llm-cache` | -- | Bypass the LLM cache (still writes new responses back) |
+| `--refresh-firecrawl-cache` | -- | Bypass the Firecrawl 24h cache |
+| `--legacy-flow` | -- | Use the older section-by-section orchestrator (escape hatch) |
+
+> **Don't propose deprecated flags.** `--resources`, `--dry-run`, `-y`/`--yes`, `--include-low-confidence`, `--plan-out`, `--report-out`, `-c`/`--category`, `-l`/`--label`, `--base-url`, `--no-bootstrap`, `--no-basic-details`, `--no-query-schema`, `--no-body-schema`, `--descriptions-only`, `--rewrite-bad-descriptions`, `--no-llm-canonicalize`, `--no-llm-regroup`, `--no-llm-split-buckets`, `--strict`, `--no-validate`, and `--keep-inline-docs` all hard-fail (exit `2`) before any LLM key resolution or crawling runs. Use the runtime error's suggested replacement.
 
 ---
 

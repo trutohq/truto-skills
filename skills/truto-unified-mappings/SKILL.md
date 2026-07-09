@@ -73,6 +73,8 @@ truto profiles set integrationConfigDir /path/to/truto/src/integration/integrati
 Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$TRUTO_UNIFIED_MAPPING_DIR`, …) > active profile (`~/.truto/config.json`) > interactive prompt (Anthropic always).
 
 > **Note:** Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`, ~35 MB) downloaded automatically on first use. No external API key is required for embeddings.
+>
+> **LLM provider:** `truto unified-mappings build` currently runs on **Anthropic Claude** only (tiered: Opus for the agentic loop, Sonnet for the `--structured` pipeline). The `--llm-provider fireworks` flag from `truto integrations build` is not yet supported here — use `--anthropic-model` to override all tiers.
 
 ---
 

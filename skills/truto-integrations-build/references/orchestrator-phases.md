@@ -8,6 +8,8 @@ The `truto integrations build` command runs in three sequential phases. This ref
 
 The agent builds the IntegrationFile from scratch, working without per-turn user review. It reads the source index (the discovered API docs), inspects the pattern catalog (existing integration configs), and emits **cascade patches** -- multi-section updates applied silently.
 
+The agent runs on **Anthropic Claude** by default (tiered: Opus for the agent loop, Sonnet for extraction/docs, Haiku for classification) or on **Fireworks AI** when `--llm-provider fireworks` is passed (one shared workhorse model for agent + extraction, plus a cheap classification model — see the parent skill's [LLM providers](../SKILL.md#llm-providers) section for presets). Anthropic-only features (adaptive thinking, Anthropic server tools, `cache_control` blocks, container metadata) are disabled automatically for Fireworks model IDs; Fireworks prompt caching is automatic and the CLI sends `x-session-affinity` to improve cache hit rates within a build session.
+
 ### How it works
 
 1. The CLI assembles a system prompt with the integration slug, source overview, decision table (rules for auth, pagination, method naming, etc.), and the current state of the working file.
@@ -34,8 +36,8 @@ The agent builds the IntegrationFile from scratch, working without per-turn user
 | `list_patterns` | Reference | List entries from the pattern catalog (SLUGS.md) |
 | `read_pattern` | Reference | Read a specific pattern entry with exemplar JSON |
 | `validate_integration` | Validation | Run the static auditor; returns findings with severities |
-| `web_search` | Server (Anthropic) | Search vendor docs for quirks (max 10 uses per build) |
-| `web_fetch` | Server (Anthropic) | Fetch URLs from build instructions (max 20 uses, 32K tokens/page) |
+| `web_search` | Web | Search vendor docs for quirks (max 10 uses per build). Anthropic server tool under `--llm-provider anthropic`; **Firecrawl client-side** under `--llm-provider fireworks` (requires `FIRECRAWL_API_KEY`) |
+| `web_fetch` | Web | Fetch URLs from build instructions (max 20 uses, 32K tokens/page). Same provider split as `web_search` |
 
 ### Patch format
 
