@@ -414,7 +414,7 @@ Delete the accounts first — either individually via `DELETE /integrated-accoun
 - **`metadata` on PATCH is a full replace**, not a merge — read the current value first if you want partial updates.
 - **Auto-materialization:** creating a link token or integrated account with a `tenant_id` that doesn't exist yet materializes a tenant row automatically, as long as the ID matches the allowed pattern. Legacy IDs outside that pattern still work as account references but skip materialization.
 - **Delete blocked when accounts exist** — the API enforces this even for root-team users. There is no override.
-- Session callers on `GET / PATCH / DELETE /tenant/:id` must supply `?environment_id=<uuid>` explicitly; API-token callers can omit it (single-env token, deterministic fallback).
+- Session callers must supply `?environment_id=<uuid>` explicitly on `GET / PATCH / DELETE /tenant/:id`, and also on `POST /tenant` and `POST /tenant/bulk` (the body is not enough for the dashboard to know which environment to target). API-token callers can omit it (single-env token, deterministic fallback).
 
 ---
 
