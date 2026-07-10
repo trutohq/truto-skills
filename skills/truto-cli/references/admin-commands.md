@@ -175,7 +175,19 @@ truto environment-integrations delete <id>
 
 **Update fields:** `is_enabled` (boolean), `show_in_catalog` (boolean), `override` (JSON)
 
-**Override helpers** — all four `override-`* commands deep-patch a single key under `override`, leaving siblings alone. Each accepts `--body <json>` / `--stdin` for the full block, or convenience flags + `--config` for the common shape, plus `--clear` to null the key out.
+**Override helpers** — all four `override-`* commands fetch the current override, patch a single key, and PATCH the **complete** override object back (the API replaces `override` wholesale). Each accepts `--body <json>` / `--stdin` for the full block, or convenience flags + `--config` for the common shape, plus `--clear` to null the key out.
+
+**`update` with `override` replaces wholesale** — same as the API. Send the complete override object (existing keys + your changes), not a partial delta. Empty `{"override":{}}` clears all. For `resources`, there is no helper: `show-override` → merge locally → `update` with the full override. See [Customizing Integrations §5](../../truto/references/customizing-integrations.md#5-override-resources-full-override-required).
+
+```bash
+# Wrong — wipes every override key / resource not listed
+truto environment-integrations update <id> -b '{"override":{"resources":{"only_new":{...}}}}'
+
+# Right — full override from show-override + your additions
+truto environment-integrations show-override <id> -o json > /tmp/override.backup.json
+# ... merge locally, then:
+truto environment-integrations update <id> -b '{"override":{...full object...}}'
+```
 
 ```bash
 truto environment-integrations show-override <id>     # inspect current override block

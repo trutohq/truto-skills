@@ -4,7 +4,7 @@ Truto's pre-built integrations ship with sensible defaults for **auth headers**,
 
 This is the HTTP-layer counterpart to [Unified API Customization](./unified-api-customization.md). Where unified customization changes how data is **mapped into your unified shape**, integration customization changes how Truto **talks to the third-party service** in the first place.
 
-> **Mental model.** Each integration has a base config that ships with Truto. Each `environment-integration` row is the per-environment install of that integration; its `override` object deep-merges over the base config at runtime. You only set the keys you want to change.
+> **Mental model.** Each integration has a base config that ships with Truto. Each `environment-integration` row is the per-environment install of that integration; its `override` object is applied over the base config at runtime. **`PATCH` / `update` replace the stored `override` column wholesale** — always send the complete override object (existing keys + your changes). The CLI `override-*` helpers (auth / pagination / rate_limit / webhook) fetch + shallow-merge one slot for you; for `resources`, you must assemble the full override yourself.
 
 > **JSONata.** Every override field that takes an expression uses JSONata. For the per-field scope variables and function reference, see [truto-jsonata: Usage in Truto §4 — Environment integration overrides](../../truto-jsonata/references/usage-in-truto.md#4-environment-integration-overrides--auth-pagination-rate-limit-webhooks).
 
@@ -18,9 +18,10 @@ This is the HTTP-layer counterpart to [Unified API Customization](./unified-api-
 | **Pagination** | `override.pagination` | How Truto walks paginated responses (page, cursor, link header, offset, range, dynamic). |
 | **Rate limit** | `override.rate_limit` | How Truto detects throttling and chooses a back-off interval. |
 | **Webhook (inbound)** | `override.webhook` | How Truto verifies, transforms, and acknowledges inbound webhooks for the integration. |
+| **Resources** | `override.resources` | Per-resource / per-method HTTP config (paths, schemas, custom methods). No `override-resources` helper — send the **complete** `override` object via `update` / HTTP. See [§5](#5-override-resources-full-override-required). |
 | **Error detection** | `override.error_expression` (and per-resource-method `error_expression`) | When a response should be treated as an error. (Documented in the [JSONata reference](../../truto-jsonata/references/usage-in-truto.md#error_expression--detect-http-errors).) |
 
-The CLI exposes a dedicated helper for each of the first four. Each helper writes into the right slot under `environment-integration.override` so you don't have to hand-assemble the override JSON.
+The CLI exposes a dedicated helper for each of the first four. Each helper fetches the current override, patches one slot, and sends the **full** override object back (because the API replaces `override` wholesale). For `resources`, there is no helper — you must send the complete override yourself (see below).
 
 ---
 
@@ -353,6 +354,47 @@ After that:
 
 ---
 
+## 5. Override resources (full override required)
+
+Use `override.resources` when an environment needs extra proxy resources or method config on top of the integration's base `config.resources` — for example adding two new resources for a migration while keeping existing overrides for `pages`, `blocks`, `file_uploads`, and similar machinery.
+
+### Contract: replace, not merge
+
+Both the API (`PATCH /environment-integration/:id`) and CLI `update -b '{"override":...}'` **replace** the stored `override` column with whatever you send. They do not deep-merge.
+
+Sending only `{"override":{"resources":{"new_a":{...}}}}` wipes every other override slot **and** every resource you omitted.
+
+**Always send the complete `override` object** (existing keys + your changes). The `override-auth` / `override-pagination` / `override-rate-limit` / `override-webhook` helpers do that fetch+merge for their slots; there is no equivalent helper for `resources`.
+
+### Safe workflow
+
+```bash
+# 1. Back up the current override
+truto environment-integrations show-override "$ENV_INTEGRATION_ID" -o json \
+  > /tmp/env-integration-override.backup.json
+
+# 2. Merge locally — keep every existing key, add/change only what you need
+jq '.resources = (.resources // {}) + {
+  "new_resource_a": { "list": { "path": "/v1/a", "method": "get" } },
+  "new_resource_b": { "list": { "path": "/v1/b", "method": "get" } }
+}' /tmp/env-integration-override.backup.json \
+  > /tmp/env-integration-override.merged.json
+
+# 3. Send the FULL override object (not a resources-only delta)
+truto environment-integrations update "$ENV_INTEGRATION_ID" \
+  -b "$(jq '{override: .}' /tmp/env-integration-override.merged.json)"
+
+# 4. Verify: normalized diff should be original + your additions
+truto environment-integrations show-override "$ENV_INTEGRATION_ID" -o json \
+  > /tmp/env-integration-override.after.json
+diff <(jq -S . /tmp/env-integration-override.backup.json) \
+     <(jq -S . /tmp/env-integration-override.after.json)
+```
+
+Same rule for raw HTTP: `PATCH` with `{ "override": <complete object> }`. If you already wiped the override with a partial body, restore from the backup and re-apply the full object.
+
+---
+
 ## Inspecting the current override
 
 ```bash
@@ -416,43 +458,50 @@ If the third-party app supports a "test event" or "send sample webhook" button (
 
 ## Direct HTTP API
 
-Every CLI helper above is sugar over a single `PATCH /environment-integration/:id` call that deep-merges the relevant slot into `override`. If you can't run the CLI, send the equivalent body yourself:
+`PATCH /environment-integration/:id` **replaces** the `override` column with the body you send — same as CLI `update`. The `override-*` helpers are the only path that fetch+merge for you (one slot at a time).
 
 ```bash
+# Wrong — wipes every override key not listed
+curl -X PATCH "https://api.truto.one/environment-integration/$ENV_INTEGRATION_ID" \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"override":{"authorization":{"format":"bearer"}}}'
+
+# Right — send the FULL override (existing slots + your change)
 curl -X PATCH "https://api.truto.one/environment-integration/$ENV_INTEGRATION_ID" \
   -H "Authorization: Bearer $TRUTO_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "override": {
+      "pagination": { "format": "cursor", "config": { "cursor_path": "meta.next" } },
       "authorization": {
         "format": "header",
         "config": {
           "expression": "{ \"Authorization\": \"Bearer \" & context.access_token, \"X-Org-Id\": context.org_id }"
         }
       },
-      "rate_limit": {
-        "is_rate_limited": "status = 429",
-        "retry_after_header_expression": "$number(headers.`retry-after`)"
-      }
+      "resources": { "...": "include every existing resource override too" }
     }
   }'
 ```
 
-Slot semantics:
+Semantics:
 
-- The body is **deep-merged** into the existing `override`. Sending `{"override":{"authorization":{...}}}` won't drop `pagination` or `rate_limit` overrides.
-- To clear a single slot, send it as `null`: `{"override":{"webhook":null}}`.
-- To clear all slots at once, send `{"override":{}}`.
+- **Replace, not merge** on both API and CLI `update`.
+- Prefer `override-*` helpers for auth / pagination / rate_limit / webhook.
+- For `resources`, `show-override` → merge locally → send the complete override.
+- To clear all slots: `{"override":{}}`.
 
 ---
 
 ## Common gotchas
 
+- **`override` is a full replace.** A partial `update` / `PATCH` body wipes omitted slots and omitted `resources` keys (e.g. `pages` / `blocks` / `file_uploads`). Always send the complete override. See [§5](#5-override-resources-full-override-required).
 - **Backtick-quote keys with hyphens or special characters in JSONata.** `` headers.`x-rate-limit` ``, `` $.body.`event-type` ``. JSONata's dot syntax doesn't accept hyphens.
 - **`{{credentials.*}}` is placeholder syntax, not JSONata.** Inside `header_name`/`header_value` and `signature_verification.config`, Truto resolves `{{credentials.api_key}}` style placeholders against the integrated account's credentials before sending. JSONata `$` functions don't run in those fields. See [Sync Jobs § Templating placeholders vs JSONata](./sync-jobs.md#templating-placeholders-vs-jsonata) for the distinction.
 - **Override is per-environment-integration, not per-account.** All accounts in the environment share the override. To override behavior for a single connected account, use the per-account override on the unified-mapping side ([Unified API Customization Workflow 2](./unified-api-customization.md#workflow-2--override-one-connected-account)) — the HTTP layer does not have a per-account override slot.
 - **Dynamic pagination and inbound webhooks are the heaviest JSONata users in the integration override surface.** Lean on `truto environment-integrations show-override <id>` after each patch to verify the override landed in the slot you expected before debugging the JSONata.
-- **`PATCH` is a deep merge, not a replace.** The CLI helpers always patch the right slot — but if you're sending the JSON body yourself, remember that the existing `override` is preserved unless you explicitly `null` the keys you want to remove.
+- **Only `override-*` helpers merge for you.** `override-auth` / `override-pagination` / `override-rate-limit` / `override-webhook` fetch + shallow-merge one slot, then PATCH the complete object. CLI `update` and raw HTTP do not — you supply the full override.
 - **Sandbox accounts can read with overridden auth/pagination but cannot write.** The proxy and unified APIs return `405` for write operations against sandbox-flagged integrated accounts regardless of overrides.
 
 ---
