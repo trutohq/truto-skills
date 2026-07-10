@@ -67,6 +67,7 @@ Don't hand-shape a request body from memory. **`describe_api_operation { method,
 Read the current state and know the merge rule before you `PATCH`, or you'll silently drop fields:
 
 - **Mapping overrides are field-replacing.** Setting `response_mapping` (a JSONata string) in an override **replaces the base wholesale** — you must restate the whole expression, not just the new field. (Objects deep-merge; arrays are replaced.) See [P3](./debug-unified-api.md#the-wholesale-replace-gotcha).
+- **`environment-integration.override` is a full replace.** API `PATCH` and CLI `update` replace the stored `override` wholesale — omitted slots and resource keys disappear. Prefer `override-*` helpers for auth/pagination/rate_limit/webhook; for `resources`, `show-override` → merge locally → send the complete override. ([Customizing Integrations §5](../../truto/references/customizing-integrations.md#5-override-resources-full-override-required))
 - **Account `context` merges shallowly.** Top-level keys merge, but a nested object/array you send **replaces** the stored one. Pass the complete nested value, not a partial. ([Integrated Account Context](../../truto/references/integrated-account-context.md))
 - **Secrets are redacted on read.** Sensitive fields come back stripped (`x-assistant-deny-fields`). A read-modify-write that includes a redacted field will write the redaction back — exclude secrets from your body and never echo them into chat.
 
