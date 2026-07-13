@@ -294,7 +294,7 @@ curl -X POST https://api.truto.one/integrated-account \
 }
 ```
 
-`GET /integrated-account` uses the standard list envelope. `POST /integrated-account/bulk-delete` returns `{ "matched_count": N, "deleted_count": N }` — supply exactly one of `{"ids":[...]}` or `{"tenant_id":"..."}` in the body. `POST /integrated-account/refresh-credentials` returns `{ "success": true }`.
+`GET /integrated-account` uses the standard list envelope. `POST /integrated-account/bulk-delete` returns `{ "matched_count": N, "deleted_count": N }` — supply exactly one of `{"ids":[...]}` (max 99 UUIDs per request due to D1's 100-parameter limit) or `{"tenant_id":"..."}` (max 1000 accounts per request) in the body. `POST /integrated-account/refresh-credentials` returns `{ "success": true }`.
 
 
 ### MCP Server Tokens

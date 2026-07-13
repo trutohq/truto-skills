@@ -185,18 +185,18 @@ cat tenants.ndjson | truto tenants create-bulk --stdin
 **Related endpoint** — bulk delete integrated accounts (no dedicated CLI subcommand; call the API directly):
 
 ```bash
-# Delete every account for a tenant
+# Delete every account for a tenant (capped at 1000 per request; repeat until matched_count < 1000)
 curl -X POST https://api.truto.one/integrated-account/bulk-delete \
   -H "Authorization: Bearer $TRUTO_API_TOKEN" -H 'Content-Type: application/json' \
   -d '{"tenant_id":"acme-corp"}'
 
-# Or delete a specific list
+# Or delete a specific list of account UUIDs (max 99 per request due to D1 parameter limit)
 curl -X POST https://api.truto.one/integrated-account/bulk-delete \
   -H "Authorization: Bearer $TRUTO_API_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"ids":["acc_1","acc_2"]}'
+  -d '{"ids":["79a39d69-e27e-49cb-b9a9-79f5eea7aa26","0c74a4ad-7b8e-4f3a-9c1d-2e4f5a6b7c8d"]}'
 ```
 
-Exactly one of `tenant_id` or `ids` must be supplied. Returns `{ matched_count, deleted_count }`.
+Exactly one of `tenant_id` or `ids` must be supplied. `tenant_id` deletes up to 1000 accounts per call; `ids` accepts up to 99 UUIDs per call. Returns `{ matched_count, deleted_count }`.
 
 ### Environments (`truto environments`)
 
