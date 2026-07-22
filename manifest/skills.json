@@ -3,7 +3,7 @@
     {
       "id": "truto",
       "title": "truto",
-      "whenToUse": "Application code calling api.truto.one — unified/proxy/custom APIs, webhooks, OAuth connection flows, integrated accounts from a customer app perspective.",
+      "whenToUse": "Explain or use Truto's core concepts and APIs — unified/proxy/custom APIs, webhooks, OAuth connection flows, integrated accounts, and environments — what they are, how to call them (e.g. /unified/{model}/{resource}?integrated_account_id=…), and how to set them up.",
       "rawUrl": "https://raw.githubusercontent.com/trutohq/truto-skills/main/skills/truto/SKILL.md"
     },
     {
