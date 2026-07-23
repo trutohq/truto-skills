@@ -388,7 +388,7 @@ Returns the deleted row on success. If the tenant still has integrated accounts:
 { "statusCode": 409, "error": "Conflict", "message": "Can't delete tenant with connected accounts." }
 ```
 
-Delete the accounts first — either individually via `DELETE /integrated-account/:id`, or in one call via `POST /integrated-account/bulk-delete` with `{"tenant_id":"acme-corp"}`.
+Delete the accounts first — either individually via `DELETE /integrated-account/:id`, or via `POST /integrated-account/bulk-delete` with `{"tenant_id":"acme-corp"}` (capped at 1000 accounts per request; repeat until `matched_count < 1000`).
 
 ### Response
 
