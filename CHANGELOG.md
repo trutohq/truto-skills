@@ -10,7 +10,7 @@ Dates are `YYYY-MM-DD`.
 
 ### Added
 
-- Tenant object docs across `skills/truto` and `skills/truto-cli`: first-class `GET/POST/PATCH/DELETE /tenant` + `POST /tenant/bulk`, ID pattern, bulk-create cap (1000), integrated-account bulk-delete by `tenant_id` (1000/request) or `ids` (99/request), CLI `truto tenants` / `create-bulk` / `truto open tenants`, and session `environment_id` scoping notes.
+- Tenant object docs across `skills/truto` and `skills/truto-cli`: first-class `GET/POST/PATCH/DELETE /tenant` + `POST /tenant/bulk`, ID pattern (`{1,255}`), bulk-create cap (1000), integrated-account bulk-delete by `tenant_id` (1000/request) or `ids` (99/request), CLI `truto tenants` / `create-bulk` / `truto open tenants`, and session `environment_id` scoping notes. Auto-materialization is documented as happening on integrated-account creation (not link-token mint).
 
 ### Changed
 

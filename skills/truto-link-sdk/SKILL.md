@@ -44,7 +44,7 @@ app.post("/api/truto/link-token", async (req, res) => {
 });
 ```
 
-`tenant_id` identifies the [tenant](../truto/references/core-resources.md#tenants) — the customer / workspace this account will belong to. Any URL-path-safe string works (`user_1a2b3c`, `acme-corp`, etc.). Truto auto-creates the tenant on first use, or you can pre-create it via `POST /tenant` when you want `metadata` attached before the connection.
+`tenant_id` identifies the [tenant](../truto/references/core-resources.md#tenants) — the customer / workspace this account will belong to. Any URL-path-safe string works (`user_1a2b3c`, `acme-corp`, etc.). Truto auto-creates the tenant when the account connects, or you can pre-create it via `POST /tenant` when you want `metadata` attached before the connection.
 
 ## Quick Start
 

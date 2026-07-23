@@ -164,7 +164,7 @@ truto tenants delete <id>
 
 **Filters:** `--id`, `--name`
 
-**Create fields:** `id` (required — URL-path-safe: letters, digits, `. _ : @ + -`, up to 256 chars; immutable), `name` (optional; defaults to `id`), `metadata` (optional JSON object)
+**Create fields:** `id` (required — URL-path-safe: letters, digits, `. _ : @ + -`, up to 255 chars; immutable), `name` (optional; defaults to `id`), `metadata` (optional JSON object)
 
 **Update fields:** `name`, `metadata` (`PATCH` replaces the whole metadata object; merge client-side for partial updates)
 
@@ -180,7 +180,7 @@ cat tenants.ndjson | truto tenants create-bulk --stdin
 
 > **Delete guard:** `truto tenants delete <id>` returns `409 Conflict` if the tenant still has any connected integrated accounts. List them with `truto accounts list --tenant-id <id>` and delete them first — or use `POST /integrated-account/bulk-delete` with `{"tenant_id":"<id>"}` (capped at 1000 accounts per request; repeat until `matched_count < 1000`).
 
-> **Auto-materialization:** Tenants can also be auto-created by the platform when a link token or integrated account is created with a `tenant_id` matching the allowed pattern. Explicit `truto tenants create` is preferred when you want to attach `metadata` before the customer connects.
+> **Auto-materialization:** Tenants are auto-created when an integrated account is created with a `tenant_id` matching the allowed pattern (after a successful connect, or via direct `POST /integrated-account`). Minting a link token alone does not materialize the tenant. Explicit `truto tenants create` is preferred when you want to attach `metadata` before the customer connects.
 
 **Related endpoint** — bulk delete integrated accounts (no dedicated CLI subcommand; call the API directly):
 
