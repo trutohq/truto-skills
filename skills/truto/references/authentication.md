@@ -131,7 +131,7 @@ Use these fields when connecting a new account for a tenant.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tenant_id` | string | Yes | — | Your identifier for the end-user. This links the integrated account to a customer in your system. |
+| `tenant_id` | string | Yes | — | The [tenant](./core-resources.md#tenants) this account belongs to — your identifier for the end-user. Pattern: `[A-Za-z0-9._:@+\-]{1,255}`. If a matching tenant doesn't already exist in the environment, Truto auto-creates one when the integrated account is created (as long as the ID matches the pattern). Pre-create the tenant via `POST /tenant` first when you need to attach `metadata` (tier, region, etc.) before the customer connects. |
 | `scopes` | string[] | No | Integration default | OAuth scopes to request during the connection flow. Overrides the integration's default scopes when set. |
 | `environment_unified_model_id` | string[] | No | — | Restrict the connection UI to integrations that support these unified models. Also narrows the OAuth scopes to only those required by the specified models. |
 | `context` | object | No | — | Additional context to store on the integrated account after connection. This is merged into the account's `context` field, with link token values taking precedence on overlap. |

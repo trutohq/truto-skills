@@ -242,7 +242,7 @@ curl -X POST https://api.truto.one/integrated-account \
 
 | Field                        | Type   | Required | Description                                      |
 | ---------------------------- | ------ | -------- | ------------------------------------------------ |
-| `tenant_id`                  | string | Yes      | Your identifier for the end-user                 |
+| `tenant_id`                  | string | Yes      | References a [Tenant](#tenants) row; auto-created when the integrated account is created, or pre-create via `POST /tenant` |
 | `environment_integration_id` | uuid   | Yes      | Environment integration to connect               |
 | `context`                    | object | Yes      | Integration-specific configuration               |
 | `authentication_method`      | string | Yes      | Auth method (e.g., `oauth2`, `api_key`, `basic`) |
@@ -255,7 +255,7 @@ curl -X POST https://api.truto.one/integrated-account \
 | Field            | Type     | Description                       |
 | ---------------- | -------- | --------------------------------- |
 | `id`             | uuid     | Account identifier                |
-| `tenant_id`      | string   | Your tenant identifier            |
+| `tenant_id`      | string   | Soft reference to the [Tenant](#tenants) that owns this account (no DB foreign key) |
 | `environment_id` | uuid     | Parent environment                |
 | `status`         | string   | Connection status                 |
 | `is_sandbox`     | boolean  | Whether this is a sandbox account |
@@ -294,7 +294,7 @@ curl -X POST https://api.truto.one/integrated-account \
 }
 ```
 
-`GET /integrated-account` uses the standard list envelope. `POST /integrated-account/bulk-delete` returns `{ "success": true }`. `POST /integrated-account/refresh-credentials` returns `{ "success": true }`.
+`GET /integrated-account` uses the standard list envelope. `POST /integrated-account/bulk-delete` returns `{ "matched_count": N, "deleted_count": N }` — supply exactly one of `{"ids":[...]}` (max 99 UUIDs per request due to D1's 100-parameter limit) or `{"tenant_id":"..."}` (max 1000 accounts per request) in the body. `POST /integrated-account/refresh-credentials` returns `{ "success": true }`.
 
 
 ### MCP Server Tokens
@@ -307,6 +307,114 @@ MCP tokens are scoped to a single integrated account and provide MCP protocol ac
 - The `region` field cannot be changed after creation.
 - OAuth context fields are merged (not replaced) on PATCH.
 - Sandbox accounts cannot make write operations via unified API.
+- `tenant_id` references a [Tenant](#tenants) row (soft link — no FK). If the value doesn't match an existing tenant and matches the allowed pattern (`[A-Za-z0-9._:@+\-]{1,255}`), Truto auto-creates the tenant when the integrated account is created. Values outside that pattern still work as strings on the account but skip tenant materialization.
+
+---
+
+## Tenants
+
+A tenant is an environment-scoped external identity (your end-user, workspace, or customer) that owns one or more integrated accounts. The composite primary key is `(id, environment_id)` — the same tenant ID can exist independently in `development`, `staging`, and `production`.
+
+### Endpoints
+
+
+| Method   | Path            | Description                          |
+| -------- | --------------- | ------------------------------------ |
+| `GET`    | `/tenant`       | List tenants                         |
+| `GET`    | `/tenant/:id`   | Get a tenant                         |
+| `POST`   | `/tenant`       | Create a tenant                      |
+| `POST`   | `/tenant/bulk`  | Bulk create up to 1000 tenants       |
+| `PATCH`  | `/tenant/:id`   | Update `name` / `metadata`           |
+| `DELETE` | `/tenant/:id`   | Delete (blocked if accounts exist)   |
+
+
+> **Session auth on `/:id` requires `?environment_id=<uuid>`.** Because tenants are keyed on `(id, environment_id)`, `GET /tenant/:id`, `PATCH /tenant/:id`, and `DELETE /tenant/:id` refuse to guess which environment you meant when called with a session cookie — they return `400 Bad Request` if the query string is missing. API tokens are already scoped to a single environment, so they don't need the parameter (fallback stays deterministic).
+
+### Fields
+
+
+| Field            | Type     | Description                                                                    |
+| ---------------- | -------- | ------------------------------------------------------------------------------ |
+| `id`             | string   | Caller-chosen. Pattern: `[A-Za-z0-9._:@+\-]{1,255}`. Immutable after creation. |
+| `environment_id` | uuid     | Parent environment                                                             |
+| `name`           | string   | Display name. Defaults to `id` if omitted on create.                           |
+| `metadata`       | object   | Free-form JSON; stored and returned verbatim.                                  |
+| `created_at`     | datetime | Creation timestamp                                                             |
+| `updated_at`     | datetime | Last update timestamp                                                          |
+
+
+### Create a Tenant
+
+```bash
+curl -X POST https://api.truto.one/tenant \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "acme-corp",
+    "name": "Acme Corp",
+    "metadata": { "tier": "gold" }
+  }'
+```
+
+Returns the created row (`201 Created`). `id` must be unique within the environment — duplicate returns `409 Conflict`.
+
+### Bulk Create
+
+```bash
+curl -X POST https://api.truto.one/tenant/bulk \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenants": [
+      { "id": "acme-corp", "name": "Acme Corp", "metadata": {"tier":"gold"} },
+      { "id": "globex-inc" },
+      { "id": "initech" }
+    ]
+  }'
+```
+
+Returns `{ "created": [...rows...], "skipped": [ { "id": "...", "reason": "already_exists" } ] }`. Uses `INSERT ... ON CONFLICT DO NOTHING`, so re-runs are safe. Cap: 1000 tenants per request.
+
+### Delete a Tenant
+
+```bash
+curl -X DELETE "https://api.truto.one/tenant/acme-corp?environment_id=$ENV_ID" \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN"
+```
+
+Returns the deleted row on success. If the tenant still has integrated accounts:
+
+```json
+{ "statusCode": 409, "error": "Conflict", "message": "Can't delete tenant with connected accounts." }
+```
+
+Delete the accounts first — either individually via `DELETE /integrated-account/:id`, or via `POST /integrated-account/bulk-delete` with `{"tenant_id":"acme-corp"}` (capped at 1000 accounts per request; repeat until `matched_count < 1000`).
+
+### Response
+
+`GET /tenant/:id` returns the row directly:
+
+```json
+{
+  "id": "acme-corp",
+  "environment_id": "9c2e...",
+  "name": "Acme Corp",
+  "metadata": { "tier": "gold" },
+  "created_at": "2026-07-02 09:14:03",
+  "updated_at": "2026-07-02 09:14:03"
+}
+```
+
+`GET /tenant` uses the standard list envelope.
+
+### Gotchas
+
+- **Environment scope:** tenants are keyed on `(id, environment_id)`. The same `acme-corp` in dev / staging / prod is three separate rows with three separate sets of accounts.
+- **Immutable ID:** you can `PATCH` `name` and `metadata`, but not `id`. To rename, create a new tenant and migrate accounts to it.
+- **`metadata` on PATCH is a full replace**, not a merge — read the current value first if you want partial updates.
+- **Auto-materialization:** creating an integrated account (via successful connect after `POST /link-token`, OAuth connect, or direct `POST /integrated-account`) with a `tenant_id` that doesn't exist yet materializes a tenant row automatically, as long as the ID matches the allowed pattern. Minting a link token alone does **not** create the tenant. Legacy IDs outside that pattern still work as account references but skip materialization.
+- **Delete blocked when accounts exist** — the API enforces this even for root-team users. There is no override.
+- Session callers must supply `environment_id` explicitly on `GET / PATCH / DELETE /tenant/:id` (as `?environment_id=<uuid>`). For `POST /tenant` and `POST /tenant/bulk`, session callers may pass `environment_id` in the **body or** query string. API-token callers can omit it (single-env token, deterministic fallback).
 
 ---
 
