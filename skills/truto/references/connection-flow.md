@@ -11,6 +11,8 @@ The connection flow has four stages:
 3. **Truto** runs post-install and validation steps on the new account
 4. **Your backend** receives a webhook when the account is active and ready
 
+The link token carries a `tenant_id`. If a [tenant](./core-resources.md#tenants) with that ID doesn't already exist in the environment, Truto auto-materialises one when the integrated account is created after a successful connection (as long as the ID matches `[A-Za-z0-9._:@+\-]{1,255}`). Minting the link token alone does not create the tenant. You can pre-create the tenant with `POST /tenant` if you want `metadata` (tier, region, plan) attached before the customer connects.
+
 For the frontend SDK reference (display modes, options, error handling, RapidForm, file pickers), see the **Truto Link SDK** skill.
 
 ## Connection Lifecycle

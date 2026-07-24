@@ -165,9 +165,11 @@ truto open accounts <id>            # specific account
 truto open sync-jobs                # sync jobs page
 truto open workflows                # workflows page
 truto open logs                     # logs page
+truto open tenants                  # tenants page
+truto open tenants acme-corp        # specific tenant detail
 ```
 
-**Supported resource names:** `integrations`, `accounts`, `integrated-accounts`, `environments`, `sync-jobs`, `workflows`, `webhooks`, `api-tokens`, `mcp-tokens`, `unified-models`, `datastores`, `logs`, `team`, `link-tokens`, `notifications`
+**Supported resource names:** `integrations`, `accounts`, `integrated-accounts`, `tenants`, `environments`, `sync-jobs`, `workflows`, `webhooks`, `api-tokens`, `mcp-tokens`, `unified-models`, `datastores`, `logs`, `team`, `link-tokens`, `notifications`
 
 Uses `open` on macOS, `xdg-open` on Linux, and the system default browser on Windows.
 
