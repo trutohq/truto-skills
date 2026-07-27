@@ -1,19 +1,23 @@
 ---
 name: truto
-description: Write application code that integrates with third-party tools via the Truto unified API. Covers API calls, webhook handlers, connection flows, and data access patterns for use in the user's codebase.
+description: Explain and use Truto's core concepts and APIs — unified/proxy/custom APIs, integrated accounts, environments, webhooks, connection flows — and write application code against them. Covers what each concept is, how to call it, and data-access patterns for the user's codebase.
 whenToUse: Explain or use Truto's core concepts and APIs — unified/proxy/custom APIs, webhooks, OAuth connection flows, integrated accounts, and environments — what they are, how to call them (e.g. /unified/{model}/{resource}?integrated_account_id=…), and how to set them up.
 ---
 
 # Truto — Unified API Platform
 
-Use this skill when writing code in the user's application that calls the Truto API. This skill helps you build integration features — API calls, webhook handlers, connection UIs, and data-access layers — that run as part of the user's product.
+This is the reference for Truto's core concepts and APIs. Read it both to **explain** what something is (unified vs proxy vs custom API, integrated accounts, environments, webhooks, connection flows) and to **build** with it — API calls, webhook handlers, connection UIs, and data-access layers that run as part of the user's product.
 
-This skill is about **code that lives in the user's codebase**. For admin setup, one-time debugging, and data exploration in the terminal, see the **Truto CLI** skill instead.
+Answer concept and how-to questions from this skill and its [references](#references) rather than from memory. The [Core Concepts](#core-concepts) table below is the index: every concept links to the reference that defines it.
+
+There is nothing to *install* to use the unified, proxy, or custom API — you **call** them over HTTPS against a connected integrated account (e.g. `GET /unified/{model}/{resource}?integrated_account_id=…`). Setup means connecting an account, not installing an API. For admin setup, one-time debugging, and data exploration in the terminal, see the **Truto CLI** skill; for debugging a live workspace, see the **truto-operator** skill.
 
 **Important:** The Truto API token (`TRUTO_API_TOKEN`) must only be used on the backend. Never expose it to the browser or include it in client-side code.
 
 ## When to Use
 
+- Explaining what a Truto concept is or how it works (unified/proxy/custom API, integrated account, environment, tenant, sync job, webhook, workflow)
+- Answering "how do I call/set up X" for any of the above
 - Writing API calls to read or write data through Truto (unified, proxy, or custom APIs)
 - Building a connection flow for end-users using Truto Link
 - Adding webhook handlers to receive real-time events from Truto
