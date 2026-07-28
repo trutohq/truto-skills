@@ -171,13 +171,13 @@ truto tenants delete <id>
 **Extra commands:**
 
 ```bash
-# Bulk create up to 1000 tenants in a single request (POST /tenant/bulk)
+# Bulk create/upsert up to 1000 tenants in a single request (POST /tenant/bulk)
 truto tenants create-bulk -b '[{"id":"acme"},{"id":"globex"}]'
+truto tenants create-bulk --mode upsert -b '[{"id":"acme","name":"Acme Corp"}]'
 cat tenants.ndjson | truto tenants create-bulk --stdin
 ```
 
-`create-bulk` uses `INSERT ... ON CONFLICT DO NOTHING` server-side, so re-runs are idempotent: rows that already exist come back in `skipped` instead of failing the whole request. The client-side cap (1000) matches the server-side limit.
-
+`create-bulk` accepts `--mode insert` (default) or `--mode upsert`. Insert uses `ON CONFLICT DO NOTHING` — existing ids come back in `skipped`. Upsert updates `name`/`metadata` on conflict and returns them in `updated`. Each row may only include `id`, `name`, and `metadata`. The client-side cap (1000) matches the server-side limit.
 > **Delete guard:** `truto tenants delete <id>` returns `409 Conflict` if the tenant still has any connected integrated accounts. List them with `truto accounts list --tenant-id <id>` and delete them first — or use `POST /integrated-account/bulk-delete` with `{"tenant_id":"<id>"}` (capped at 1000 accounts per request; repeat until `matched_count < 1000`).
 
 > **Auto-materialization:** Tenants are auto-created when an integrated account is created with a `tenant_id` matching the allowed pattern (after a successful connect, or via direct `POST /integrated-account`). Minting a link token alone does not materialize the tenant. Explicit `truto tenants create` is preferred when you want to attach `metadata` before the customer connects.

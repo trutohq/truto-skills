@@ -323,7 +323,7 @@ A tenant is an environment-scoped external identity (your end-user, workspace, o
 | `GET`    | `/tenant`       | List tenants                         |
 | `GET`    | `/tenant/:id`   | Get a tenant                         |
 | `POST`   | `/tenant`       | Create a tenant                      |
-| `POST`   | `/tenant/bulk`  | Bulk create up to 1000 tenants       |
+| `POST`   | `/tenant/bulk`  | Bulk create/upsert up to 1000 tenants |
 | `PATCH`  | `/tenant/:id`   | Update `name` / `metadata`           |
 | `DELETE` | `/tenant/:id`   | Delete (blocked if accounts exist)   |
 
@@ -358,9 +358,16 @@ curl -X POST https://api.truto.one/tenant \
 
 Returns the created row (`201 Created`). `id` must be unique within the environment — duplicate returns `409 Conflict`.
 
-### Bulk Create
+### Bulk Create / Upsert
+
+Body: `{ "tenants": [...], "mode": "insert" | "upsert" }`. `mode` defaults to `insert`. Each row may only include `id` (required), `name`, and `metadata` — unknown fields are rejected.
+
+**Insert** (`mode: "insert"`, default) — `INSERT ... ON CONFLICT DO NOTHING`. Existing ids are skipped; response is `{ "created": [...], "updated": [], "skipped": [{ "id": "...", "reason": "already_exists" }] }`.
+
+**Upsert** (`mode: "upsert"`) — `INSERT ... ON CONFLICT DO UPDATE` for `name` / `metadata` / `updated_at`. Omitted fields keep existing values. Response is `{ "created": [...], "updated": [...], "skipped": [] }`.
 
 ```bash
+# Insert (default) — skips existing ids
 curl -X POST https://api.truto.one/tenant/bulk \
   -H "Authorization: Bearer $TRUTO_API_TOKEN" \
   -H "Content-Type: application/json" \
@@ -371,10 +378,20 @@ curl -X POST https://api.truto.one/tenant/bulk \
       { "id": "initech" }
     ]
   }'
+
+# Upsert — creates missing ids, updates name/metadata on existing ones
+curl -X POST https://api.truto.one/tenant/bulk \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "upsert",
+    "tenants": [
+      { "id": "acme-corp", "name": "Acme Corp", "metadata": {"tier":"platinum"} }
+    ]
+  }'
 ```
 
-Returns `{ "created": [...rows...], "skipped": [ { "id": "...", "reason": "already_exists" } ] }`. Uses `INSERT ... ON CONFLICT DO NOTHING`, so re-runs are safe. Cap: 1000 tenants per request.
-
+Cap: 1000 tenants per request.
 ### Delete a Tenant
 
 ```bash
