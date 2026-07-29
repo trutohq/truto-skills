@@ -1,7 +1,7 @@
 ---
 name: truto
 description: Explain and use Truto's core concepts and APIs — unified/proxy/custom APIs, integrated accounts, environments, webhooks, connection flows — and write application code against them. Covers what each concept is, how to call it, and data-access patterns for the user's codebase.
-whenToUse: Explain or use Truto's core concepts and APIs — unified/proxy/custom APIs, webhooks, OAuth connection flows, integrated accounts, and environments — what they are, how to call them (e.g. /unified/{model}/{resource}?integrated_account_id=…), and how to set them up.
+whenToUse: Explain or use Truto's core concepts and APIs — unified/proxy/custom APIs, webhooks, OAuth connection flows, integrated accounts, environments, and tenants — what they are, how to call them (e.g. /unified/{model}/{resource}?integrated_account_id=…), and how to set them up.
 ---
 
 # Truto — Unified API Platform
