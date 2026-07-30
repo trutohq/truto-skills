@@ -1,6 +1,6 @@
 ---
 name: truto-api-conventions
-description: Truto API conventions — base URL (https://api.truto.one), Bearer auth, unified/proxy/custom URL patterns, cursor pagination, idempotency, admin filter syntax, and skill routing between `truto` (app code) and `truto-cli` (terminal). Load whenever calling, configuring, or reasoning about any api.truto.one endpoint.
+description: Truto API conventions — base URL (https://api.truto.one), Bearer auth, unified/proxy/custom URL patterns, cursor pagination, idempotency, admin filter syntax, and skill routing between `truto` (concepts + app code) and `truto-cli` (terminal). Load whenever calling, configuring, or reasoning about any api.truto.one endpoint.
 whenToUse: Truto API URL patterns, Bearer auth, pagination, idempotency keys, admin list filter syntax. Read before call_platform_api on unfamiliar endpoints.
 ---
 
@@ -8,9 +8,9 @@ whenToUse: Truto API URL patterns, Bearer auth, pagination, idempotency keys, ad
 
 ## Skill Routing
 
-This plugin has two skills with distinct roles:
+Two skills sit closest to these conventions:
 
-- **Truto** skill — Use when writing code in the user's project that calls `api.truto.one`. This produces application code: `fetch()` calls, webhook handlers, connection flows.
+- **Truto** skill — The reference for Truto's core concepts and APIs. Use it both to **explain** what something is (unified vs proxy vs custom API, integrated accounts, environments, tenants, webhooks, connection flows) and to **build** with it in the user's project: `fetch()` calls, webhook handlers, connection flows.
 - **Truto CLI** skill — Use when running terminal commands to set up, explore, or debug. This runs `truto` CLI commands in the shell for admin tasks, one-time data access, and troubleshooting. Nothing the CLI does belongs in the user's codebase.
 
 ## Base URL
