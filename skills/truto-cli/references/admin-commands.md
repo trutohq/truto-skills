@@ -538,12 +538,14 @@ Scoped to an integrated account. Unlike other resources, the account ID is a **p
 truto mcp-tokens list <account-id>
 truto mcp-tokens get <account-id> <token-id>
 truto mcp-tokens create <account-id> --name "my-mcp-token"
-truto mcp-tokens create <account-id> -b '{"name":"custom","scopes":[...]}'
+truto mcp-tokens create <account-id> --name "discovery" --tool-exposure discovery
+truto mcp-tokens create <account-id> -b '{"name":"custom","config":{"methods":["read"],"tags":["crm"],"tool_exposure":"all"}}'
+truto mcp-tokens update <account-id> <token-id> --tool-exposure all
 truto mcp-tokens update <account-id> <token-id> -b '{"name":"renamed"}'
 truto mcp-tokens delete <account-id> <token-id> [-f]
 ```
 
-`--name` is always required when creating.
+`--name` is always required when creating. `--tool-exposure` accepts `all` (default — full tool schemas) or `discovery` (only `search_tools` / `get_tool_schema` / `call_tool`). See the **truto** skill [MCP Tokens](../../truto/references/mcp-tokens.md) reference for config details and method-level `tool_tags`.
 
 ### Datastores (`truto datastores`)
 
