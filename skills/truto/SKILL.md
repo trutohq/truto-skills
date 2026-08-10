@@ -350,7 +350,7 @@ All API requests use Bearer token authentication. The API token must only be use
 | [Unified API](./references/unified-api.md)                               | Unified CRUD, meta endpoints, pagination, SuperQuery                                    |
 | [Proxy & Custom API](./references/proxy-and-custom-api.md)               | Proxy pass-through, custom endpoints, **authoring custom-API handlers**, batch requests |
 | [Authentication](./references/authentication.md)                         | API tokens, link tokens, integrated account tokens, auth patterns                       |
-| [MCP Tokens](./references/mcp-tokens.md)                                 | MCP protocol tokens for AI agents, tool filtering, expiration                           |
+| [MCP Tokens](./references/mcp-tokens.md)                                 | MCP protocol tokens; method/tag filters; `tool_exposure: discovery`; method-level `tool_tags`; array bodies under `body` |
 | [Connection Flow](./references/connection-flow.md)                       | Connection lifecycle, reconnecting accounts, webhook events, post-connection automation |
 | [Core Resources](./references/core-resources.md)                         | Environments, integrations, integrated accounts, tenants, teams                          |
 | [Integrated Account Context](./references/integrated-account-context.md) | Context field lifecycle, credentials, instance config, usage in APIs/sync/workflows     |

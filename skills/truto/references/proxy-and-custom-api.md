@@ -204,7 +204,7 @@ Authoring tips:
 
 - **Sandbox accounts can't call write methods.** Custom methods on proxy resources go through the same sandbox guard as `POST /proxy/...` — they return `405` for sandbox accounts.
 - **Idempotency.** `POST /proxy/{resource}/{method}` honors the `Idempotency-Key` header (keyed by `integrated_account_id` + path + key), so you can safely retry mutating custom methods.
-- **Use `tool_tags` to surface the method.** Adding the resource to `tool_tags` (e.g. `"contacts": ["write", "bulk"]`) lets MCP tooling filter on it.
+- **Use `tool_tags` to surface the method.** Resource-level (e.g. `"contacts": ["write", "bulk"]`) tags every method on that resource. Method-level (e.g. `"contacts.merge": ["bulk"]`) is unioned onto that method only — useful when one action is destructive or special-cased for MCP `config.tags` filters.
 - **Store nothing.** Like CRUD methods, custom methods are stateless — they're a description of *how to call* the upstream, nothing more.
 
 ### Pattern 2 — Ad-hoc `/custom/{path}` with `methodConfig`

@@ -119,7 +119,7 @@ After this, install the integration into one of your environments and connect a 
 | `webhook` | `IntegrationWebhookConfig` \| null | No | Inbound webhook receiver: signature verification, verification handshake, payload reshape. See [Webhooks (inbound)](#webhooks-inbound). |
 | `actions` | `{ [action]: IntegrationAction }` | No | Lifecycle hooks (`post_install`, `validation`, `refresh_token`, `post_connect_user_form`) and arbitrary named actions. See [Actions (lifecycle hooks)](#actions-lifecycle-hooks). |
 | `error_expression` | string \| null | No | Integration-wide JSONata expression that detects errors. Per-method `error_expression` overrides this. |
-| `tool_tags` | `{ [resource]: string[] }` | No | Optional resource-tag arrays surfaced in the Truto MCP tool listings (`truto integrations tools <id>`). |
+| `tool_tags` | `{ [resource \| resource.method]: string[] }` | No | Optional tags for MCP filtering. Resource keys (e.g. `"contacts"`) apply to all methods; method keys (e.g. `"contacts.delete"`) are **unioned** onto that method only. See [MCP Tokens](./mcp-tokens.md#tool-tags-resource--method). |
 
 `label`, `credentials`, `authorization`, and `resources` are technically optional in the spec but the integration is unusable in the dashboard / Link UI without them, so `truto integrations validate` flags missing `label` and `credentials` as issues.
 
@@ -838,7 +838,7 @@ Once your integration is live in your environment, the related references cover 
 - **Updating a live integration affects every connected account.** Adding a new optional resource is safe. Renaming a resource, removing a method, or changing the `format` of a credential will break existing connections. Roll forward by adding new methods/resources and deprecating old ones; only delete after every account has migrated.
 - **Custom (non-CRUD) methods are reachable by both the proxy API and any unified mapping you write against them.** Pick consistent naming — Truto's MCP tool listings will surface the method name verbatim.
 - **`error_expression` is integration-wide.** Per-method `error_expression` overrides the integration-wide one entirely (no merging). Same field-replacing semantics as the unified-API mapping override layer.
-- **Set `tool_tags` if you care about MCP tool discoverability.** `tool_tags.<resource>: ["sales", "outbound"]` lets MCP clients filter tools by tag (`truto accounts tools <id> --tags sales`).
+- **Set `tool_tags` if you care about MCP tool discoverability.** Resource-level: `tool_tags.contacts: ["sales", "outbound"]`. Method-level (unioned, never overrides): `tool_tags["contacts.delete"]: ["destructive"]` so an MCP token with `tags: ["destructive"]` can expose only that method. Filter via MCP token `config.tags` or `truto accounts tools <id> --tags sales`.
 
 ---
 
