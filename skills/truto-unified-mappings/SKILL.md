@@ -257,6 +257,7 @@ The refinement loop is skipped in this mode.
 |-----------|---------|
 | [Agent loop and tools](references/agent-and-tools.md) | The agentic loop vs `--structured` pipeline, the full tool list (routing, sampling, generation, validation, finalize), the live → DB → source sampling ladder, read-only sampling, web tools, and prompt caching |
 | [MappingFile](references/mapping-file.md) | Output JSON shape, the per-cell `config` fields (`response_mapping`, `query_mapping`, `request_body_schema`/`request_body_mapping`, `error_mapping`), `db_info`, the `build_summary` (counts, skipped reasons, warning kinds), and how `apply` consumes it |
+| [Schema conventions](references/schema-conventions.md) | What a `response_mapping` has to emit for the row to be *usable*: declared enums rather than provider values, object references rather than bare `*_id`, `id` uniqueness across region and account, `._text` on XML resources, timestamp/boolean/string types, and a pre-apply checklist. None of it is validated, so read it before building a family from scratch |
 
 ## Related skills
 
