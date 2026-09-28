@@ -173,6 +173,10 @@ const { link_token: linkToken } = await response.json();
 
 **`persist_previous_context: true`** merges the existing account's context with any new context from the reconnection. Without this, the previous context is replaced.
 
+### When the mint is refused
+
+`POST /link-token` answers `400` with `truto_error_code: "app_credentials_not_configured"` when the integration it names cannot be connected — every authentication method it has is a bring-your-own-app one (OAuth 2.0, AWS STS) with no app credentials configured in that environment — or, on reconnect, when the account's own method has lost its app credentials since it connected. The body also carries `integration`, `environment_integration_id` and `authentication_methods`. This is not something the end user can fix and not a retry case: the customer's admin adds the credentials in the integration's settings (or enables another method). Branch on the code, surface it to an admin, and do not show the end user a reconnect prompt for it. A token that names no integration is never refused for this reason; the connect UI leaves such integrations out of its list instead.
+
 ### Reconnection Lifecycle
 
 The lifecycle is the same as a new connection:

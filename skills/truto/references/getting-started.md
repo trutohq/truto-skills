@@ -210,6 +210,8 @@ app.post("/api/truto/link-token", async (c) => {
 
 The shape is the same in every framework — a server-side `fetch` to `POST /link-token` carrying the API token. Pick the variant that matches your stack.
 
+Handle one refusal in this route: when the body names an integration (`environment_integration_id`) whose app credentials are not configured — a bring-your-own-app OAuth 2.0 client id or AWS STS access key still unset — the API answers `400` with `truto_error_code: "app_credentials_not_configured"` and no token. That is an admin's job (add the credentials in the integration's settings), not the end user's; return the message to whoever operates the environment rather than showing the end user a connect button that cannot work. A body with only `tenant_id` is never refused for this reason.
+
 > **`TRUTO_API_TOKEN` must stay on the server.** Never expose it to the browser, and never hardcode it in client bundles. The whole point of link tokens is that they're short-lived, single-use credentials safe for the frontend; the API token isn't.
 
 You can verify the route works without a frontend by minting a token from the CLI:

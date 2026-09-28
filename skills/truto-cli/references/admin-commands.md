@@ -660,6 +660,11 @@ truto link-tokens create --tenant-id <tid>
 truto link-tokens create --tenant-id <tid> --integrated-account-id <id>
 ```
 
+`create` is refused (`400`, `truto_error_code: app_credentials_not_configured`) when the integration it names — or the account being reauthorized — has no configured app credentials for any of its authentication methods. Fix is in the integration's settings, not a retry.
+
+```bash
+```
+
 ### Users (`truto users`)
 
 List and view team members. **List and get only.**

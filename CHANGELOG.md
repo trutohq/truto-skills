@@ -10,6 +10,8 @@ Dates are `YYYY-MM-DD`.
 
 ### Added
 
+- `skills/truto/references/connection-flow.md`, `skills/truto/references/getting-started.md`, `skills/truto-operator/references/diagnose-integrated-account.md`, `skills/truto-cli/references/admin-commands.md` — Document the `POST /link-token` refusal `400` `truto_error_code: app_credentials_not_configured`: raised when the integration a token names (or the account being reauthorized) has no configured bring-your-own-app credentials (OAuth 2.0 client id / AWS STS access key) for any of its authentication methods. It is an admin fix in the integration's settings, never a reconnect; a `tenant_id`-only mint is never refused for this reason.
+
 - Tenant object docs across `skills/truto` and `skills/truto-cli`: first-class `GET/POST/PATCH/DELETE /tenant` + `POST /tenant/bulk`, ID pattern (`{1,255}`), bulk-create cap (1000), integrated-account bulk-delete by `tenant_id` (1000/request) or `ids` (99/request), CLI `truto tenants` / `create-bulk` / `truto open tenants`, and session `environment_id` scoping notes. Auto-materialization is documented as happening on integrated-account creation (not link-token mint).
 
 ### Changed
