@@ -203,6 +203,12 @@ app.post("/api/truto/link-token", async (c) => {
     body: JSON.stringify(body),
   });
 
+  if (!response.ok) {
+    // Pass the refusal through as-is: the body carries `message` and, for the
+    // one case below, a `truto_error_code` the frontend can branch on.
+    return c.json(await response.json(), response.status);
+  }
+
   const { link_token } = await response.json();
   return c.json({ linkToken: link_token });
 });
@@ -210,7 +216,7 @@ app.post("/api/truto/link-token", async (c) => {
 
 The shape is the same in every framework — a server-side `fetch` to `POST /link-token` carrying the API token. Pick the variant that matches your stack.
 
-Handle one refusal in this route: when the body names an integration (`environment_integration_id`) whose app credentials are not configured — a bring-your-own-app OAuth 2.0 client id or AWS STS access key still unset — the API answers `400` with `truto_error_code: "app_credentials_not_configured"` and no token. That is an admin's job (add the credentials in the integration's settings), not the end user's; return the message to whoever operates the environment rather than showing the end user a connect button that cannot work. A body with only `tenant_id` is never refused for this reason.
+Handle one refusal in this route, on the reconnect branch: when `integrated_account_id` names an account whose integration has no usable sign-in method left — every method it has is a bring-your-own-app one (OAuth 2.0 client id, AWS STS access key) with no app credentials configured in the environment — the API answers `400` with `truto_error_code: "app_credentials_not_configured"` and no token. Reconnecting may switch method, so an integration that still has a working method is not refused. That is an admin's job (add the credentials in the integration's Configuration tab), not the end user's; return the message to whoever operates the environment rather than showing the end user a reconnect button that cannot work. A body with only `tenant_id` is never refused for this reason.
 
 > **`TRUTO_API_TOKEN` must stay on the server.** Never expose it to the browser, and never hardcode it in client bundles. The whole point of link tokens is that they're short-lived, single-use credentials safe for the frontend; the API token isn't.
 
