@@ -167,6 +167,12 @@ const response = await fetch("https://api.truto.one/link-token", {
   }),
 });
 
+if (!response.ok) {
+  // A refusal (see below) comes back as 400 with a `truto_error_code`; pass
+  // it to whoever operates the environment, not to the end user.
+  throw new Error(`link token refused: ${JSON.stringify(await response.json())}`);
+}
+
 const { link_token: linkToken } = await response.json();
 // Pass linkToken to authenticate() in the frontend — same as a new connection
 ```
@@ -175,7 +181,7 @@ const { link_token: linkToken } = await response.json();
 
 ### When the mint is refused
 
-Reconnecting may switch sign-in method: the connect UI offers whatever methods the integration still has, and the account's `authentication_method` follows the one the end user picks. So `POST /link-token` with `integrated_account_id` is refused only when *nothing* on the integration can connect — every method it has is a bring-your-own-app one (OAuth 2.0, AWS STS) whose app credentials are not configured in that environment. It answers `400` with `truto_error_code: "app_credentials_not_configured"`; the body also carries `integration`, `environment_integration_id` and `authentication_methods`. This is not something the end user can fix and not a retry case: the customer's admin adds the credentials in the integration's **Configuration** tab (**Use your own OAuth settings**) or enables another method. Branch on the code, surface it to an admin, and do not show the end user a reconnect prompt for it. A token minted with `tenant_id` alone is never refused for this reason; the connect UI leaves such integrations out of its list instead.
+Reconnecting may switch sign-in method: the connect UI offers whatever methods the integration still has, and the account's `authentication_method` follows the one the end user picks. So `POST /link-token` with `integrated_account_id` is refused only when *nothing* on the integration can connect — every method it has is a bring-your-own-app one (OAuth 2.0, AWS STS) whose app credentials are not configured in that environment. It answers `400` with `truto_error_code: "app_credentials_not_configured"`; the body also carries `integration`, `environment_integration_id` and `authentication_methods`. This is not something the end user can fix and not a retry case: the customer's admin adds the credentials in the integration's **Configuration** tab (**Use your own OAuth settings**; **Use your own signing credentials** for AWS STS) or enables another method. Branch on the code, surface it to an admin, and do not show the end user a reconnect prompt for it. A token minted with `tenant_id` alone is never refused for this reason; the connect UI leaves such integrations out of its list instead.
 
 ### Reconnection Lifecycle
 

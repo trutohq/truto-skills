@@ -155,6 +155,11 @@ app.post("/api/truto/link-token", async (req, res) => {
     body: JSON.stringify(body),
   });
 
+  if (!response.ok) {
+    // Pass the refusal through as-is (see below).
+    return res.status(response.status).json(await response.json());
+  }
+
   const { link_token } = await response.json();
   res.json({ linkToken: link_token });
 });
@@ -178,6 +183,11 @@ export async function POST(req: Request) {
     },
     body: JSON.stringify(body),
   });
+
+  if (!response.ok) {
+    // Pass the refusal through as-is (see below).
+    return Response.json(await response.json(), { status: response.status });
+  }
 
   const { link_token } = await response.json();
   return Response.json({ linkToken: link_token });
@@ -206,7 +216,10 @@ app.post("/api/truto/link-token", async (c) => {
   if (!response.ok) {
     // Pass the refusal through as-is: the body carries `message` and, for the
     // one case below, a `truto_error_code` the frontend can branch on.
-    return c.json(await response.json(), response.status);
+    return new Response(response.body, {
+      status: response.status,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const { link_token } = await response.json();
@@ -216,7 +229,7 @@ app.post("/api/truto/link-token", async (c) => {
 
 The shape is the same in every framework — a server-side `fetch` to `POST /link-token` carrying the API token. Pick the variant that matches your stack.
 
-Handle one refusal in this route, on the reconnect branch: when `integrated_account_id` names an account whose integration has no usable sign-in method left — every method it has is a bring-your-own-app one (OAuth 2.0 client id, AWS STS access key) with no app credentials configured in the environment — the API answers `400` with `truto_error_code: "app_credentials_not_configured"` and no token. Reconnecting may switch method, so an integration that still has a working method is not refused. That is an admin's job (add the credentials in the integration's Configuration tab), not the end user's; return the message to whoever operates the environment rather than showing the end user a reconnect button that cannot work. A body with only `tenant_id` is never refused for this reason.
+Handle one refusal in this route, on the reconnect branch: when `integrated_account_id` names an account whose integration has no usable sign-in method left — every method it has is a bring-your-own-app one (OAuth 2.0 client id, AWS STS access key) with no app credentials configured in the environment — the API answers `400` with `truto_error_code: "app_credentials_not_configured"` and no token. Reconnecting may switch method, so an integration that still has a working method is not refused. That is an admin's job (add the credentials in the integration's Configuration tab — **Use your own OAuth settings**, or **Use your own signing credentials** for AWS STS), not the end user's; return the message to whoever operates the environment rather than showing the end user a reconnect button that cannot work. A body with only `tenant_id` is never refused for this reason.
 
 > **`TRUTO_API_TOKEN` must stay on the server.** Never expose it to the browser, and never hardcode it in client bundles. The whole point of link tokens is that they're short-lived, single-use credentials safe for the frontend; the API token isn't.
 
