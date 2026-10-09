@@ -111,7 +111,9 @@ Opens the Truto Link UI so the end-user can select an integration and authentica
 | `"blocked"` | string | Browser blocked the popup window |
 | Error with `error_type` | Error | Connection error from Truto (see error types below) |
 
-**Error types** (on `err.error_type`): `invalid_token`, `invalid_integration`, `connection_error`, `post_install_error`, `validation_error`
+**Error types** (on `err.error_type`): `invalid_token`, `invalid_integration`, `connection_error`, `app_credentials_not_configured`, `post_install_error`, `validation_error`, `rapid_form_error`
+
+`app_credentials_not_configured` means the integration cannot be connected yet — its app credentials (the customer's own OAuth app, or AWS STS signing credentials) are not configured in the environment. Nothing the end user does fixes it: in full-page mode Truto shows them who to contact, but in iframe and popup modes the dialog closes, so show your own message and route the problem to whoever administers the environment. `err.error` carries the same string.
 
 Additional properties on the Error object: `err.integration` (integration name), `err.integrated_account_id` (if the account was created before the error).
 
