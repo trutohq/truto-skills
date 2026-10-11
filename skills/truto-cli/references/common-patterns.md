@@ -117,7 +117,6 @@ cat batch-requests.json | truto batch --stdin
 
 ### Important
 
-- `--stdin` and `--body` are mutually exclusive.
 - For `unified`, `proxy`, `custom`, and `batch`: `--body` takes precedence over `--stdin`. Stdin is parsed as a single JSON body (not NDJSON).
 - For resource `create` commands: `--stdin` takes precedence over `--body`. Supports multi-record input (JSON array or NDJSON).
 
@@ -241,7 +240,7 @@ This replaces the pattern of `accounts get <id> -o json | jq '{...}'` for the "w
   - `custom`: `json`
 6. `**-o table` silently truncates** IDs, URLs, and JSON/HTML bodies. Never script against it. LLM-driven workflows should always use `-o json` or `-o ndjson`.
 7. `**-o json` + `head`/`less`/early-close consumers ⇒ truncated mid-token ⇒ `jq: parse error`.** Pipe to `-o ndjson` instead, or redirect `-o json` to a file before processing. See [Output Piping → The `-o json | head` trap](#the--o-json--head-trap-and-how-to-avoid-it) above.
-8. `**truto accounts list` server-side filters** (CLI ≥ 0.17.0): `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status`, `--features-super-query` (alias `--features.super_query`), `--created-at`, `--updated-at`. Reach for these before falling back to client-side `jq` shaping. `**--profile` does NOT scope by integration** — it only swaps the token + URL. On older CLI builds only `--tenant-id` / `--is-sandbox` are exposed. See [admin-commands.md → Integrated Accounts](admin-commands.md#integrated-accounts-truto-accounts).
+8. `**truto accounts list` server-side filters**: `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status`, `--features-super-query` (alias `--features.super_query`), `--created-at`, `--updated-at`. Reach for these before falling back to client-side `jq` shaping. `**--profile` does NOT scope by integration** — it only swaps the token + URL. See [admin-commands.md → Integrated Accounts](admin-commands.md#integrated-accounts-truto-accounts).
 9. **Unified `update` without an ID:** Sends PATCH to the collection endpoint. May or may not be supported depending on the integration.
 10. **Proxy custom methods:** `-m custom-action` sends POST to `/proxy/<resource>/custom-action`. The method name becomes a path segment.
 11. **JSON export of large datasets:** `json` and `yaml` formats buffer all records in memory. Use `ndjson` or `csv` for large exports — they stream page-by-page.

@@ -39,8 +39,6 @@ A run is one of six states. Two of them (`running`, `rate_limited`) are *in prog
 | `failed` | Errored out | The failure reason **isn't on the run row** — read the `rapid_bridge` logs to classify (see [Evidence](#evidence--what-to-read)) |
 | `stopped` | Manually stopped | Check who/why before re-running |
 
-> Note: the [Sync Jobs](../../truto/references/sync-jobs.md) reference predates `rate_limited` in its run-state table — it's a real, current state and it means "waiting," not "broken."
-
 ## Evidence — what to read
 
 1. **The run.** `GET /sync-job-run/{id}`, or discover the bad run with `GET /sync-job-run?sync_job_id=…&status=failed` (confirm exact filters with `describe_api_operation`; project with `jsonata`). Read: `status`, `resource_stats` (free-form per-resource progress — typically `fetched`/`persisted` counts per resource/method; this is your "where did it stop"), `error_handling` (`fail_fast` | `ignore` | `batch`), `ignore_previous_run`, `mutex_key`, `state_key`.
@@ -75,7 +73,7 @@ If `num_records > 0` but nothing arrived, the fault is the destination leg, not 
 
 The stuck threshold is **5 minutes** of no progress for an in-progress run (`STUCK_SYNC_JOB_RUN_MINUTES`). Below that, a slow run is just a slow run.
 
-Recovering a genuinely-stuck run is a **platform/admin** matter, not an assistant action. A platform admin path (`/admin/sync-job/restart-stuck`) exists that clears stuck/zombie rows — it flips them to `failed` and restarts `created` ones, but it does **not** stop a live Durable Object — and it sits on the `/admin` surface, outside your meta-tools (it isn't in the API catalog you can call). So **surface the stuck run for escalation; don't reflexively restart**, and never reach for `ignore_previous_run` as a workaround (see anti-patterns).
+Recovering a genuinely-stuck run is a **platform/admin** matter, not an assistant action. A platform admin path (`/admin/sync-job/restart-stuck`) exists that recovers stuck rows — it restarts stuck `created` runs and resumes or restarts stuck `running` / `rate_limited` runs — and it sits on the `/admin` surface, outside your meta-tools (it isn't in the API catalog you can call). So **surface the stuck run for escalation; don't reflexively restart**, and never reach for `ignore_previous_run` as a workaround (see anti-patterns).
 
 ## Skip / Stop
 
@@ -85,13 +83,12 @@ Recovering a genuinely-stuck run is a **platform/admin** matter, not an assistan
 
 ## Anti-patterns
 
-- Reflexively restarting, or setting `ignore_previous_run: true` — that **forces a full, expensive re-sync** by discarding the incremental cursor. Only do it with a clear reason and the user's approval ([P1](./safe-admin-changes.md)).
+- Reflexively restarting, or forcing a full re-sync (`ignore_previous_run: true` on V1–V3; deleting the run state on V4) — that **forces a full, expensive re-sync** by discarding the incremental cursor. Only do it with a clear reason and the user's approval ([P1](./safe-admin-changes.md)).
 - "Fixing" a `rate_limited` run that will resume on its own.
 - Calling an empty destination a sync failure before checking webhook delivery ([P5](./debug-webhook-delivery.md)).
 - Proposing writes against a **running** job — let it finish or stop it first.
 
-## Supersedes / Reuses
+## Reuses
 
-- **Supersedes** the former short sync-debugging cheat sheet with real failure-mode reasoning.
 - **Reuses** [Sync Jobs](../../truto/references/sync-jobs.md), [Files & Logs](../../truto/references/files-and-logs.md), and the [Error & evidence model](./error-and-evidence-model.md). For V4 runtime details, read `truto://skill/truto/references/sync-jobs`.
 - To **create or generate** a sync job (rather than debug one), see [P7 · Create / generate a sync job](./create-sync-jobs.md).

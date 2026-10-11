@@ -26,7 +26,7 @@ const response = await fetch("https://api.truto.one/integrated-account/token", {
   },
   body: JSON.stringify({ integrated_account_id: accountId }),
 });
-const { token } = await response.json();
+const { integrated_account_token } = await response.json();
 ```
 
 ### Options
@@ -95,10 +95,10 @@ Each integration accepts its vendor's native picker configuration, deep-merged w
 
 | Scenario | Behavior |
 |----------|----------|
-| User cancels file selection | Promise rejects with `Error: User cancelled file selection` |
-| Dropbox missing `appKey` | Throws `Error: Dropbox app key is required` |
+| User cancels file selection | Google Drive, Box, Dropbox: promise rejects with `Error: User cancelled file selection`. SharePoint / OneDrive: the picker window closes and the promise never settles — handle that case yourself (e.g. a timeout) |
+| Dropbox missing `appKey` | Promise rejects with `Error: Dropbox app key is required` |
 | Unknown integration name | Returns `undefined` (no error thrown) |
-| API error saving selections | Promise rejects with the API error |
+| API error saving selections | Google Drive, Dropbox: promise rejects with the API error. SharePoint, OneDrive, Box: the error is not passed to your promise, which does not settle |
 
 ### How Selections Are Stored
 

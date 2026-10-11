@@ -104,11 +104,11 @@ After this, install the integration into one of your environments and connect a 
 
 | Field | Type | Required | Purpose |
 |---|---|---|---|
-| `label` | string | Recommended | Human-readable name shown in the Truto Dashboard and Link UI. Without this, the integration appears under its slug. |
+| `label` | string | Yes | Human-readable name shown in the Truto Dashboard and Link UI. Without this, the integration appears under its slug. |
 | `base_url` | string | Recommended | Default URL prepended to every resource method's `path`. Per-method `base_url` overrides this. |
 | `logo` | string \| null | No | URL to a square (256×256 recommended) catalog logo. |
 | `icon` | string \| null | No | URL to a smaller monochrome icon used in Link list views. |
-| `headers` | `{ [key]: string \| null }` | No | Default headers merged into every outbound request. Values may use `{{credentials.*}}` placeholders. Setting a value to `null` removes the header even if a per-method config sets it. |
+| `headers` | `{ [key]: string \| null }` | No | Default headers merged into every outbound request. Values may use `{{...}}` placeholders resolved against the account's `context` (e.g. `{{api_key}}`). Setting a value to `null` removes the header even if a per-method config sets it. |
 | `query` | `{ [key]: string }` \| null | No | Default query-string params merged into every outbound request. |
 | `query_array_format` | `comma \| brackets \| indices \| repeat` \| null | No | How array query values are serialized (e.g. `?ids=1,2` vs `?ids[]=1&ids[]=2`). Per-method `query_array_format` overrides this. |
 | `credentials` | `IntegrationCredential` \| `{ [format]: IntegrationCredential }` | Recommended | How customers authenticate. A single object when there's one supported format; a map keyed by format name when there are several. See [Credentials](#credentials). |
@@ -121,13 +121,13 @@ After this, install the integration into one of your environments and connect a 
 | `error_expression` | string \| null | No | Integration-wide JSONata expression that detects errors. Per-method `error_expression` overrides this. |
 | `tool_tags` | `{ [resource \| resource.method]: string[] }` | No | Optional tags for MCP filtering. Resource keys (e.g. `"contacts"`) apply to all methods; method keys (e.g. `"contacts.delete"`) are **unioned** onto that method only. See [MCP Tokens](./mcp-tokens.md#tool-tags-resource--method). |
 
-`label`, `credentials`, `authorization`, and `resources` are technically optional in the spec but the integration is unusable in the dashboard / Link UI without them, so `truto integrations validate` flags missing `label` and `credentials` as issues.
+`label` is required by the schema. `credentials`, `authorization`, and `resources` are optional in the schema, but the integration is unusable in the dashboard / Link UI without them, so `truto integrations validate` flags missing `credentials` as an issue.
 
 ---
 
 ## Credentials
 
-The `credentials` field describes what the customer enters or grants in the Link UI when connecting. Five credential formats are typed in `openapi.yml` as `IntegrationCredential`, discriminated by the `format` key:
+The `credentials` field describes what the customer enters or grants in the Link UI when connecting. Seven credential formats are typed as `IntegrationCredential`, discriminated by the `format` key. The five common ones are below; `jwt_bearer` and `aws_sts` also exist:
 
 | `format` | Component | What the customer sees | When to use |
 |---|---|---|---|
@@ -164,7 +164,7 @@ For the per-format `config` shape (which fields go where), see the typed compone
 }
 ```
 
-The customer sees a Link form with one password field; the value lands in `context.api_key` on the integrated account, addressable as `{{credentials.api_key}}` from `authorization` and `headers` templates.
+The customer sees a Link form with one password field; the value lands in `context.api_key` on the integrated account, addressable as `{{api_key}}` from `authorization` and `headers` templates.
 
 For **HTTP Basic Auth**, use `format: "api_key"` with two fields (`username` + `password`):
 
@@ -246,7 +246,7 @@ Every credential's `config.fields` array holds `IntegrationField` objects, also 
 
 | Field | Type | Purpose |
 |---|---|---|
-| `name` | string | Stable identifier referenced from JSONata placeholders (`{{credentials.<name>}}`). |
+| `name` | string | Key the value is stored under on the account's `context` (e.g. `api_key` → `context.api_key`, referenced as `{{api_key}}` in templates). |
 | `label` | string | Display label in the Link UI. |
 | `type` | `text \| password \| single_select` | How the field is rendered. |
 | `required` | boolean | Whether the user must supply a value. |
@@ -264,11 +264,11 @@ Every credential's `config.fields` array holds `IntegrationField` objects, also 
 
 | `format` | What it does | Typical `config` |
 |---|---|---|
-| `bearer` | Adds `Authorization: Bearer <token>`. Token comes from `context.access_token` (set by the OAuth dance). | (usually none) |
-| `header` | Sets one or more arbitrary headers, optionally with `{{credentials.*}}` placeholders or a JSONata expression. | `{ "header_name": "...", "header_value": "..." }` or `{ "expression": "<jsonata>" }` |
-| `basic` | HTTP Basic with `username` + `password` (typically `{{credentials.username}}` / `{{credentials.password}}`). | `{ "username": "...", "password": "..." }` |
+| `bearer` | Adds `Authorization: Bearer <value>`. `value` is a placeholder template resolved against `context`. Required. | `{ "value": "{{oauth.token.access_token}}" }` |
+| `header` | Sets one or more headers from placeholder templates, or builds the request with a JSONata expression. | `{ "headers": { "X-Api-Key": "{{api_key}}" } }` or `{ "expression": "<jsonata>" }` |
+| `basic` | HTTP Basic with `username` + `password` (typically `{{username}}` / `{{password}}`). | `{ "username": "...", "password": "..." }` |
 
-The default for OAuth-family credential formats (`oauth2`, `oauth2_client_credentials`, `oauth`) is `bearer`. The default for `api_key` is a `header` config with `Authorization: Bearer {{credentials.api_key}}` — change it if your vendor uses a different header (e.g. `X-Api-Key`).
+The default for OAuth-family credential formats (`oauth2`, `oauth2_client_credentials`, `oauth`) is `bearer` with `{{oauth.token.access_token}}`. The default for `api_key` is `bearer` with `{{api_key}}` — switch to `header` if your vendor uses a different header (e.g. `X-Api-Key`).
 
 Example — vendor that wants the API key in a custom header:
 
@@ -277,8 +277,7 @@ Example — vendor that wants the API key in a custom header:
   "authorization": {
     "format": "header",
     "config": {
-      "header_name":  "X-Api-Key",
-      "header_value": "{{credentials.api_key}}"
+      "headers": { "X-Api-Key": "{{api_key}}" }
     }
   }
 }
@@ -291,13 +290,13 @@ Example — JSONata expression that builds multiple headers from the account's c
   "authorization": {
     "format": "header",
     "config": {
-      "expression": "{ 'Authorization': 'Bearer ' & context.access_token, 'X-Org-Id': context.org_id }"
+      "expression": "{ 'url': url, 'requestOptions': $merge([requestOptions, { 'headers': $merge([requestOptions.headers, { 'Authorization': 'Bearer ' & context.oauth.token.access_token, 'X-Org-Id': context.org_id }]) }]) }"
     }
   }
 }
 ```
 
-For the JSONata scope (`url`, `requestOptions`, `context`), see [truto-jsonata: Usage in Truto §4 — Environment integration overrides](../../truto-jsonata/references/usage-in-truto.md#4-environment-integration-overrides--auth-pagination-rate-limit-webhooks) — the same scope applies whether the expression is on the base integration or on a per-environment override.
+The expression must return `{ url, requestOptions }` — the request to send. For the JSONata scope (`url`, `requestOptions`, `context`), see [truto-jsonata: Usage in Truto §4 — Environment integration overrides](../../truto-jsonata/references/usage-in-truto.md#4-environment-integration-overrides--auth-pagination-rate-limit-webhooks) — the same scope applies whether the expression is on the base integration or on a per-environment override.
 
 ---
 
@@ -386,7 +385,7 @@ Method `path`, `body`, `query`, and `headers` use the **`{{placeholder}}`** temp
 | `{{id}}` | Path arg from `GET /proxy/{resource}/{id}` style routes. |
 | `{{body.<field>}}` | Caller's request body. |
 | `{{query.<field>}}` | Caller's query string. |
-| `{{credentials.<field>}}` | Stored credentials (collected in the Link UI). |
+| `{{<field>}}` | A credential field stored on the account's `context` (e.g. `{{api_key}}`). |
 | `{{context.<field>}}` | Anything else on the integrated account's `context` object. |
 
 Placeholders are **not** JSONata — they're a separate templating language. Use `expression` blocks (in `authorization.config.expression`, dynamic pagination, rate-limit, webhook handling, action steps) when you need to compute a value via JSONata. See the [Sync Jobs reference §"Templating placeholders vs JSONata"](./sync-jobs.md#templating-placeholders-vs-jsonata) for the full distinction.
@@ -430,7 +429,7 @@ For the **`dynamic`** strategy (full JSONata-driven loop with `get_initial_pagin
   "rate_limit": {
     "is_rate_limited":               "status = 429",
     "retry_after_header_expression": "$number(headers.`retry-after`)",
-    "rate_limit_header_expression":  "$number(headers.`x-ratelimit-reset`)"
+    "rate_limit_header_expression":  "{ \"limit\": headers.`x-ratelimit-limit`, \"remaining\": headers.`x-ratelimit-remaining`, \"reset\": headers.`x-ratelimit-reset` }"
   }
 }
 ```
@@ -439,9 +438,7 @@ For the **`dynamic`** strategy (full JSONata-driven loop with `get_initial_pagin
 |---|---|---|
 | `is_rate_limited` | boolean | When truthy, Truto pauses the request and reschedules. |
 | `retry_after_header_expression` | number | Seconds to wait before retrying. |
-| `rate_limit_header_expression` | number | Absolute reset epoch (seconds) — when the bucket refills. |
-
-Truto picks the larger of `retry_after` and the time until `rate_limit_header_expression`, so it's safe to provide both — the more conservative wait wins.
+| `rate_limit_header_expression` | object `{ limit, remaining, reset }` | Rate-limit state Truto passes back to the caller as `ratelimit-limit`, `ratelimit-remaining`, and `ratelimit-reset` response headers. It does not change the back-off. |
 
 Backtick-quote header names with hyphens in JSONata: `` headers.`retry-after` ``.
 
@@ -454,8 +451,8 @@ Backtick-quote header names with hyphens in JSONata: `` headers.`retry-after` ``
 | Field | Type | Purpose |
 |---|---|---|
 | `signature_verification` | `{ format, config }` | HMAC / JWT / basic-auth verification of the inbound request. Declarative, no JSONata. |
-| `handle_verification` | string (JSONata) | Runs first. For vendors that send a one-time verification challenge (Slack `url_verification`, HubSpot URL-verify), echo it back. Return `null` to fall through to normal processing. |
-| `payload_transform` | string (JSONata) | Runs after verification. Reshape the raw body into Truto's canonical event payload (an array of `{ event_type, resource_id, ... }` objects). |
+| `payload_transform` | string (JSONata) | Runs first. Reshapes the inbound payload (`body`, `raw_body`, `headers`, `query_params`); returns the same shape. |
+| `handle_verification` | string (JSONata) | Runs second. Returns `{ type: "verify" \| "payload" \| "meta", verification_response? }` — echo a one-time challenge (Slack `url_verification`, HubSpot URL-verify) with `verify`, or continue with `payload`. |
 
 ### Signature verification
 
@@ -465,10 +462,11 @@ Backtick-quote header names with hyphens in JSONata: `` headers.`retry-after` ``
     "signature_verification": {
       "format": "hmac",
       "config": {
-        "algorithm":    "sha256",
-        "parts":        ["$body"],
-        "secret":       "{{credentials.webhook_secret}}",
-        "compare_with": "$header.x-acme-signature"
+        "algorithm":            "SHA-256",
+        "verification_content": ["{{raw_body}}"],
+        "secret":               "{{context.webhook_secret}}",
+        "compare_with":         "{{headers.x-acme-signature}}",
+        "string_type":          "hex"
       }
     }
   }
@@ -479,38 +477,37 @@ Common `format` values: `hmac`, `basic`, `jwt`, `clerk`, plus a handful of vendo
 
 | Field | Used by |
 |---|---|
-| `algorithm`, `secret`, `parts`, `compare_with`, `string_type` | HMAC-style strategies. |
+| `algorithm`, `secret`, `compare_with`, `string_type` | HMAC-style strategies. Placeholders resolve against the inbound payload. |
 | `username`, `password` | HTTP-basic verification. |
-| `verification_content` | Multi-part signature strategies. |
+| `verification_content` | List of placeholder strings joined to form the signed content (e.g. `["{{raw_body}}"]`). |
+| `parts` | Payload keys (e.g. `"raw_body"`) — used only when `verification_content` is absent. |
 | `context_lookup_field_name`, `context_lookup_field_value` | Routing the webhook to the correct integrated account when the webhook URL itself doesn't carry an account token. |
 
 ### `handle_verification` — handshake echo
 
-Vendors like Slack send a one-time POST with a `challenge` string and expect the value echoed back. Use `handle_verification` to short-circuit the normal flow:
+Runs after `payload_transform`. Vendors like Slack send a one-time POST with a `challenge` string and expect the value echoed back:
 
 ```json
 {
   "webhook": {
-    "handle_verification": "$exists($.body.challenge) ? { 'statusCode': 200, 'body': $.body.challenge } : null"
+    "handle_verification": "$exists(body.challenge) ? { \"type\": \"verify\", \"verification_response\": { \"status_code\": 200, \"body\": body.challenge } } : { \"type\": \"payload\" }"
   }
 }
 ```
 
-Scope: the inbound request as the JSONata input root (`$.body`, `$.headers`, `$.query`). Return an object `{ statusCode, body }` to send a verification response and stop, or `null` to fall through.
+Scope: the (transformed) inbound payload as the JSONata root (`body`, `raw_body`, `headers`, `query_params`). Return `{ "type": "verify", "verification_response": { status_code, body, headers } }` to answer and stop, or `{ "type": "payload" }` to continue to signature verification. Any other result (including `null`) skips signature verification but the request is still processed — always return a `type`.
 
-### `payload_transform` — reshape into Truto events
+### `payload_transform` — reshape the inbound payload
 
-After verification, Truto fan-outs one outbound event per element of the array your `payload_transform` returns:
+Runs **first**, before `handle_verification` and signature verification. Input and output are the inbound payload (`body`, `raw_body`, `headers`, `query_params`, …); return the same shape. A common form adds or rewrites fields with `$merge`:
 
 ```json
 {
   "webhook": {
-    "payload_transform": "$.body.events.{ 'event_type': $.type, 'resource_id': $.object_id, 'resource_type': $.object_type, 'raw': $ }"
+    "payload_transform": "$merge([$, { \"body\": $merge([body, { \"event_type\": body.type }]) }])"
   }
 }
 ```
-
-Each output object shows up to your subscribers as a `record:*` event.
 
 For full per-field JSONata scope tables and worked examples (Slack URL-verify + event reshape, HubSpot signature verification, etc.), see [truto-jsonata: Usage in Truto §4](../../truto-jsonata/references/usage-in-truto.md#4-environment-integration-overrides--auth-pagination-rate-limit-webhooks). Authoring on the base integration uses the same shape that overrides use; the difference is just **where** it sits in the config tree.
 
@@ -616,11 +613,8 @@ truto integrations init acme-crm \
     }
   },
   "authorization": {
-    "format": "header",
-    "config": {
-      "header_name":  "Authorization",
-      "header_value": "Bearer {{credentials.api_key}}"
-    }
+    "format": "bearer",
+    "config": { "value": "{{api_key}}" }
   },
   "resources": {
     "contacts": {
@@ -663,7 +657,7 @@ Three changes:
 
 1. Acme's base path is `/v1` (already in `base_url`), but the resource paths shouldn't repeat `/v1`. Already correct.
 2. `deals` is read-only (no create/update/delete). Drop those methods.
-3. Acme's webhook signature is `X-Acme-Signature`, not `x-signature`. Acme also uses an `X-Acme-Webhook-Secret` field that the customer pastes in (separate from the API key) — add a second credential field for it. The payload is `{ "events": [...] }` not a single event, so reshape `payload_transform` accordingly.
+3. Acme's webhook signature is `X-Acme-Signature`, not `x-signature`. Acme also uses an `X-Acme-Webhook-Secret` field that the customer pastes in (separate from the API key) — add a second credential field for it. Replace the scaffold's webhook stub with the forms the runtime reads (`verification_content`, `{{headers.…}}`, `{{context.…}}`), and have `handle_verification` return `{ "type": "payload" }` so the signature check runs.
 
 The edited file:
 
@@ -687,8 +681,7 @@ The edited file:
   "authorization": {
     "format": "header",
     "config": {
-      "header_name":  "Authorization",
-      "header_value": "Bearer {{credentials.api_key}}"
+      "headers": { "Authorization": "Bearer {{api_key}}" }
     }
   },
   "pagination": {
@@ -723,13 +716,14 @@ The edited file:
     "signature_verification": {
       "format": "hmac",
       "config": {
-        "algorithm":    "sha256",
-        "parts":        ["$body"],
-        "secret":       "{{credentials.webhook_secret}}",
-        "compare_with": "$header.x-acme-signature"
+        "algorithm":            "SHA-256",
+        "verification_content": ["{{raw_body}}"],
+        "secret":               "{{context.webhook_secret}}",
+        "compare_with":         "{{headers.x-acme-signature}}",
+        "string_type":          "hex"
       }
     },
-    "payload_transform": "$.body.events.{ 'event_type': $.type, 'resource_id': $.object_id, 'resource_type': $.object_type, 'raw': $ }"
+    "handle_verification": "{ \"type\": \"payload\" }"
   }
 }
 ```
@@ -740,7 +734,7 @@ Notable choices:
 - **Added `rate_limit`** — Acme returns standard `Retry-After` on 429s. JSONata is required because `is_rate_limited` etc. are evaluated against the response.
 - **Dropped `deals.create/update/delete`** — Acme exposes deals as read-only via the API.
 - **Added `description` strings** — these surface in `truto integrations tools <id>` and the Truto MCP tool listings, which is what an LLM agent reads to decide which method to call.
-- **`payload_transform` returns an array** — Acme batches multiple events per webhook delivery, so we map over `$.body.events` and emit one Truto event per element.
+- **Replaced the webhook stub** — `verification_content: ["{{raw_body}}"]`, `{{headers.x-acme-signature}}`, and `{{context.webhook_secret}}` resolve against the inbound payload; `handle_verification` returns `{ "type": "payload" }` so signature verification is not skipped.
 
 ### Step 3 — Validate
 
@@ -770,10 +764,10 @@ The response includes the integration's `id`. Save it as `$INTEGRATION_ID`.
 truto environment-integrations create -b "{\"integration_id\":\"$INTEGRATION_ID\",\"is_enabled\":true,\"show_in_catalog\":true}"
 ```
 
-The new integration now appears in your environment's Link UI. Generate a link token, open Link with `truto link-tokens create -b '{"tenant_id":"acme-test","is_sandbox":true}'` (the `tenant_id` auto-creates a [tenant](./core-resources.md#tenants) when the account connects, or pre-create one with `truto tenants create --id acme-test` if you want metadata attached first), paste your test API key, and the connection should land. Confirm with:
+The new integration now appears in your environment's Link UI. Generate a link token, open Link with `truto link-tokens create --tenant-id acme-test` (the `tenant_id` auto-creates a [tenant](./core-resources.md#tenants) when the account connects, or pre-create one with `truto tenants create --id acme-test` if you want metadata attached first), paste your test API key, and the connection should land. Confirm with:
 
 ```bash
-truto accounts list --is_sandbox true -o json | jq '.result[0].id'
+truto accounts list -o json | jq '.[0].id'
 truto proxy contacts -a "$ACCOUNT_ID" -v -o json
 ```
 
@@ -791,9 +785,9 @@ The scaffold generated by `truto integrations init` is **structurally valid** bu
 
 - `label`, optionally `base_url`
 - A `credentials` block matching the `--auth` choice (one of `api_key`, `oauth2`, `oauth2_client_credentials`, `basic`, `keka_oauth`, `oauth`), with placeholder OAuth endpoints (`https://example.com/...`) for OAuth flows that you must replace.
-- An `authorization` block keyed off the auth choice (`bearer` for OAuth-family, `header` with `Bearer {{credentials.api_key}}` for `api_key`, `basic` with `{{credentials.username}}/{{credentials.password}}` for `basic`).
+- An `authorization` block keyed off the auth choice (`bearer` with `{{oauth.token.access_token}}` for OAuth-family, `bearer` with `{{api_key}}` for `api_key`, `basic` with `{{username}}`/`{{password}}` for `basic`).
 - A `resources` block with all five CRUD methods per resource you list under `--resources`, each with cursor pagination and a placeholder `response_path`.
-- (Optional) A `webhook` block with HMAC signature verification and a stub `payload_transform`, when `--webhook` is set.
+- (Optional) A `webhook` block with HMAC signature verification and a stub `payload_transform`, when `--webhook` is set. The stub's `parts: ["$body"]`, `$header.…`, and `$event.…` forms are not read by the runtime — replace them with the shapes in [Webhooks (inbound)](#webhooks-inbound).
 
 Things `init` does **not** seed — fill these in by hand when you need them:
 
@@ -828,11 +822,11 @@ Once your integration is live in your environment, the related references cover 
 ## Common gotchas
 
 - **`update` requires `version`.** The `integration` resource uses optimistic locking. Fetch the row with `truto integrations get <id> -o json | jq -r .version` and include the value in your update body. The CLI's `truto integrations update` enforces this.
-- **`update` is a deep merge over `config`.** Sending `{ "config": { "label": "New" } }` won't drop `credentials` or `resources`. To remove a key from `config`, set it explicitly to `null`.
+- **`update` replaces `config`.** The `config` you send is validated whole and stored as-is (only stored OAuth/JWT/AWS client secrets are carried over). Sending `{ "config": { "label": "New" } }` drops `credentials`, `resources`, and everything else — fetch the current config, edit it, and send the complete object.
 - **Validate locally before pushing.** `truto integrations validate --file acme.json` runs the same `IntegrationConfig` schema check the backend runs at create/update time. Cheaper than waiting for the round-trip and produces JSON-path errors that point to the broken field.
 - **Sandbox accounts can read but cannot write.** Calls to `/proxy/{resource}` `POST/PATCH/DELETE` against a sandbox-flagged account return `405` regardless of the integration config. Test reads with sandbox accounts; test writes with non-sandbox.
 - **Backtick-quote keys with hyphens or special characters in JSONata.** `` headers.`x-rate-limit` ``, `` $.body.`event-type` ``. JSONata's dot syntax doesn't accept hyphens.
-- **`{{credentials.*}}` is placeholder syntax, not JSONata.** Inside `header_name`/`header_value`, `body`, `headers`, and webhook `signature_verification.config`, Truto resolves `{{credentials.api_key}}`-style placeholders against the integrated account's credentials before sending. JSONata `$` functions don't run in those fields. See [Sync Jobs § Templating placeholders vs JSONata](./sync-jobs.md#templating-placeholders-vs-jsonata) for the full distinction.
+- **`{{...}}` is placeholder syntax, not JSONata.** Inside `authorization.config`, `body`, and `headers`, Truto resolves placeholders such as `{{api_key}}` against the integrated account's `context` before sending; in webhook `signature_verification.config` they resolve against the inbound payload (`{{raw_body}}`, `{{headers.x-signature}}`, `{{context.webhook_secret}}`). JSONata `$` functions don't run in those fields. See [Sync Jobs § Templating placeholders vs JSONata](./sync-jobs.md#templating-placeholders-vs-jsonata) for the full distinction.
 - **Multi-format credentials use a map, not an array.** When an integration supports both `api_key` and `oauth2`, write `credentials: { "api_key": { ... }, "oauth2": { ... } }`. The Link UI shows the customer a tab per format. Single-format integrations use the credential object directly.
 - **OAuth `client.id`/`client.secret` are part of the *base* integration.** A "shared" or "dummy" client at the integration layer is fine for getting started; customers who want their own (BYOA) supply it via `environment-integration.override.credentials` — see [Customizing Integrations § Override authorization](./customizing-integrations.md#1-override-authorization).
 - **Updating a live integration affects every connected account.** Adding a new optional resource is safe. Renaming a resource, removing a method, or changing the `format` of a credential will break existing connections. Roll forward by adding new methods/resources and deprecating old ones; only delete after every account has migrated.

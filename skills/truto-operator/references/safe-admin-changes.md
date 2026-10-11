@@ -14,7 +14,7 @@
 
 ## The approval the user actually sees
 
-Reads run immediately. Writes and destructive ops pause for the user's approval — but **the approval card is minimal**: a single `METHOD /path` line (UUIDs shortened) plus a *Write* or *Destructive* badge. **No request body. No diff. No summary.** Whatever you don't say in chat, the user approves blind.
+Reads run immediately. Writes and destructive ops pause for the user's approval — but **the approval card is minimal**: a single `METHOD /path` line (UUIDs shortened) plus a *Write*, *Destructive*, or *Sensitive read* badge. **No request body. No diff. No summary.** Whatever you don't say in chat, the user approves blind.
 
 So, every time, **before** you trigger the write, state in your own words:
 
@@ -31,10 +31,11 @@ Truto classifies every call you make. You can't override this; know it so you se
 
 | Class | What it covers | Behavior |
 | --- | --- | --- |
-| **Read** | `GET` / `HEAD`; and the operational posts `POST …/test`, `POST …/validate`, `POST …/refresh-credentials` | Runs immediately, no approval |
+| **Read** | `GET` / `HEAD`; and the operational posts `POST …/test`, `POST …/validate`, `POST …/refresh-credentials`, `POST …/refresh-mapping-cache` | Runs immediately, no approval |
+| **Sensitive read** | A `GET` / `HEAD` whose path has a token, secret, OAuth, or environment-variable segment (`api-token`, `scim-token`, `token(s)`, `secret(s)`, `oauth`, `oauth-token`, `environment-variable(s)`, `env-var(s)`, or ending `-token(s)` / `-secret(s)`) | Requires approval; never remembered |
 | **Safe-write** | Any other `POST` / `PUT` / `PATCH` | Requires approval |
 | **Destructive** | Any `DELETE`; `POST …/bulk-delete`; `POST …/run-post-install-actions`; any path ending `/credentials` or containing `/credentials/` (**even a `GET`** — touching credentials is destructive regardless of method); any body containing `credentials`, `config.credentials`, or `override.secret_environment_variables` | Requires approval; **`DELETE` and `…/bulk-delete` are never remembered** — they re-prompt every single time |
-| **Forbidden** | Anything under `/assistant`, `/auth`, `/link-token`, `/magic-link` | **Blocked outright** — no approval can run it |
+| **Forbidden** | Anything under `/assistant`, `/auth`, `/link-token`, `/session-token`, `/magic-link`; any method other than `GET`/`HEAD`/`POST`/`PUT`/`PATCH`/`DELETE` | **Blocked outright** — no approval can run it |
 
 Two consequences worth internalizing:
 
@@ -68,7 +69,7 @@ Read the current state and know the merge rule before you `PATCH`, or you'll sil
 
 - **Mapping overrides are field-replacing.** Setting `response_mapping` (a JSONata string) in an override **replaces the base wholesale** — you must restate the whole expression, not just the new field. (Objects deep-merge; arrays are replaced.) See [P3](./debug-unified-api.md#the-wholesale-replace-gotcha).
 - **`environment-integration.override` is a full replace.** API `PATCH` and CLI `update` replace the stored `override` wholesale — omitted slots and resource keys disappear. Prefer `override-*` helpers for auth/pagination/rate_limit/webhook; for `resources`, `show-override` → merge locally → send the complete override. ([Customizing Integrations §5](../../truto/references/customizing-integrations.md#5-override-resources-full-override-required))
-- **Account `context` merges shallowly.** Top-level keys merge, but a nested object/array you send **replaces** the stored one. Pass the complete nested value, not a partial. ([Integrated Account Context](../../truto/references/integrated-account-context.md))
+- **Account `context` is replaced on `PATCH`.** `PATCH /integrated-account/{id}` stores the `context` you send; only the protected credential paths are carried over from the stored value. Any other key you omit is dropped. Read the current `context`, change it locally, and send the complete object. ([Integrated Account Context](../../truto/references/integrated-account-context.md))
 - **Secrets are redacted on read.** Sensitive fields come back stripped (`x-assistant-deny-fields`). A read-modify-write that includes a redacted field will write the redaction back — exclude secrets from your body and never echo them into chat.
 
 ## Skip / Stop

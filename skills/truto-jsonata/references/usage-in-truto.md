@@ -200,12 +200,12 @@ For `create` / `update` / custom write methods. Works the same way as `query_map
 ```json
 {
   "config": {
-    "request_body_mapping": "{ \"data\": { \"type\": \"contact\", \"attributes\": $removeEmpty({ \"name\": body.name, \"email\": body.email, \"tags\": body.tags }) } }"
+    "request_body_mapping": "{ \"data\": { \"type\": \"contact\", \"attributes\": { \"name\": body.name, \"email\": body.email, \"tags\": body.tags } } }"
   }
 }
 ```
 
-Functions used: [`$removeEmpty`](./core-functions.md#removeemptyobject).
+Keys whose value is `undefined` are left out of the object, so missing `body` fields are not sent.
 
 ### `path_mapping` — compute the integration's URL path
 
@@ -545,7 +545,7 @@ Returning `null` from `get_pagination_values_expression` ends the loop. Returnin
     "rate_limit": {
       "is_rate_limited": "status = 429 or headers.`x-rate-limit-remaining` = '0'",
       "retry_after_header_expression": "$number(headers.`retry-after`)",
-      "rate_limit_header_expression": "$number(headers.`x-rate-limit-reset`)"
+      "rate_limit_header_expression": "{ \"limit\": $number(headers.`x-rate-limit-limit`), \"remaining\": $number(headers.`x-rate-limit-remaining`), \"reset\": $number(headers.`x-rate-limit-reset`) }"
     }
   }
 }
@@ -553,23 +553,23 @@ Returning `null` from `get_pagination_values_expression` ends the loop. Returnin
 
 - `is_rate_limited` returns truthy when the response should trigger a back-off.
 - `retry_after_header_expression` returns the number of seconds to wait.
-- `rate_limit_header_expression` returns the absolute reset epoch (seconds), used when a server tells you when the bucket refills rather than how long to wait.
+- `rate_limit_header_expression` returns an object `{ limit, remaining, reset }`; Truto copies it into the `ratelimit-limit`, `ratelimit-remaining`, and `ratelimit-reset` response headers.
 
 ### `webhook.handle_verification` and `webhook.payload_transform`
 
 For inbound webhooks (third-party services posting to Truto's webhook URL for the integration).
 
-- `handle_verification` — runs first; returns the verification response (e.g. echoing back a challenge for Slack/HubSpot URL verification).
-- `payload_transform` — runs after verification; returns the normalized payload that becomes the `record:*` events emitted to your outbound webhooks.
+- `payload_transform` — runs first. Its result replaces the inbound payload, so return the same shape (`body`, `raw_body`, `headers`, `query_params`, `context`).
+- `handle_verification` — runs next, on the (transformed) payload. Return an object whose `type` is `verify` (answer a handshake with `verification_response: { status_code, headers, body }`), `payload`, or `meta`. Any other result, `null` included, skips signature verification.
 
-**Top-level scope:** the inbound webhook payload as the JSONata input (root). Standard JSONata `$.headers`, `$.body`, `$.query` access patterns work.
+**Top-level scope:** the inbound webhook payload as the JSONata input (root): `body`, `raw_body`, `headers`, `query_params`, `context`.
 
 ```json
 {
   "override": {
     "webhook": {
-      "handle_verification": "$exists($.body.challenge) ? { \"statusCode\": 200, \"body\": $.body.challenge } : null",
-      "payload_transform": "$.body.events.{ \"event_type\": type, \"resource_id\": object_id, \"raw\": $ }"
+      "handle_verification": "$exists(body.challenge) ? { \"type\": \"verify\", \"verification_response\": { \"status_code\": 200, \"body\": { \"challenge\": body.challenge } } } : { \"type\": \"payload\" }",
+      "payload_transform": "$merge([$, { \"body\": body.event }])"
     }
   }
 }

@@ -11,7 +11,7 @@ The connection flow has four stages:
 3. **Truto** runs post-install and validation steps on the new account
 4. **Your backend** receives a webhook when the account is active and ready
 
-The link token carries a `tenant_id`. If a [tenant](./core-resources.md#tenants) with that ID doesn't already exist in the environment, Truto auto-materialises one when the integrated account is created after a successful connection (as long as the ID matches `[A-Za-z0-9._:@+\-]{1,255}`). Minting the link token alone does not create the tenant. You can pre-create the tenant with `POST /tenant` if you want `metadata` (tier, region, plan) attached before the customer connects.
+The link token carries a `tenant_id`. If a [tenant](./core-resources.md#tenants) with that ID doesn't already exist in the environment, Truto auto-materialises one when the integrated account is created after a successful connection (as long as the ID has no control characters, no leading or trailing whitespace, is not `.` or `..`, and is at most 255 characters). Minting the link token alone does not create the tenant. You can pre-create the tenant with `POST /tenant` if you want `metadata` (tier, region, plan) attached before the customer connects.
 
 For the frontend SDK reference (display modes, options, error handling, RapidForm, file pickers), see the **Truto Link SDK** skill.
 
@@ -87,7 +87,7 @@ All `integrated_account:*` events deliver a payload with this shape (credentials
     },
     "environment_integration": {
       "id": "ee11...",
-      "is_active": true
+      "is_enabled": true
     },
     "created_at": "2024-09-10 11:59:50",
     "updated_at": "2024-09-10 12:00:00"
@@ -109,7 +109,7 @@ Set up a webhook to listen for these events on your backend:
 app.post("/webhooks/truto", async (req, res) => {
   const event = req.body;
 
-  switch (event.event_type) {
+  switch (event.event) {
     case "integrated_account:active":
       // Account is ready — store the integrated_account_id,
       // start syncing data, enable features for this tenant

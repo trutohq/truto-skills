@@ -176,7 +176,8 @@ POST is idempotent — if the integration is already installed, the existing rec
   "integration_id": "a1b2...",
   "environment_id": "9c2e...",
   "override": { /* optional config overrides */ },
-  "is_active": true,
+  "is_enabled": true,
+  "show_in_catalog": true,
   "created_at": "2024-02-01 09:00:00",
   "updated_at": "2024-02-01 09:00:00"
 }
@@ -245,8 +246,8 @@ curl -X POST https://api.truto.one/integrated-account \
 | `tenant_id`                  | string | Yes      | References a [Tenant](#tenants) row; auto-created when the integrated account is created, or pre-create via `POST /tenant` |
 | `environment_integration_id` | uuid   | Yes      | Environment integration to connect               |
 | `context`                    | object | Yes      | Integration-specific configuration               |
-| `authentication_method`      | string | Yes      | Auth method (e.g., `oauth2`, `api_key`, `basic`) |
-| `region`                     | string | No       | Data region (`wnam` or `apac`, default `wnam`)   |
+| `authentication_method`      | string | No       | Auth method (e.g., `oauth2`, `api_key`, `oauth2_client_credentials`) |
+| `region`                     | string | No       | Data region (`wnam`, `enam`, `apac`, or `eu`; default `wnam`) |
 
 
 ### Account Fields
@@ -305,9 +306,9 @@ MCP tokens are scoped to a single integrated account and provide MCP protocol ac
 
 - Credentials are stripped from list/get responses for security.
 - The `region` field cannot be changed after creation.
-- OAuth context fields are merged (not replaced) on PATCH.
+- On PATCH, a stored `context.oauth` is kept; an incoming `context.oauth` is ignored.
 - Sandbox accounts cannot make write operations via unified API.
-- `tenant_id` references a [Tenant](#tenants) row (soft link — no FK). If the value doesn't match an existing tenant and matches the allowed pattern (`[A-Za-z0-9._:@+\-]{1,255}`), Truto auto-creates the tenant when the integrated account is created. Values outside that pattern still work as strings on the account but skip tenant materialization.
+- `tenant_id` references a [Tenant](#tenants) row (soft link — no FK). If the value doesn't match an existing tenant and is a valid tenant ID (1–255 characters, no control characters, no leading or trailing whitespace, not `.` or `..`), Truto auto-creates the tenant when the integrated account is created. Values that fail those rules still work as strings on the account but skip tenant materialization.
 
 ---
 
@@ -335,7 +336,7 @@ A tenant is an environment-scoped external identity (your end-user, workspace, o
 
 | Field            | Type     | Description                                                                    |
 | ---------------- | -------- | ------------------------------------------------------------------------------ |
-| `id`             | string   | Caller-chosen. Pattern: `[A-Za-z0-9._:@+\-]{1,255}`. Immutable after creation. |
+| `id`             | string   | Caller-chosen. 1–255 characters; no control characters, no leading or trailing whitespace, not `.` or `..`. Immutable after creation. |
 | `environment_id` | uuid     | Parent environment                                                             |
 | `name`           | string   | Display name. Defaults to `id` if omitted on create.                           |
 | `metadata`       | object   | Free-form JSON; stored and returned verbatim.                                  |

@@ -393,7 +393,7 @@ Use this to enforce conditional requirements that `args_schema` can't express (e
 
 Both fields are placeholder-templated strings (typically `"{{args.integrated_account_id}}"`).
 
-- **`mutex_key`** — Two runs of the same sync job that resolve to the same `mutex_key` cannot run concurrently. The second run will wait. Use this to prevent two cron-triggered runs for the same tenant from racing each other when one takes longer than the cron interval.
+- **`mutex_key`** — Two runs of the same sync job that resolve to the same `mutex_key` cannot run concurrently. Creating a second run while one with the same `mutex_key` is `created`, `running`, or `rate_limited` fails with `400` (`sync_job_run_not_completed`); it is not queued. Use this to prevent two cron-triggered runs for the same tenant from racing each other when one takes longer than the cron interval.
 - **`state_key`** — Namespaces the durable state used by `get_state` / `update_state` / `delete_state`. Setting it per-account isolates incremental cursors per tenant, which is almost always what you want.
 
 If you don't set `state_key` but use state nodes, all runs share the same namespace — usually a bug.
@@ -602,9 +602,9 @@ curl -X POST https://api.truto.one/sync-job-run \
 | `args` | object | No | Runtime arguments — must satisfy `args_schema` and `args_validation` |
 | `resources` | array | No | Override the sync job's `resources` for this one run (rarely used) |
 | `super_query` | `"apac"` \| `"wnam"` | No | SuperQuery region for `superquery` destinations |
-| `error_handling` | string | No | `fail_fast` (default), `ignore`, or `batch` |
-| `ignore_previous_run` | boolean | No | Skip incremental sync logic — equivalent to wiping `state_key` for this run |
-| `force` | boolean | No | Bypass the mutex |
+| `error_handling` | string | No | V1 only: `fail_fast` (default), `ignore`, or `batch`. V4 ignores it |
+| `ignore_previous_run` | boolean | No | V1–V3 only: skip incremental sync logic. V4 ignores it — delete the state (`/sync-job-run-state`) to force a full re-sync |
+| `force` | boolean | No | V1–V3 only: bypass the duplicate-run check. V4 ignores it |
 | `events_to_send` | string[] | No | Restrict which webhook events fire |
 | `datastore_id` | uuid | No | Override a datastore destination |
 | `mutex_key` / `state_key` | string | No | Override the sync-job-level keys |
@@ -615,6 +615,7 @@ curl -X POST https://api.truto.one/sync-job-run \
 |--------|-------------|
 | `created` | Run has been created, pending execution |
 | `running` | Currently executing |
+| `rate_limited` | Backing off an upstream rate limit; resumes on its own |
 | `completed` | Finished successfully |
 | `failed` | Failed with errors |
 | `stopped` | Manually stopped |
@@ -623,7 +624,11 @@ curl -X POST https://api.truto.one/sync-job-run \
 
 Sync job runs emit webhook events:
 - `sync_job_run:created` — When a run is created
+- `sync_job_run:started` — When a run starts executing
 - `sync_job_run:updated` — When a run status changes
+- `sync_job_run:rate_limited` — When a run backs off a rate limit
+- `sync_job_run:completed` / `sync_job_run:failed` — When a run finishes
+- `sync_job_run:record` / `sync_job_run:record_error` — Per-record delivery and per-record errors
 - `sync_job_run:deleted` — When a run is deleted
 
 ---
@@ -733,5 +738,5 @@ curl -X POST "https://api.truto.one/sync-job-run-state?state_key=<integrated_acc
 
 Common admin-time uses:
 - Seeding a starting cursor before the first run.
-- Forcing a full re-sync by `DELETE`-ing the cursor (or by passing `ignore_previous_run: true` on the run).
+- Forcing a full re-sync by `DELETE`-ing the cursor.
 - Inspecting where a cron-driven incremental sync currently sits.

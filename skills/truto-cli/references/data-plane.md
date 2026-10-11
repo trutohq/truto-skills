@@ -118,7 +118,7 @@ truto unified crm contacts -a <id> -q "next_cursor=abc123"
 
 ### Evaluate JSONata Locally (`truto jsonata eval`)
 
-Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata` (same runtime as production).
+Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata`, but the CLI pins its own version, which can lag the platform's — if a result differs from the platform, trust the platform.
 
 ```bash
 truto jsonata eval --expression <jsonata> [options]
@@ -263,7 +263,7 @@ From `[truto capabilities <account-id> -o json](#step-0-discover-capabilities-fi
 
 ### 404 → "Did you mean…?" auto-hint
 
-When a proxy call returns 404, the CLI automatically re-runs capabilities for the account and appends a hint to the error before exiting. There are five outcomes — read the hint and act on it instead of guessing:
+When a proxy call returns 404, the CLI automatically re-runs capabilities for the account and appends a hint to the error before exiting. There are five outcomes — read the hint and act on it instead of guessing. The hint prints only with `-o table` or `-o csv`; with `-o json`, `ndjson`, or `yaml` stderr gets only the `{"error": …}` envelope, so re-run without `-o` to see it.
 
 
 | Hint                                                                                                            | Meaning                                                                    |

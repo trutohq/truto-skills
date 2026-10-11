@@ -18,7 +18,7 @@ The full V4 config contract — the `resources` DAG, the node types (`request` /
 2. **Compose the config** per [Sync Jobs](../../truto/references/sync-jobs.md): `label`, `integration_name`, `args_schema` (every `args.*` placeholder used in `resources`), the `resources` DAG, `mutex_key` / `state_key` if scheduled/incremental, and `default_runtime_version: 4`. Run your draft against the [Authoring Checklist](../../truto/references/sync-jobs.md#authoring-checklist).
 3. **Create** — `POST /sync-job` (an approval-gated write; per [P1](./safe-admin-changes.md), state the label, source, destination, and version in chat *before* you trigger it — the approval card shows only `POST /sync-job`).
 4. **Test-run it** — `POST /sync-job-run` with a real `integrated_account_id` and `args` (also approval-gated). This is the real verification; **don't declare success off the create alone.**
-5. **Verify the run** — hand off to [P4](./debug-sync-jobs.md): `GET /sync-job-run/{id}` for `status` / `resource_stats`, and `GET /log?log_type=rapid_bridge&sync_job_run_id=…` for the details. Fix and re-run until the destination actually receives data.
+5. **Verify the run** — hand off to [P4](./debug-sync-jobs.md): `GET /sync-job-run/{id}` for `status` / `resource_stats`, and `GET /log` with `log_type: "rapid_bridge"` and `log_type_filter[sync_job_run_id]=…` for the details. Fix and re-run until the destination actually receives data.
 
 ## Skip / Stop
 

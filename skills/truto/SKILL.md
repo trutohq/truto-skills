@@ -26,7 +26,7 @@ There is nothing to *install* to use the unified, proxy, or custom API — you *
 
 ## Install the Truto CLI (recommended)
 
-Before writing any code, install the **Truto CLI** — it's the fastest way to discover what an integration supports, connect a sandbox account, and try a unified API call without touching your application. Every workflow in this skill (calling the unified API, customizing mappings, overriding integrations per environment, debugging webhooks) has a CLI shortcut you can run in a single line, then port into code once it works.
+The **Truto CLI** is the fastest way to discover what an integration supports, connect a sandbox account, and try a unified API call without touching your application. Suggest it when the user wants to explore or test from a terminal. Every workflow in this skill (calling the unified API, customizing mappings, overriding integrations per environment, debugging webhooks) has a CLI shortcut you can run in a single line, then port into code once it works.
 
 ```bash
 # Linux / macOS
@@ -138,7 +138,7 @@ Capabilities responses are cheap and stable per integration version. **Cache the
 
 ## Getting Started
 
-> **Day 0 — install the CLI first** (see [Install the Truto CLI](#install-the-truto-cli-recommended) above). Most of what's described below is faster to *try* through the **Truto CLI** before wiring it into code, then port the same call into your application. The full Day-1 walkthrough lives at [Getting Started](./references/getting-started.md); the steps below are the canonical flow you'll port into your application.
+> **Trying it first?** Most of what's described below is faster to *try* through the **Truto CLI** (see [Install the Truto CLI](#install-the-truto-cli-recommended) above) before wiring it into code, then port the same call into your application. The full Day-1 walkthrough lives at [Getting Started](./references/getting-started.md); the steps below are the canonical flow you'll port into your application.
 
 ### 1. Get an API Token
 
@@ -235,7 +235,7 @@ After a user connects, the account goes through post-install and validation step
 app.post("/webhooks/truto", async (req, res) => {
   const event = req.body;
 
-  switch (event.event_type) {
+  switch (event.event) {
     case "integrated_account:active":
       // Account is ready — store the integrated_account_id,
       // start syncing data, enable features for this tenant
@@ -370,7 +370,7 @@ All API requests use Bearer token authentication. The API token must only be use
 | Document                                                                 | Topics                                                                                  |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | [Files & Logs](./references/files-and-logs.md)                           | File uploads and API/operation log queries                                              |
-| [Static Gates](./references/static-gates.md)                             | Embeddable connection entry points                                                      |
+| [Static Gates](./references/static-gates.md)                             | Static-IP egress proxies for an account's outbound API calls                            |
 
 
 ## Companion Skills

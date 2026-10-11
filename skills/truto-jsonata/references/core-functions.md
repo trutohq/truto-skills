@@ -341,9 +341,9 @@ Result: `[1, 2, 3, [4, [5]]]`
 
 ## Empty / Null Handling
 
-### `$removeEmpty(object)`
+### `$removeEmpty(array)`
 
-Removes properties whose values are empty (`null`, `undefined`, `''`, `[]`) from `object`. When the input is itself empty, returns `undefined`.
+Returns `undefined` when `array` is empty, otherwise `array` unchanged. It does not strip entries or object properties.
 
 Input: `data = ['1', '2', '3', '']`, `blankData = []`
 
@@ -361,7 +361,7 @@ Result: `undefined`
 
 ### `$removeEmptyItems(array)`
 
-Filter out empty objects from `array`.
+Filter out empty objects and falsy items (`null`, `0`, `''`, `false`) from `array`. A non-array input is returned unchanged.
 
 Input: `data = [{}, { a: 1 }, []]`
 
@@ -428,12 +428,12 @@ Parse a query-string into an object. Inverse of `$stringifyQuery`.
 
 Stringify an object into a query string. Inverse of `$parseQuery`.
 
-### `$parseDocument(file)`
+### `$parseDocument(file, fileType)`
 
-Parses a document file (PDF, DOCX, etc.) and extracts its text content. Requires `documentParserApiUrl` / `documentParserApiKey` — Truto auto-injects these inside its expression contexts, so in Truto config you can just call `$parseDocument(file)` directly.
+Parses a document file (PDF, DOCX, etc.) and extracts its text content. `fileType` is the file's MIME type; it is sent as the request content type and has no default. Requires `documentParserApiUrl` / `documentParserApiKey` — Truto auto-injects these inside its expression contexts.
 
 ```
-$parseDocument(buffer)
+$parseDocument(buffer, 'application/pdf')
 ```
 
 Result: text content of the document, e.g. `'Hello, World!'`.
@@ -464,17 +464,17 @@ $getArrayBuffer(file)
 
 Result: `ArrayBuffer(13) [72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33]` (for `'Hello, World!'`).
 
-### `$getDataUri(file)`
+### `$getDataUri(file, mimeType)`
 
-Convert a `Blob`, `Buffer`, or `ReadableStream` to a `data:` URI string.
+Convert a `Blob`, `Buffer`, or `ReadableStream` to a `data:` URI string. `mimeType` is required; the call throws `Mime type is required` without it.
 
 ```
-$getDataUri(file)
+$getDataUri(file, 'text/plain')
 ```
 
 Result: `'data:text/plain;base64,SGVsbG8sIFdvcmxkIQ=='` (for a `text/plain` blob containing `'Hello, World!'`).
 
-You can also pass an explicit MIME type as a second argument when the source doesn't carry one — handy with PDF generation:
+With PDF generation:
 
 ```
 $getDataUri($convertMdToPdf(markdown), 'application/pdf')
@@ -549,7 +549,7 @@ $mapValues(roleKey, roleMapping)
 
 Result: `"owner"`
 
-**Default value when key missing:**
+**Default value when the input is null or undefined** (a key missing from `mapping` returns the input unchanged):
 
 ```
 $mapValues(roleKey2, roleMapping, false, 'Unknown')
@@ -627,7 +627,7 @@ Result: a UUID string, e.g. `'d9b2d63d-a233-4123-847e-9c5f2b8d6c4f'`.
 
 ### `$mostSimilar(value, possibleValues, threshold = 0.8)`
 
-Find the most similar string from `possibleValues` to `value` using the Dice Coefficient. Returns the closest match if it scores ≥ `threshold`, otherwise `undefined`.
+Find the most similar string from `possibleValues` to `value` using the Dice Coefficient. Returns the closest match if it scores ≥ `threshold`, otherwise the original `value`.
 
 ```
 $mostSimilar('appl', ['apple', 'apricot', 'banana'], 0.8)
