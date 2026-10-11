@@ -32,7 +32,7 @@ const response = await fetch(
 
 ### Auto-Scoping
 
-When using an API token, `environment_id` is automatically set to the token's environment on all create operations. You don't need to pass it explicitly — it's inferred from the token.
+When using an API token, `environment_id` is automatically set to the token's environment on most create operations, so you usually don't pass it. `POST /static-gate` is an exception — it still requires `environment_id`.
 
 ### Limitations
 
@@ -131,7 +131,7 @@ Use these fields when connecting a new account for a tenant.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `tenant_id` | string | Yes | — | The [tenant](./core-resources.md#tenants) this account belongs to — your identifier for the end-user. Pattern: `[A-Za-z0-9._:@+\-]{1,255}`. If a matching tenant doesn't already exist in the environment, Truto auto-creates one when the integrated account is created (as long as the ID matches the pattern). Pre-create the tenant via `POST /tenant` first when you need to attach `metadata` (tier, region, etc.) before the customer connects. |
+| `tenant_id` | string | Yes | — | The [tenant](./core-resources.md#tenants) this account belongs to — your identifier for the end-user. Any 1–255 character string works except control characters, leading or trailing whitespace, and `.` or `..`. If a matching tenant doesn't already exist in the environment, Truto auto-creates one when the integrated account is created. Pre-create the tenant via `POST /tenant` first when you need to attach `metadata` (tier, region, etc.) before the customer connects. |
 | `scopes` | string[] | No | Integration default | OAuth scopes to request during the connection flow. Overrides the integration's default scopes when set. |
 | `environment_unified_model_id` | string[] | No | — | Restrict the connection UI to integrations that support these unified models. Also narrows the OAuth scopes to only those required by the specified models. |
 | `context` | object | No | — | Additional context to store on the integrated account after connection. This is merged into the account's `context` field, with link token values taking precedence on overlap. |
@@ -195,6 +195,7 @@ Integrated account tokens can only access:
 | Any | `/custom/*` | Custom API endpoints |
 | GET | `/integrated-account/me` | Get own account info |
 | PATCH | `/integrated-account/me` | Update own account context |
+| Any | `/link-token/post-connect-form*` | Post-connect form (RapidForm) |
 
 Any other endpoint returns **403**.
 

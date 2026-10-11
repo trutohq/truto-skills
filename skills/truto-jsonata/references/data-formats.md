@@ -203,7 +203,7 @@ Translates a Truto-style query object (the same shape used in unified API `query
 - **`query`** — The query object to convert.
 - **`keysToMap`** — List of keys to process. Defaults to all keys.
 - **`mapping`** — Object renaming source keys → SQL keys (e.g. `{ firstName: 'first_name' }`).
-- **`dataTypes`** — Object specifying the SQL data type per field. Supported types:
+- **`dataTypes`** — Object specifying the SQL data type per field. Values are quoted only for keys whose type is `string` (or a value-mapping object) or a date type; without `dataTypes`, values are emitted raw (`name = John`). Supported types:
   - `string`
   - `double_quote_string`
   - `number`
@@ -223,9 +223,9 @@ Translates a Truto-style query object (the same shape used in unified API `query
 | `gte` | `>=` |
 | `lt`  | `<` |
 | `lte` | `<=` |
-| `in`  | `IN` |
-| `nin` | `NOT IN` |
-| `like` | `LIKE` |
+| `in`  | `in` |
+| `nin` | `not in` |
+| `like` | `like` |
 
 **Options:**
 
@@ -238,11 +238,11 @@ Translates a Truto-style query object (the same shape used in unified API `query
 | `noQuotes` | bool | `false` | No quotes around string values. |
 | `noQuotesForDate` | bool | `false` | No quotes around date values. |
 | `groupComparisonInBrackets` | bool | `false` | Wrap the whole expression in parentheses. |
-| `escapeSingleQuotes` | bool | `false` | Escape `'` inside string values as `''`. |
+| `escapeSingleQuotes` | bool | `false` | Escape `'` inside `string`-typed values as `\'`. |
 
 ### Examples
 
-The README has 25 numbered examples. Below they are all preserved, with the Node.js wrapper stripped — each block shows the input data, the JSONata expression, and the resulting SQL string.
+The README has 25 numbered examples. Below they are all preserved, with the Node.js wrapper stripped — each block shows the input data, the JSONata expression, and the resulting SQL string. Where an output shows quotes but the call passes no `dataTypes`, the real output is unquoted (see `dataTypes` above).
 
 #### 1. Basic usage
 
@@ -262,7 +262,7 @@ Input: `data2 = { name: { like: 'John' } }`
 $convertQueryToSql(data)
 ```
 
-Output: `(name = 'John' OR name = 'Jane')`
+Output: `name like John`
 
 #### 3. `lt` and `lte`
 
@@ -351,7 +351,7 @@ dataTypes = { created_at: 'string' }
 ```
 
 ```
-$convertQueryToSql(data, [], {}, {}, dataTypes)
+$convertQueryToSql(data, [], {}, dataTypes)
 ```
 
 Output: `created_at = '2021-01-01'`
@@ -426,10 +426,10 @@ options14 = { escapeSingleQuotes: true }
 ```
 
 ```
-$convertQueryToSql(data, [], {}, {}, {}, options)
+$convertQueryToSql(data, [], {}, { "name": "string" }, {}, options)
 ```
 
-Output: `name = 'O''Reilly'`
+Output: `name = 'O\'Reilly'`
 
 #### 15. `noSpaceBetweenOperator`
 

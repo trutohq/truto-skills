@@ -1,6 +1,6 @@
 # Static Gates
 
-Static gates provide embeddable connection entry points with their own API token for use in frontend applications.
+Static gates are static-IP egress proxies. Pass a gate's id as `truto_static_gate_id` on a link token, and the connected account's OAuth and API calls leave Truto from that gate's fixed IP.
 
 ## Endpoints
 

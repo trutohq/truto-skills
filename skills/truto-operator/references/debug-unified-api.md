@@ -22,7 +22,7 @@ Read `truto_error_insight` ([full key reference](./error-and-evidence-model.md#t
 | Insight | Cause | Branch |
 | --- | --- | --- |
 | `missing_required_query_parameters` / `missing_required_body_fields` | You omitted a required param/field | Fix the **request** — no mapping change |
-| `conditionally_required_query_parameters` / `conditionally_required_body_fields` | **Informational** — the endpoint *has* a conditional-requirement rule; this can appear even on errors unrelated to it | Read the rule and verify your request complies; don't assume it's the cause ([why](./error-and-evidence-model.md#truto_error_insight-unified-api)) |
+| `conditionally_required_query_parameters` / `conditionally_required_body_fields` | **Informational** — the endpoint *has* a conditional-requirement rule; it appears only on Truto-side errors, and can appear even when the rule is not the cause | Read the rule and verify your request complies; don't assume it's the cause ([why](./error-and-evidence-model.md#truto_error_insight-unified-api)) |
 | `forbidden_error` (`missing_scopes`) | OAuth scope gap | [P6](./diagnose-integrated-account.md) — reconnect with scopes |
 | `rate_limit_error` | Provider 429 | Back off per `Retry-After` ([Rate limits](./error-and-evidence-model.md#rate-limits)) |
 | `remote_error` (`truto_is_remote_error: true`) | The provider failed | Read `raw_response`; treat as upstream, not a mapping bug |
@@ -34,7 +34,7 @@ For history, `GET /log` with `log_type: "unified_proxy_api"`, `request_type: "un
 A 2xx with a field that's missing, wrong, or the wrong type is a mapping problem — **once you've ruled out the obvious**: the provider may simply not return that field. Confirm before blaming the mapping.
 
 1. **Compare provider-raw vs unified-output.** If the field is absent from the provider's raw response, it's not a mapping bug — there's nothing to map. Pull the raw shape from the underlying proxy resource (`/proxy/…`) or the provider's own docs, and compare against the unified result.
-2. **Inspect the merged mapping** via the meta endpoint — the runtime source of truth: `call_platform_api { method: "GET", path: "/unified/{model}/{resource}/{integration}/meta/{method}", query: { integrated_account_id } }`. It returns the fully **merged** `response_mapping`, `query_schema`, `default_query`, `default_body`. **If a field isn't in the merged `response_mapping`, the unified call can't return it.** ([Unified API Customization → Inspect the merged metadata](../../truto/references/unified-api-customization.md#testing-changes))
+2. **Inspect the merged mapping** via the meta endpoint — the runtime source of truth: `call_platform_api { method: "GET", path: "/unified/{model}/{resource}/meta/{method}", query: { integrated_account_id } }`. It returns the **merged** `response_mapping`, `query_schema`, `request_body_schema`, `default_query`, `default_body`. (The `/{integration}/meta/{method}` variant returns `response_schema` instead of `response_mapping`.) **If a field isn't in the merged `response_mapping`, the unified call can't return it.** ([Unified API Customization → Inspect the merged metadata](../../truto/references/unified-api-customization.md#testing-changes))
 3. **Find the responsible layer.** `get_capabilities { target: accountId, type: "unified", resource }` — a unified entry's `env_overridden: true` flag tells you this environment has customized the mapping (look at the env layer first). Then read each layer that applies (below).
 
 ### The three layers
@@ -82,7 +82,6 @@ So an override that sets `response_mapping` does **not** "add a field" to the ba
 - Assuming a missing field is a mapping bug when the provider never returned it.
 - Treating `response_mapping` as if a partial override deep-merges into the base — it replaces it.
 
-## Supersedes / Reuses
+## Reuses
 
-- **Supersedes** the former mapping-changes and sync-debugging cheat sheets for unified/mapping issues.
 - **Reuses** [Unified API](../../truto/references/unified-api.md), [Unified API Customization](../../truto/references/unified-api-customization.md), the [truto-jsonata](../../truto-jsonata/SKILL.md) skill, and the [Error & evidence model](./error-and-evidence-model.md).

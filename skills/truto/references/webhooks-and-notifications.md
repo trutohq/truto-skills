@@ -69,7 +69,7 @@ curl -X POST https://api.truto.one/webhook/test \
   -d '{"id": "<webhook_uuid>"}'
 ```
 
-Sends a test event (`eventType: "test"`, payload: `{"foo": "bar"}`) and returns success or failure based on the target URL's response.
+Sends a test event to the target URL — `integrated_account:created` with a mock payload by default. Optional body fields: `event_type` (any supported event type), `integrated_account_id`, and `payload` (merged into the mock). Returns `{ success, event_type, payload }`.
 
 ### Webhook API Response
 
@@ -140,7 +140,6 @@ Common webhook event types:
 | `api_token:created` | API token created |
 | `api_token:deleted` | API token deleted |
 | `record:*` | Data change events from inbound webhooks |
-| `test` | Test event |
 
 ### Webhook Limits
 

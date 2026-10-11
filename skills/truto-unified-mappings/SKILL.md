@@ -30,10 +30,6 @@ mappings. It does NOT cover:
 - Hand-editing per-environment unified mapping overrides via the admin CLI (`unified-model-mappings`, `env-unified-model-mappings`) -- see [customizing-integrations.md](../truto/references/customizing-integrations.md) and the [truto-cli](../truto-cli/SKILL.md) skill.
 - General CLI auth, profiles, and data-plane commands -- see [truto-cli](../truto-cli/SKILL.md).
 
-Trigger phrases: "unified-mappings build", "build unified mappings", "map this
-integration to crm", "generate response_mapping", "MappingFile", "unified
-mappings apply", "map proxy responses to the unified model".
-
 ---
 
 ## One-time setup
@@ -74,7 +70,7 @@ Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KE
 
 > **Note:** Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`, ~35 MB) downloaded automatically on first use. No external API key is required for embeddings.
 >
-> **LLM provider:** `truto unified-mappings build` currently runs on **Anthropic Claude** only (tiered: Opus for the agentic loop, Sonnet for the `--structured` pipeline). The `--llm-provider fireworks` flag from `truto integrations build` is not yet supported here — use `--anthropic-model` to override all tiers.
+> **LLM provider:** `truto unified-mappings build` defaults to **Anthropic Claude** (tiered: Opus for the agentic loop, Sonnet for the `--structured` pipeline); `--anthropic-model` overrides all tiers. Pass `--llm-provider fireworks` with `--fireworks-api-key` and the same `--llm-model` / `--llm-agent-model` / `--llm-extraction-model` / `--llm-classification-model` flags as `truto integrations build`.
 
 ---
 
@@ -169,12 +165,12 @@ truto unified-mappings apply acme.crm.mappings.json --target env
 
 Apply upserts each cell as a `unified_model_resource_method` row (or an
 `environment_unified_model_resource_method` override with `--target env`), using
-the create/update/skip action recorded per cell in `db_info`.
+the create/update/skip action recorded per cell in `apply_db_action`.
 
 | Flag | Effect |
 |------|--------|
 | `--target <base\|env>` | Write base rows or per-environment overrides |
-| `--dry-run` | Validate the file and print payloads; no API calls |
+| `--dry-run` | Parse the file and print payloads; reads existing rows to plan, but writes nothing |
 | `--yes` | Skip confirmation prompts |
 
 ---
@@ -189,7 +185,7 @@ essentials:
 |-------|---------|
 | `integration_name` / `unified_model_name` | What this file maps, by slug |
 | `write_target` | `base` (team-owned) or `env` (per-environment override) |
-| `cells[]` | One entry per unified resource/method: a `config` (mapping fields) + `db_info` (apply action) |
+| `cells[]` | One entry per unified resource/method: a `config` (mapping fields) + `apply_db_action` (apply action) |
 | `build_summary` | `status`, `counts`, `built`, `skipped` (with reasons), `unbuilt_routed`, `warnings` |
 
 The `build_summary` is built for human review. `skipped` lists **why** a cell

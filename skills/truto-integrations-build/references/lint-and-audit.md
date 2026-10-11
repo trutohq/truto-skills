@@ -63,7 +63,7 @@ Two categories of checks:
 | `create_2` with POST and a `/search`-like path | Rename to `list` with `"method": "post"` and `"add_query_to_body": true` |
 | Generic `<verb>_<n>` | Often indicates two endpoints on different paths were grouped under the same resource; consider splitting into separate resources or using a descriptive method name |
 
-**Path template check (Issue 7)** -- flags item-level methods (`get`, `update`, `partial_update`, `delete`) whose last path segment is a non-canonical ID placeholder like `{{query.attachment_id}}` instead of `{{id}}`.
+**Path template check** -- flags item-level methods (`get`, `update`, `partial_update`, `delete`) whose last path segment is a non-canonical ID placeholder like `{{query.attachment_id}}` instead of `{{id}}`.
 
 - **Severity:** `warn`
 - **Example:** `method "get" has a non-canonical id placeholder as its last path segment ("{{query.attachment_id}}"). The last segment must be {{id}}.`

@@ -134,7 +134,7 @@ PATCH returns the updated integrated account (same shape as `GET /integrated-acc
 
 > Protected paths (tokens, keys, passwords) are present in storage but stripped from API responses. The `object_store_context_fields` array lists any keys whose value was offloaded to object storage and rehydrated for this read.
 
-**Context merges are shallow.** When you PATCH context, top-level keys are merged with the existing context, but nested objects and arrays are **replaced entirely**, not deep-merged. If a context key holds an object or array, you must pass the complete value — not just the fields you want to change.
+**`PATCH` replaces context.** When you PATCH `context`, the stored context becomes exactly what you send, plus the protected credential paths carried over from the existing value. Any other key you omit is dropped.
 
 For example, if the existing context is:
 
@@ -155,17 +155,16 @@ And you PATCH with:
 }
 ```
 
-The result is `{ "subdomain": "acme", "settings": { "language": "fr" } }` — the `notify` key inside `settings` is lost. To preserve it, pass the full object:
+The result is `{ "settings": { "language": "fr" } }` — both `subdomain` and `settings.notify` are lost. Read the current context, change it locally, and send the complete object:
 
 ```json
 {
   "context": {
+    "subdomain": "acme",
     "settings": { "notify": true, "language": "fr" }
   }
 }
 ```
-
-The same applies to arrays — you must pass the entire array, not individual elements.
 
 For credential-only updates, use the dedicated credentials endpoint:
 
@@ -338,7 +337,7 @@ When you PATCH context with a partial object, the merge behavior is:
 patchedContext = { ...protectedFieldsFromExisting, ...yourPatchPayload }
 ```
 
-OAuth context gets additional protection on the PATCH endpoint — if the existing account has `context.oauth`, the incoming `context.oauth` is merged with the stored value rather than replacing it.
+OAuth context gets additional protection on the PATCH endpoint — if the existing account has `context.oauth`, the stored `context.oauth` is kept and the incoming `context.oauth` is ignored.
 
 ## Environment Variables
 

@@ -58,26 +58,27 @@ Use this when the integration's default auth header isn't right for one of your 
 ### CLI helper
 
 ```bash
-# Bearer token from the integrated account's context.access_token (the default for OAuth2 integrations)
+# Bearer token from the integrated account's context
 truto environment-integrations override-auth "$ENV_INTEGRATION_ID" \
-  --format bearer
+  --format bearer \
+  --config '{"value":"{{oauth.token.access_token}}"}'
 
-# Single static header
+# Static header(s), with placeholders from context
 truto environment-integrations override-auth "$ENV_INTEGRATION_ID" \
   --format header \
-  --config '{"header_name":"X-Api-Key","header_value":"{{credentials.api_key}}"}'
+  --config '{"headers":{"X-Api-Key":"{{api_key}}"}}'
 
-# Basic auth (username + password from credentials)
+# Basic auth (username + password from context)
 truto environment-integrations override-auth "$ENV_INTEGRATION_ID" \
   --format basic \
-  --config '{"username":"{{credentials.username}}","password":"{{credentials.password}}"}'
+  --config '{"username":"{{username}}","password":"{{password}}"}'
 
-# Dynamic header value computed via JSONata (when "format": "header" + "expression")
+# Dynamic headers computed via JSONata ("format": "header" + "expression")
 truto environment-integrations override-auth "$ENV_INTEGRATION_ID" \
   -b '{
     "format": "header",
     "config": {
-      "expression": "{ \"Authorization\": \"Bearer \" & context.access_token, \"X-Tenant\": context.tenant_id }"
+      "expression": "{ \"url\": url, \"requestOptions\": $merge([requestOptions, { \"headers\": $merge([requestOptions.headers, { \"Authorization\": \"Bearer \" & context.oauth.token.access_token, \"X-Tenant\": context.tenant_id }]) }]) }"
     }
   }'
 
@@ -89,9 +90,9 @@ truto environment-integrations override-auth "$ENV_INTEGRATION_ID" --clear
 
 | Format | When to use | `config` shape |
 |---|---|---|
-| `bearer` | The integration ships with `Authorization: Bearer <token>` — token comes from `context.access_token`. No config needed. | (none) |
-| `header` | A single static header, optionally with `{{credentials.*}}` placeholder substitution. | `{ "header_name": "...", "header_value": "..." }` |
-| `header` + `expression` | A dynamic header set built by a JSONata expression. The expression returns the headers object to attach. | `{ "expression": "<jsonata>" }` |
+| `bearer` | `Authorization: Bearer <token>`. `value` is a placeholder template resolved against `context`. Required. | `{ "value": "{{oauth.token.access_token}}" }` |
+| `header` | One or more headers, each value a placeholder template resolved against `context`. | `{ "headers": { "X-Api-Key": "{{api_key}}" } }` |
+| `header` + `expression` | Headers (or URL) built by a JSONata expression. | `{ "expression": "<jsonata>" }` |
 | `basic` | HTTP Basic Auth. | `{ "username": "...", "password": "..." }` |
 
 The `expression` form is the most flexible — see the [JSONata scope](#jsonata-scope-for-authorizationconfigexpression) below.
@@ -104,23 +105,9 @@ The `expression` form is the most flexible — see the [JSONata scope](#jsonata-
 | `requestOptions` | The request options Truto is about to send (`{ method, headers, body, ... }`). |
 | `context` | The integrated account's `context` object — credentials, instance config, etc. |
 
-Return value: an object whose keys are header names and whose values are header values (strings).
+Return value: `{ "url": ..., "requestOptions": ... }` — the request to send. Both keys are required; merge your headers into `requestOptions.headers` as in the example above.
 
-### Worked example — Multi-header auth derived from context
-
-A customer needs every Salesforce request to include both a Bearer token and a custom `X-Org-Id` header derived from the account's instance config:
-
-```bash
-truto environment-integrations override-auth "$ENV_INTEGRATION_ID" \
-  -b '{
-    "format": "header",
-    "config": {
-      "expression": "{ \"Authorization\": \"Bearer \" & context.access_token, \"X-Org-Id\": context.org_id, \"X-Truto-Env\": \"prod\" }"
-    }
-  }'
-```
-
-After the override lands, every outbound request from that environment-integration will include all three headers.
+After the override lands, every outbound request from that environment-integration carries the new headers.
 
 ---
 
@@ -171,24 +158,15 @@ truto environment-integrations override-pagination "$ENV_INTEGRATION_ID" --clear
 
 ### Dynamic pagination
 
-When none of the canned formats fit, use `format: "dynamic"` and provide JSONata expressions. The most useful keys:
+When none of the canned formats fit, use `format: "dynamic"` and provide JSONata expressions:
 
-- `get_initial_pagination_values_expression` — initial `paginationValues` object before any request.
-- `get_pagination_values_expression` — compute new `paginationValues` from the latest response. Return `null` to end the loop.
-- `get_cursor_from_response_expression` — extract the cursor that gets surfaced to the unified-API caller as `next_cursor`. Return `undefined` for "no cursor".
+- `get_initial_pagination_values_expression` (optional) — runs before the first request. Scope: `query`, `url`, `requestOptions`.
+- `get_pagination_values_expression` (required) — runs before each later request. Scope: `query` (with `query.next_cursor` already base64-decoded), `url`, `requestOptions`.
+- `get_cursor_from_response_expression` (required) — runs after each response. Scope: `url`, `response`, `body`, `query`, `paginationValues`. Returns `{ "nextCursor": <string or null>, "prevCursor"?: ..., "isLooping"?: <boolean> }`; `nextCursor: null` ends the loop. Truto base64-encodes `nextCursor` and returns it to the caller as `next_cursor`.
 
-**JSONata scope:**
+The two pagination-values expressions return an object with any of `query`, `url`, `requestOptions`, `body`, `paginationValues`. `query` is merged into the outbound query string; `requestOptions` is deep-merged into the request.
 
-| Variable | What it is |
-|---|---|
-| `query` | The unified-API caller's query (e.g. `query.cursor`, `query.limit`). |
-| `url` | The current request URL string. |
-| `requestOptions` | The current request's options (`{ method, headers, body, ... }`). |
-| `response` | The latest HTTP response (cursor / values expressions only). |
-| `body` | Shortcut for `response.body` (cursor / values expressions only). |
-| `paginationValues` | The values returned by the previous iteration (cursor / values expressions only). |
-
-### Worked example — Page-number pagination with a cap
+### Worked example — Page-number pagination
 
 Save this as `dynamic-pagination.json`:
 
@@ -196,9 +174,9 @@ Save this as `dynamic-pagination.json`:
 {
   "format": "dynamic",
   "config": {
-    "get_initial_pagination_values_expression": "{ \"page\": 1 }",
-    "get_pagination_values_expression": "$exists(body.next_page) and paginationValues.page < 50 ? { \"page\": paginationValues.page + 1 } : null",
-    "get_cursor_from_response_expression": "body.next_page ? $string(body.next_page) : undefined"
+    "get_initial_pagination_values_expression": "{ \"query\": { \"page\": \"1\" } }",
+    "get_pagination_values_expression": "{ \"query\": { \"page\": query.next_cursor } }",
+    "get_cursor_from_response_expression": "{ \"nextCursor\": body.next_page ? $string(body.next_page) : null }"
   }
 }
 ```
@@ -209,13 +187,13 @@ Apply it:
 truto environment-integrations override-pagination "$ENV_INTEGRATION_ID" --stdin < dynamic-pagination.json
 ```
 
-Truto will start at `page=1`, increment until `body.next_page` is missing **or** 50 pages are seen (whichever comes first), and surface the next-page number as the unified-API `next_cursor`.
+Truto requests `page=1`, then follows `body.next_page` until the provider stops returning it.
 
 ---
 
 ## 3. Override rate-limit detection
 
-Use this when the integration's default rate-limit detection misses a tenant-specific signal — for example, a customer is on a plan that returns `429` plus a custom `X-Plan-Quota-Reset` header instead of the standard `Retry-After`.
+Use this when the integration's default rate-limit detection misses a tenant-specific signal — for example, a customer is on a plan that returns `429` plus a custom header instead of the standard `Retry-After`.
 
 ### CLI helper
 
@@ -223,15 +201,14 @@ Use this when the integration's default rate-limit detection misses a tenant-spe
 # Per-flag — most readable for simple cases
 truto environment-integrations override-rate-limit "$ENV_INTEGRATION_ID" \
   --is-rate-limited "status = 429 or headers.\`x-rate-limit-remaining\` = '0'" \
-  --retry-after-header '$number(headers.`retry-after`)' \
-  --rate-limit-header '$number(headers.`x-rate-limit-reset`)'
+  --retry-after-header '$number(headers.`retry-after`)'
 
 # Full block via -b for advanced overrides
 truto environment-integrations override-rate-limit "$ENV_INTEGRATION_ID" \
   -b '{
     "is_rate_limited": "status = 429",
-    "retry_after_header_expression": "$number(headers.`retry-after`)",
-    "rate_limit_header_expression": "$number(headers.`x-plan-quota-reset`)"
+    "retry_after_header_expression": "$number(headers.`x-plan-quota-reset-after`)",
+    "rate_limit_header_expression": "{ \"limit\": headers.`x-ratelimit-limit`, \"remaining\": headers.`x-ratelimit-remaining`, \"reset\": headers.`x-ratelimit-reset` }"
   }'
 
 # Clear
@@ -246,54 +223,36 @@ Each option corresponds to one key in `override.rate_limit`. You can supply any 
 |---|---|---|
 | `is_rate_limited` | Truthy when the response should trigger a back-off. | boolean (truthy/falsy) |
 | `retry_after_header_expression` | Number of **seconds to wait** before retry. | number |
-| `rate_limit_header_expression` | **Absolute reset epoch** (seconds) — when the bucket refills. | number |
-
-Truto picks the larger of `retry_after_header_expression` and the time until `rate_limit_header_expression`, so it's safe to provide both — the more conservative back-off wins.
+| `rate_limit_header_expression` | Rate-limit state to pass back to the caller. Truto emits the values as `ratelimit-limit`, `ratelimit-remaining`, and `ratelimit-reset` response headers. It does not change the back-off. | object `{ limit, remaining, reset }` |
 
 **JSONata scope (all three):** `headers`, `status`.
 
-### Worked example — Custom plan-quota header
-
-A tenant is on a plan that returns `429` plus a custom `X-Plan-Quota-Reset: <epoch-seconds>` header rather than the standard `Retry-After`:
-
-```bash
-truto environment-integrations override-rate-limit "$ENV_INTEGRATION_ID" \
-  --is-rate-limited 'status = 429' \
-  --rate-limit-header '$number(headers.`x-plan-quota-reset`)'
-```
-
-Backtick-quote the header name in JSONata because it contains a hyphen.
+Backtick-quote header names in JSONata when they contain a hyphen.
 
 ---
 
 ## 4. Override inbound webhook handling
 
-Use this for **inbound** webhooks — the third-party service posting to Truto's webhook URL. There are two pieces:
+Use this for **inbound** webhooks — the third-party service posting to Truto's webhook URL. Three keys under `override.webhook`, applied in this order:
 
-- **`handle_verification`** — runs first, before the payload is processed. Returns the verification response (e.g. echoing back a challenge for Slack/HubSpot URL verification). Return `null` to fall through to normal processing.
-- **`payload_transform`** — runs after verification. Reshapes the raw body into the canonical event payload that Truto fan-outs to your subscribers (`record:*` events).
-
-There's also a `signature_verification` block for HMAC/HMAC-SHA-style verification, configured declaratively (no JSONata).
+1. **`payload_transform`** (JSONata) — reshapes the inbound request payload. Input and output have the same shape: `{ body, raw_body, headers, query_params, ... }`. A common form is `$merge([$, { ... }])`.
+2. **`handle_verification`** (JSONata) — decides how to answer the request. Returns `{ "type": "verify" | "payload" | "meta", "verification_response": { "status_code": 200, "body": ..., "headers": {...} } }`. `type: "verify"` sends `verification_response` back (for example, a Slack or HubSpot URL-verification challenge) and stops; `type: "payload"` continues to signature verification and normal processing. Any other result — `null`, a boolean, or no `type` — skips signature verification but the request is still processed, so always return a `type`.
+3. **`signature_verification`** (declarative, no JSONata) — HMAC / JWT / basic verification of the request.
 
 > Outbound webhooks are configured separately via `truto webhooks` — see [Webhooks & Notifications](./webhooks-and-notifications.md).
 
 ### CLI helper
 
 ```bash
-# Set handle_verification (e.g. to echo a Slack URL-verification challenge)
+# Set handle_verification (echo a Slack URL-verification challenge)
 truto environment-integrations override-webhook "$ENV_INTEGRATION_ID" \
   --handle-verification \
-  '$exists($.body.challenge) ? { "statusCode": 200, "body": $.body.challenge } : null'
-
-# Set payload_transform (reshape the inbound body into Truto's canonical event shape)
-truto environment-integrations override-webhook "$ENV_INTEGRATION_ID" \
-  --payload-transform \
-  '$.body.events.{ "event_type": type, "resource_id": object_id, "raw": $ }'
+  '$exists(body.challenge) ? { "type": "verify", "verification_response": { "status_code": 200, "body": body.challenge } } : { "type": "payload" }'
 
 # Set signature_verification declaratively
 truto environment-integrations override-webhook "$ENV_INTEGRATION_ID" \
   --signature-verification \
-  '{"format":"hmac","config":{"algorithm":"sha256","parts":["$body"],"secret":"{{credentials.webhook_secret}}","compare_with":"$header.x-signature"}}'
+  '{"format":"hmac","config":{"algorithm":"SHA-256","verification_content":["{{raw_body}}"],"secret":"{{context.webhook_secret}}","compare_with":"{{headers.x-signature}}","string_type":"hex"}}'
 
 # Set everything in one shot via the full block
 truto environment-integrations override-webhook "$ENV_INTEGRATION_ID" \
@@ -305,52 +264,15 @@ truto environment-integrations override-webhook "$ENV_INTEGRATION_ID" --clear
 
 You can combine `--handle-verification`, `--payload-transform`, and `--signature-verification` in a single invocation — each maps to a separate key under `override.webhook` and they're sent together.
 
-### `handle_verification`
+### JSONata scope
 
-**JSONata scope:** the inbound webhook payload as the JSONata input (root). Use `$.body`, `$.headers`, `$.query` to access parts of the request.
+`payload_transform` and `handle_verification` both take the inbound payload as the JSONata root: `body`, `raw_body`, `headers`, `query_params` (plus `context` and `environment_variables` where Truto has them). `handle_verification` sees the payload *after* `payload_transform`.
 
-Return value:
+### `signature_verification`
 
-- An object `{ "statusCode": 200, "body": "..." }` to send a verification response and stop processing.
-- `null` to fall through to `payload_transform` and normal event processing.
+`config` placeholders resolve against the inbound payload. For HMAC, `verification_content` is the list of strings joined to form the signed content (e.g. `["{{raw_body}}"]`); `secret` and `compare_with` are templated the same way. `string_type` (`hex` / `base64`) and `algorithm` select the digest encoding.
 
-### `payload_transform`
-
-**JSONata scope:** same as above (inbound payload as root).
-
-Return value: an array of normalized event objects. Truto fan-outs one outbound `record:*` event per element.
-
-### Worked example — Slack URL verification + event reshape
-
-Slack sends both a one-time URL-verification challenge and ongoing event callbacks to the same endpoint. Save this as `slack-webhook.json`:
-
-```json
-{
-  "handle_verification": "$exists($.body.challenge) ? { \"statusCode\": 200, \"body\": $.body.challenge } : null",
-  "payload_transform": "[{ \"event_type\": $.body.event.type, \"resource_id\": $.body.event.user, \"channel\": $.body.event.channel, \"team\": $.body.team_id, \"raw\": $.body }]",
-  "signature_verification": {
-    "format": "hmac",
-    "config": {
-      "algorithm": "sha256",
-      "parts": ["v0:", "$header.x-slack-request-timestamp", ":", "$body"],
-      "secret": "{{credentials.signing_secret}}",
-      "compare_with": "v0=$header.x-slack-signature"
-    }
-  }
-}
-```
-
-Apply it:
-
-```bash
-truto environment-integrations override-webhook "$ENV_INTEGRATION_ID" --stdin < slack-webhook.json
-```
-
-After that:
-
-1. Slack's URL-verification POST gets the challenge echoed back.
-2. Every subsequent event has its HMAC signature verified.
-3. The verified event is reshaped into Truto's canonical shape and fan-outed to your subscribers.
+After the override lands, a URL-verification request gets its challenge echoed back, and every other request has its signature checked before Truto processes it.
 
 ---
 
@@ -498,8 +420,8 @@ Semantics:
 
 - **`override` is a full replace.** A partial `update` / `PATCH` body wipes omitted slots and omitted `resources` keys (e.g. `pages` / `blocks` / `file_uploads`). Always send the complete override. See [§5](#5-override-resources-full-override-required).
 - **Backtick-quote keys with hyphens or special characters in JSONata.** `` headers.`x-rate-limit` ``, `` $.body.`event-type` ``. JSONata's dot syntax doesn't accept hyphens.
-- **`{{credentials.*}}` is placeholder syntax, not JSONata.** Inside `header_name`/`header_value` and `signature_verification.config`, Truto resolves `{{credentials.api_key}}` style placeholders against the integrated account's credentials before sending. JSONata `$` functions don't run in those fields. See [Sync Jobs § Templating placeholders vs JSONata](./sync-jobs.md#templating-placeholders-vs-jsonata) for the distinction.
-- **Override is per-environment-integration, not per-account.** All accounts in the environment share the override. To override behavior for a single connected account, use the per-account override on the unified-mapping side ([Unified API Customization Workflow 2](./unified-api-customization.md#workflow-2--override-one-connected-account)) — the HTTP layer does not have a per-account override slot.
+- **`{{...}}` is placeholder syntax, not JSONata.** In `authorization.config` (`value`, `headers`, `username`, `password`), placeholders such as `{{api_key}}` or `{{oauth.token.access_token}}` resolve against the integrated account's `context`. In `signature_verification.config` they resolve against the inbound payload (`{{raw_body}}`, `{{headers.x-signature}}`, `{{context.webhook_secret}}`). JSONata `$` functions don't run in those fields. See [Sync Jobs § Templating placeholders vs JSONata](./sync-jobs.md#templating-placeholders-vs-jsonata) for the distinction.
+- **Override is per-environment-integration, not per-account.** All accounts in the environment share the override. To change HTTP behavior for one connected account, set `integration_override` on that integrated account (`PATCH /integrated-account/:id`); it deep-merges into the integration config for that account only. For data-shape changes on one account, use `unified_model_override` ([Unified API Customization Workflow 2](./unified-api-customization.md#workflow-2--override-one-connected-account)).
 - **Dynamic pagination and inbound webhooks are the heaviest JSONata users in the integration override surface.** Lean on `truto environment-integrations show-override <id>` after each patch to verify the override landed in the slot you expected before debugging the JSONata.
 - **Only `override-*` helpers merge for you.** `override-auth` / `override-pagination` / `override-rate-limit` / `override-webhook` fetch + shallow-merge one slot, then PATCH the complete object. CLI `update` and raw HTTP do not — you supply the full override.
 - **Sandbox accounts can read with overridden auth/pagination but cannot write.** The proxy and unified APIs return `405` for write operations against sandbox-flagged integrated accounts regardless of overrides.

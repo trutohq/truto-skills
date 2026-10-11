@@ -154,8 +154,8 @@ Functions are grouped by preset. Each function points to its detailed reference.
 
 | Function | Signature | One-liner |
 |---|---|---|
-| [`$removeEmpty`](./references/core-functions.md#removeemptyobject) | `(object)` | Drop null/undefined/empty entries |
-| [`$removeEmptyItems`](./references/core-functions.md#removeemptyitemsarray) | `(array)` | Drop empty objects from array |
+| [`$removeEmpty`](./references/core-functions.md#removeemptyarray) | `(array)` | Empty array → `undefined`; otherwise the array unchanged |
+| [`$removeEmptyItems`](./references/core-functions.md#removeemptyitemsarray) | `(array)` | Drop empty objects and falsy items from array |
 | [`$firstNonEmpty`](./references/core-functions.md#firstnonemptyvalues) | `(...values)` | First non-null/undefined argument |
 
 ### Parsing → [core-functions.md](./references/core-functions.md#parsing)
@@ -166,7 +166,7 @@ Functions are grouped by preset. Each function points to its detailed reference.
 | [`$parseUrl`](./references/core-functions.md#parseurlurlstring) | `(urlString)` | URL string → `URL` object |
 | [`$parseQuery`](./references/core-functions.md#parsequeryquerystring) | `(queryString)` | Query string → object |
 | [`$stringifyQuery`](./references/core-functions.md#stringifyqueryobject) | `(object)` | Object → query string |
-| [`$parseDocument`](./references/core-functions.md#parsedocumentfile) | `(file)` | PDF/DOCX → text (Truto auto-injects API config) |
+| [`$parseDocument`](./references/core-functions.md#parsedocumentfile-filetype) | `(file, fileType)` | PDF/DOCX → text (Truto auto-injects API config) |
 
 ### Files & Blobs → [core-functions.md](./references/core-functions.md#files--blobs)
 
@@ -174,7 +174,7 @@ Functions are grouped by preset. Each function points to its detailed reference.
 |---|---|---|
 | [`$blob`](./references/core-functions.md#blobcontent-options) | `(content, options)` | Create `Blob` |
 | [`$getArrayBuffer`](./references/core-functions.md#getarraybufferfile) | `(file)` | `Blob` → `ArrayBuffer` |
-| [`$getDataUri`](./references/core-functions.md#getdataurifile) | `(file)` or `(file, mimeType)` | → `data:` URI string |
+| [`$getDataUri`](./references/core-functions.md#getdataurifile-mimetype) | `(file, mimeType)` | → `data:` URI string |
 | [`$getMimeType`](./references/core-functions.md#getmimetypefilename) | `(fileName)` | Extension/filename → MIME |
 | [`$bufferToString`](./references/core-functions.md#buffertostringbuffer) | `(buffer)` | Buffer → string |
 | [`$teeStream`](./references/core-functions.md#teestreamreadable) | `(readable)` | Clone `ReadableStream` |
@@ -226,7 +226,7 @@ Functions are grouped by preset. Each function points to its detailed reference.
 | [`$convertMarkdownToSlack`](./references/text-conversions.md#convertmarkdowntoslackmarkdown) | `(markdown)` | Markdown → Slack Block Kit |
 | [`$convertMarkdownToGoogleDocs`](./references/text-conversions.md#convertmarkdowntogoogledocstext) | `(text)` | Markdown → Google Docs `requests` |
 | [`$convertMarkdownToAdf`](./references/text-conversions.md#convertmarkdowntoadfmarkdown) | `(markdown)` | Markdown → Atlassian Document Format |
-| [`$convertMdToPdf`](./references/text-conversions.md#convertmdtopdfmarkdown-options) | `(markdown, options?)` | Markdown → PDF `Blob` (jsPDF) |
+| [`$convertMdToPdf`](./references/text-conversions.md#convertmdtopdfmarkdown-options) | `(markdown, options?)` | Markdown → PDF `Blob` (Truto document-parser service) |
 
 ### Data Formats → [data-formats.md](./references/data-formats.md)
 
