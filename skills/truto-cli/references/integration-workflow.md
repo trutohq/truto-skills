@@ -24,6 +24,8 @@ truto integrations apply acme.integration.json --plan acme.integration.json.plan
 
 Recheck is offline and does not generate. An explicit integration `--spec <url>` still fetches the spec. Dry run performs no Truto reads, locks, local writes, platform writes or account tests; merge/live checks remain unevaluated, and the released exit-zero preview behavior is preserved unless input is unreadable. Prepare reads and reconciles, commits locally and writes a plan (`--plan-out <path>` overrides the default); it does not write Truto or test an account. `--plan` executes only that plan and stops on stale inputs. Mapping `--plan` requires `--expect-digest`.
 
+Prepared plans retain the test account selected by `--test-account` or the profile, or no account if none was selected. Later profile changes do not switch that choice; run `--prepare` again to change the account.
+
 ## Concurrent changes, partial work and recovery
 
 Apply compares the artifact, its trustworthy committed baseline and live. Unrelated live changes are preserved and synced into the file. A reported clash is resolved explicitly with `--resolve '<item>=mine'` or `--resolve '<item>=theirs'`; mine still runs every check and applies only to the recorded live value. A different host/team/environment/integration or base/env target uses a separate working copy, preserving the original.
