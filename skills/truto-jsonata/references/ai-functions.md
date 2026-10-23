@@ -24,7 +24,7 @@ $generateEmbeddingsCohere({
 }, "<COHERE_API_KEY>")
 ```
 
-Returns the raw Cohere response (`{ id, embeddings, ... }`).
+With `texts`, the call sends batches of 20 to Cohere `v2/embed` and returns an **array** of raw Cohere responses (one per batch). With `images`, it returns one raw response.
 
 **Tip:** Inside a Truto sync job, pull the API key from the integrated account context — e.g. `context.cohere_api_key` — instead of hard-coding it.
 
@@ -38,8 +38,10 @@ Splits long text into overlapping chunks suitable for LLM/embedding pipelines.
 
 - `**text`** — The input text to split.
 - `**options**` — An object with:
-  - `**chunkSize**` — Maximum chunk size (default `200`).
-  - `**chunkOverlap**` — Overlap between chunks (default `60`).
+  - `**chunkSize**` — Maximum chunk size.
+  - `**chunkOverlap**` — Overlap between chunks.
+
+  `{ chunkSize: 200, chunkOverlap: 60 }` applies only when `options` is omitted. A partial object falls back to the splitter's own defaults (`chunkSize` 1000, `chunkOverlap` 200), so pass both keys.
 
 **Example:**
 
@@ -56,7 +58,7 @@ Result: `["Hello, Wo", "lo, World", "rld! This", "is a samp", "ample text", "tex
 
 ## Common patterns in Truto config
 
-> These functions are most useful inside [Sync Job V4 transform expressions](./usage-in-truto.md#5-sync-job-v4-the-second-major-jsonata-surface) feeding a vector-store datastore. They can also be used inside unified API mapping overrides if you need to embed/chunk on the read path — see [Unified API Customization](../../truto/references/unified-api-customization.md) for the override workflow.
+> These functions are most useful inside [Sync Job V4 transform expressions](./usage-in-truto.md#5-sync-job-v4--the-second-largest-jsonata-surface) feeding a vector-store datastore. They can also be used inside unified API mapping overrides if you need to embed/chunk on the read path — see [Unified API Customization](../../truto/references/unified-api-customization.md) for the override workflow.
 
 **Sync Job V4 — `transform.config.expression`** — chunk every page's body and embed each chunk so the downstream destination (e.g. a Qdrant or Pinecone datastore) gets one vector per chunk. The `cohere_api_key` here is a custom field stored in the integrated account context and exposed at the top of scope:
 

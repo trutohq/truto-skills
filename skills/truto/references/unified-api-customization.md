@@ -60,7 +60,7 @@ All CLI commands accept the global flags from the Truto CLI skill — most impor
 | `truto env-unified-models get <id>` | Read one environment unified model with its `override` |
 | `truto env-unified-model-mappings list` | List your environment's override rows. Same filters as the base list, plus `--environment_unified_model_id` |
 | `truto env-unified-model-mappings get <id>` | Read one environment override row |
-| *Meta endpoints* | `GET /unified/meta/{model}/{integration}` and `GET /unified/{model}/{resource}/{integration}/meta/{method}` — no dedicated CLI command yet; use `truto custom` (see [Inspect the merged metadata](#1-inspect-the-merged-metadata) below) |
+| *Meta endpoints* | `GET /unified/meta/{model}/{integration}` and `GET /unified/{model}/{resource}/meta/{method}` — no CLI command; call them over HTTP (see [Inspect the merged metadata](#1-inspect-the-merged-metadata) below). `truto custom` can't reach them: it prefixes the path with `/custom` |
 
 ### Modifying mappings per environment
 
@@ -190,7 +190,7 @@ truto env-unified-model-mappings update "$OVERRIDE_ID" -b '{
 }'
 ```
 
-`update` performs a deep merge of the body into the existing row. If you want to remove a field from `config`, set it explicitly to `null` in the body.
+`update` replaces the stored `config` with the one you send. Send every `config` field you want to keep; omitting a field removes it.
 
 ### Step 5 — Test the change
 
@@ -512,13 +512,11 @@ Three useful patterns, in roughly increasing order of fidelity (and decreasing o
 
 ### 1. Inspect the merged metadata
 
-After making a change, the meta endpoint shows the **fully merged** config that the unified API will use. The CLI doesn't have a dedicated meta command yet — use `truto custom` to call the meta endpoint directly:
+After making a change, the meta endpoint shows the **merged** config that the unified API will use. There is no CLI command for it (`truto custom` prefixes paths with `/custom`), so call it over HTTP:
 
 ```bash
-truto custom \
-  "/unified/marketing/campaigns/mailchimp/meta/list" \
-  -a "$ACCOUNT_ID" \
-  -o json
+curl "https://api.truto.one/unified/marketing/campaigns/meta/list?integrated_account_id=$ACCOUNT_ID" \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN"
 ```
 
 The `response_mapping`, `query_schema`, `default_query`, and `default_body` fields in the response reflect base + your environment override + any per-account override merged together. If a change you made isn't visible here, it isn't being applied.
@@ -686,13 +684,11 @@ This lists every tool/method an integration exposes — the easiest way to see w
 
 ### Confirming the merged shape before making a unified API call
 
-Once you know the combination is valid, the merged config (base + your environment override + per-account override) is exposed via the meta endpoint. Call it through `truto custom`:
+Once you know the combination is valid, the merged config is exposed via the meta endpoint. Call it over HTTP (`truto custom` can't reach it):
 
 ```bash
-truto custom \
-  "/unified/{model}/{resource}/{integration}/meta/{method}" \
-  -a "$ACCOUNT_ID" \
-  -o json
+curl "https://api.truto.one/unified/{model}/{resource}/meta/{method}?integrated_account_id=$ACCOUNT_ID" \
+  -H "Authorization: Bearer $TRUTO_API_TOKEN"
 ```
 
 This is the source of truth at runtime — if a field appears here, the unified API will use it; if it doesn't, your override isn't being applied.
@@ -705,7 +701,7 @@ This is the source of truth at runtime — if a field appears here, the unified 
 - **Cascade your changes across methods.** If you add a custom field to the `list` `response_mapping`, you almost certainly want it on `get` too — and to make it writable you need it in `create` and `update`'s `request_body_mapping`. The unified API doesn't infer this for you.
 - **Backtick-quote keys with hyphens or special characters in JSONata.** `` headers.`x-rate-limit` ``, `` response.`some-field` ``. JSONata's dot syntax doesn't accept hyphens.
 - **JSONata strings inside JSON need their internal double quotes escaped.** `"\"key\""`. For long expressions, write the JSONata first, then escape it for the JSON body — or stash the body in a file and use `--stdin`.
-- **`update` is a deep merge, not a replace.** Sending `-b '{ "config": { "response_mapping": "..." } }'` won't drop other fields under `config`. To remove a field from `config`, set it explicitly to `null`.
+- **`update` replaces `config`.** Sending `-b '{ "config": { "response_mapping": "..." } }'` drops every other field under `config`. Fetch the row, edit `config`, and send the complete object.
 - **`unified-models update` requires `version`.** The platform uses optimistic locking on this resource. Fetch the current row with `truto unified-models get <id>` first and include its `version` in the body. (Mapping rows don't require this — only the model itself.)
 - **The base unified model is shared across teams.** If you're customizing a Truto-shipped unified model (e.g. `crm`), all of your changes go into the **environment** override or the per-account override — not into the base. Only your custom unified models can have their base mappings edited directly.
 - **Custom unified models are team-private.** Only your team can see and use them; you can't share a custom unified model across teams.
@@ -729,9 +725,9 @@ Every CLI command in this reference maps 1:1 to an HTTP endpoint. Use these when
 | `GET` | `/environment-unified-model/:id` | `truto env-unified-models get <id>` |
 | `GET` | `/environment-unified-model-resource-method` | `truto env-unified-model-mappings list` |
 | `GET` | `/environment-unified-model-resource-method/:id` | `truto env-unified-model-mappings get <id>` |
-| `GET` | `/unified/meta/{model}/{integration}` | (call via `truto custom` — see [Inspect the merged metadata](#1-inspect-the-merged-metadata)) |
-| `GET` | `/unified/{model}/{resource}/meta/{method}` | (call via `truto custom`) |
-| `GET` | `/unified/{model}/{resource}/{integration}/meta/{method}` | (call via `truto custom`) |
+| `GET` | `/unified/meta/{model}/{integration}` | (no CLI command — see [Inspect the merged metadata](#1-inspect-the-merged-metadata)) |
+| `GET` | `/unified/{model}/{resource}/meta/{method}` | (no CLI command) |
+| `GET` | `/unified/{model}/{resource}/{integration}/meta/{method}` | (no CLI command) |
 
 The two `/meta/...` endpoints are documented in [Unified API → Meta Endpoints](./unified-api.md#meta-endpoints).
 

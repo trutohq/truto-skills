@@ -45,13 +45,13 @@ Unified API errors add a `truto_error_insight` block. Each key is independent �
 | --- | --- | --- | --- |
 | `missing_required_query_parameters` | array of param names | You omitted query params the unified model requires | Fix the **request**, not the mapping |
 | `missing_required_body_fields` | array of field names | You omitted required body fields | Fix the request body |
-| `conditionally_required_query_parameters` | object: param → its requirement rule | **Informational, not a violation.** Lists params that *carry* a conditional-requirement rule; Truto attaches it whenever such a rule exists — so it can ride along on unrelated errors (even a remote 401/403/429) | Read the rule; act only if your request actually breaks it |
+| `conditionally_required_query_parameters` | object: param → its requirement rule | **Informational, not a violation.** Lists params that *carry* a conditional-requirement rule; Truto attaches it to Truto-side (non-remote) errors whenever such a rule exists — so it can ride along on an unrelated validation error. It never appears on a remote error | Read the rule; act only if your request actually breaks it |
 | `conditionally_required_body_fields` | object: field → rule | Same — informational | Don't treat its presence as the cause |
 | `rate_limit_error` | — | A 429 from the provider | See [Rate limits](#rate-limits); honor `Retry-After` |
 | `forbidden_error` | `value.missing_scopes`: array of scopes | A 403 — the connection lacks these OAuth scopes for the resource/method | Re-consent with the added scopes → [P6](./diagnose-integrated-account.md) |
 | `remote_error` | — (intentionally short) | Present whenever `truto_is_remote_error` is true | Read `raw_response` + `message` for the real content |
 
-> **Only `missing_required_*` is violation-based** — it checks your actual request and means you genuinely omitted something. The `conditionally_required_*` keys are **schema-existence hints**: Truto adds them whenever the endpoint *has* a conditional rule, even on errors unrelated to it. Read them as "here's a rule that exists, check it," not "you broke this." `rate_limit_error` and `remote_error` carry only a `description`, no `value`.
+> **Only `missing_required_*` is violation-based** — it checks your actual request and means you genuinely omitted something. On a remote error, `missing_required_query_parameters` is the one schema insight Truto still adds: an omitted query param often reaches the provider unfilled, so it is usually the real cause. The `conditionally_required_*` keys are **schema-existence hints** on Truto-side errors only: Truto adds them whenever the endpoint *has* a conditional rule, even when that rule is not the cause. Read them as "here's a rule that exists, check it," not "you broke this." `rate_limit_error` and `remote_error` carry only a `description`, no `value`.
 
 **Proxy is different.** The proxy API has no unified schema to compare your request against, so proxy errors carry **only** `truto_is_remote_error`, `raw_response`, forwarded headers, and — on 403s — `truto_error_insight.forbidden_error`. The missing-parameter, conditional, `rate_limit_error`, and `remote_error` insights are **unified-only**. Don't go looking for them on a proxy failure.
 
@@ -64,7 +64,7 @@ Unified API errors add a `truto_error_insight` block. Each key is independent �
 | `403` | Authenticated but not allowed. Check `truto_error_insight.forbidden_error.value.missing_scopes` — if non-empty it's an OAuth scope gap a reconnect-with-scopes fixes. | No | Missing scopes → [P6](./diagnose-integrated-account.md) |
 | `404` | The resource doesn't exist, **or** the account/environment isn't visible to your token. | No | Check casing / target / token scope |
 | `405` | Method not allowed on that route. **Sandbox accounts return 405 on `POST`/`PATCH`/`DELETE` — they're read-only.** | No | Use a non-sandbox account to write |
-| `409` | Provider rejected a create/update on a uniqueness constraint. Always `truto_is_remote_error: true`; check `raw_response` for the field. | No | Resolve the conflict in the request |
+| `409` | On unified/proxy: the provider rejected a create/update on a uniqueness constraint (`truto_is_remote_error: true`; check `raw_response` for the field). Admin routes (tenants, link tokens) also return Truto-side 409s. | No | Resolve the conflict in the request |
 | `422` | Payload well-formed but the provider's own validation rejected it. | No | Fix per `raw_response` |
 | `429` | Rate limited — see below. | **Yes**, after `Retry-After` | Back off |
 | `500` | Truto failed to process the request. | **Yes**, backoff | If it persists, capture the response, escalate |
@@ -75,12 +75,13 @@ A `5xx` **with** `truto_is_remote_error: true` is the provider failing, not Trut
 
 ## Rate limits
 
-Both Truto tiers return `429` with `Retry-After: 10`.
+Each Truto tier returns `429` with its own `Retry-After`.
 
-| Scope | Limit | Keyed on |
-| --- | --- | --- |
-| Per API token | **500 requests / 10s** | The bearer token |
-| Per integrated account | **50 requests / 10s** | The `integrated_account_id` query param (unified + proxy only) |
+| Scope | Limit | Keyed on | `Retry-After` |
+| --- | --- | --- | --- |
+| Per API token (burst) | **100 requests / 1s** | The bearer token | `1` |
+| Per API token | **500 requests / 10s** | The bearer token | `10` |
+| Per integrated account | **50 requests / 10s** | The `integrated_account_id` query param (unified, proxy, and custom) | `10` |
 
 A provider-originated 429 instead carries `truto_is_remote_error: true` with the provider's own `Retry-After` in the forwarded headers (and, on unified routes, `truto_error_insight.rate_limit_error`). Honor whichever `Retry-After` is present.
 

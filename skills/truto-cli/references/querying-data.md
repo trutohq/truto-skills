@@ -40,12 +40,12 @@ truto capabilities <target> [options]
 
 | Flag                   | Description                                                                        | Default                |
 | ---------------------- | ---------------------------------------------------------------------------------- | ---------------------- |
-| `-t, --type <type>`    | Capability surface: `proxy`                                                        | `unified`              |
+| `-t, --type <type>`    | Capability surface: `proxy`, `unified`, or `all`                                   | `all`                  |
 | `--has-description`    | Only return proxy methods that have a description                                  | `true` (on by default) |
 | `--no-has-description` | Include proxy methods even if they have no description (widens the result set)     | —                      |
 | `--methods <list>`     | Comma-separated method filter (`list,get,create,update,delete` or any custom name) | —                      |
 | `--resource <name>`    | Filter to a single resource by name                                                | —                      |
-| `--target <kind>`      | Force target kind when auto-detection is wrong: `integration`                      | `account`              |
+| `--target <kind>`      | Force target kind when auto-detection is wrong: `integration` or `account`         | auto-detected          |
 
 
 All [global flags](../SKILL.md#global-options) (`-p`, `-o`, `-v`, `--api-url`, `--token`) apply.
@@ -181,7 +181,7 @@ Real captured response, trimmed for readability (Bigcommerce account, `--resourc
 | `unified[].docs_url`                     | Public docs page for the unified model resource — link to it when explaining results                                                                       |
 | `unified[].env_overridden`               | `true` means this environment has customized the mapping (`env-unified-models` / `env-unified-model-mappings`) — behavior may differ from the base mapping |
 | `auth.formats`, `auth.fields`            | Credential shape the account already uses — never invent these fields                                                                                      |
-| `account.status`                         | Must be `active`. `blocked`/`paused`/`expired` will fail at call time — fix the account first                                                              |
+| `account.status`                         | Must be `active`. `connecting`/`needs_reauth`/`validation_error`/`post_install_error` will fail at call time — fix the account first                       |
 | `account.is_blocked`                     | Hard stop — `truto accounts refresh-credentials <id>` or reconnect via Link before retrying                                                                |
 | `ai_readiness.ai_ready_score`            | Fraction of proxy methods with descriptions. Low scores (e.g. `0.2`) mean LLM-driven calls will be guesswork — prefer the unified API for that integration |
 
@@ -190,7 +190,7 @@ Real captured response, trimmed for readability (Bigcommerce account, `--resourc
 
 Substitute the `UPPERCASE_PLACEHOLDERS` with values pulled from the capabilities response.
 
-> ### CRITICAL: The resource ID is positional — there is no `-d` / `--id` flag.
+> ### The resource ID is positional — there is no `-d` / `--id` flag.
 >
 > For `-m get|update|delete`, the resource ID is the **second positional argument** (right after `<resource>` for proxy, after `<model> <resource>` for unified). Trying `-d <id>` will fail with `error: unknown option '-d'`. The list-style CRUD pattern is shown in [Worked examples per method](#worked-examples-per-method) below.
 >
@@ -387,7 +387,7 @@ truto proxy conversations -a $ACCOUNT -o json > /tmp/x.json && jq 'length' /tmp/
 
 ### Proxy 404 → "Did you mean…?"
 
-When `truto proxy` 404s, the CLI silently re-runs capabilities for the account and adds one of these hints to the error:
+When `truto proxy` 404s, the CLI silently re-runs capabilities for the account and adds one of these hints to the error. The hint prints only with `-o table` or `-o csv`; with `-o json`, `ndjson`, or `yaml` stderr gets only the `{"error": …}` envelope, so re-run without `-o` to see it.
 
 - **Resource near-match found:** `Resource \`contac is not exposed on this account. Did you mean: contacts, companies?`
 - **Method near-match found:** `Method \`fetch is not implemented for contacts. Did you mean: get, list?`
@@ -406,7 +406,7 @@ Expected — the `--type` flag filters the response. To see proxy resources, dro
 Two possible causes:
 
 1. **Default `--has-description` filter excluded everything.** Re-run with `--no-has-description` to include proxy methods that lack documentation (the integration may not have descriptions yet — visible in `ai_readiness.proxy_methods_with_descriptions`).
-2. **Table renderer mismatch.** Some CLI versions render zero rows for capabilities even when JSON has data. Always use `-o json` for capabilities; trust the JSON shape over the table.
+2. **Table renderer mismatch.** The `capabilities` table renders zero rows even when JSON has data. Always use `-o json` for capabilities; trust the JSON shape over the table.
 
 ### Unified call works but returns weird-shaped data
 
@@ -414,12 +414,12 @@ Check `unified[].env_overridden` for that resource. If `true`, this environment 
 
 ```bash
 truto env-unified-models list -o json
-truto env-unified-model-mappings list --env_unified_model_id <id> -o json
+truto env-unified-model-mappings list --environment_unified_model_id <id> -o json
 ```
 
 To iterate on JSONata locally without making real API calls, use [`truto jsonata eval`](data-plane.md#evaluate-jsonata-locally-truto-jsonata-eval) for any expression + context, or [`truto unified test-mapping`](data-plane.md#iterate-on-a-mapping-locally-truto-unified-test-mapping) for `response_mapping` only.
 
-### Account is blocked or expired
+### Account is not active
 
 If `account.status` is anything other than `active`, or `account.is_blocked` is `true`:
 
@@ -457,7 +457,7 @@ These are designed to be the first commands an LLM agent runs after `accounts li
 
 ## `jq` recipes for finding the right account
 
-`truto accounts list` (CLI ≥ 0.17.0) supports server-side filtering on `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status`, `--features-super-query` (alias `--features.super_query`), `--created-at`, and `--updated-at` — see [the API docs](https://truto.one/docs/api-reference/admin/integrated-accounts/list.md). **Always use these flags first**; only fall back to client-side `jq` filtering when you need shaping that the API can't express (group-by, fall-back labels, custom output columns), or when you're on an older CLI build that only exposes `--tenant-id` / `--is-sandbox`.
+`truto accounts list` supports server-side filtering on `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status`, `--features-super-query` (alias `--features.super_query`), `--created-at`, and `--updated-at` — see [the API docs](https://truto.one/docs/api-reference/admin/integrated-accounts/list.md). **Always use these flags first**; only fall back to client-side `jq` filtering when you need shaping that the API can't express (group-by, fall-back labels, custom output columns).
 
 > **Heads up:** `--profile` does **not** scope the listing — it only swaps the API token + URL. To narrow by integration you must pass `--integration-name`.
 

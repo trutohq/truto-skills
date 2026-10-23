@@ -19,21 +19,22 @@
    - `authentication_method`, `is_sandbox` — context for what a reconnect would involve.
 2. **The block + capability echo.** `get_capabilities { target: accountId }` returns an `account` block with `status` and **`is_blocked`**. Note: **`is_blocked` is not a field on the account row** — it's computed from a blocklist and surfaced only here. A blocked account (also surfaced as a `503`) means contact support, not reconnect.
 
-> `last_forbidden_error` isn't in the documented OpenAPI schema, and the catalog labels the post-install result `last_action_result` while the actual response returns `last_action_run_result`. Request them explicitly with `fields` and trust what the response returns — `describe_api_operation` is the tiebreaker on exact field names.
+> The catalog labels the post-install result `last_action_result`, but the actual response returns `last_action_run_result`. Request it explicitly with `fields` and trust what the response returns.
 
 ### The lifecycle fact that explains most of these
 
 A **remote 401** (the provider rejecting the connection's credentials) flips the account to `needs_reauth`, sets `last_error`, and fires the `integrated_account:authentication_error` webhook. From then on the connection keeps returning 401 **until the end user reconnects** — nothing you `PATCH` changes that. ([Connection Flow](../../truto/references/connection-flow.md))
 
-A **remote 403 behaves differently.** It records `last_forbidden_error` (`resource`, `method`, `missing_scopes`, `occurred_at`) but does **not** change `status` and fires no webhook — so a scope-gapped account frequently still reads `status: active`. Detect scope problems from `last_forbidden_error`, not from `status`. (On a later success `last_forbidden_error` clears; a `needs_reauth` → `active` recovery fires `integrated_account:reactivated`.)
+A **remote 403 behaves differently.** It records `last_forbidden_error` (`resource`, `method`, `missing_scopes`, `occurred_at`) and fires `integrated_account:forbidden_error` (de-duplicated by a cooldown), but does **not** change `status` — so a scope-gapped account frequently still reads `status: active`. Detect scope problems from `last_forbidden_error`, not from `status`. (On a later success `last_forbidden_error` clears; a `needs_reauth` → `active` recovery fires `integrated_account:reactivated`.)
 
 ## Branch on status → reason → actor
 
 | `status` / signal | Reason | Who fixes it, how |
 | --- | --- | --- |
 | `needs_reauth` | Credentials expired/revoked | **End user reconnects** through the app (Truto Link). You can't do it for them — and you can't even mint the token: `/link-token` is a [forbidden surface](./safe-admin-changes.md#the-classification--what-needs-approval-whats-blocked). Surface a clear "reconnect" prompt. |
+| The customer reports `POST /link-token` answering `400` `truto_error_code: app_credentials_not_configured` on a reconnect (you cannot observe this yourself: `/link-token` is a forbidden surface and a refused mint sets nothing on the account) | The integration has no usable sign-in method left: every method it has is a bring-your-own-app one — OAuth 2.0 client id or AWS STS access key — with no app credentials configured in that environment. Reconnecting may switch method, so this fires only when *nothing* can connect. Confirm by reading the environment integration — `call_platform_api { method: "GET", path: "/environment-integration/{id}" }` — and checking `integration.config.credentials`: every *enabled* method is an own-app one (`oauth2`, `aws_sts`) whose `client.id` / `signing.access_key_id` is a placeholder (`dummy`, empty, or a `{{…}}` template with no matching `client_id` connect field). Two unset own-app methods and nothing else is still refused | **Customer admin configures the app** in the integration's **Configuration** tab (**Use your own OAuth settings**, or **Use your own signing credentials** for AWS STS), or enables another method. Not a reconnect: no end-user action can complete it until then. See [P1](./safe-admin-changes.md) before touching credentials yourself — never guess a client id. |
 | `last_forbidden_error.missing_scopes` set (from a 403) — `status` may still be `active` | The connection lacks OAuth scopes for that resource/method | **End user reconnects with the added scopes** — same flow, broader consent |
-| `validation_error` | A required `context` field is missing/invalid | Usually a reconnect — but a missing required `context` field is the **one** case that may warrant a narrow admin `PATCH /integrated-account/{id}` context update, evidence-led, via [P1](./safe-admin-changes.md) (context merges shallowly — pass the full nested value). **Never** patch credentials. |
+| `validation_error` | A required `context` field is missing/invalid | Usually a reconnect — but a missing required `context` field is the **one** case that may warrant a narrow admin `PATCH /integrated-account/{id}` context update, evidence-led, via [P1](./safe-admin-changes.md) (`PATCH` replaces `context` except protected credential paths — send the complete object). **Never** patch credentials. |
 | `post_install_error` | A post-install action failed | Inspect `last_action_run_result` for the failing step; fix the underlying cause (often config or a provider permission), then re-run/reconnect |
 | `is_blocked: true` / `503` | The account is blocked | Contact `support@truto.one` — not a reconnect, not a write |
 | `active` **and** no `last_forbidden_error` | The account is healthy | This isn't an account problem — return to the calling playbook |
@@ -49,7 +50,6 @@ A **remote 403 behaves differently.** It records `last_forbidden_error` (`resour
 - Treating a `missing_scopes` 403 as a code or mapping bug — it's a consent gap, fixed by reconnecting with scopes.
 - Assuming you can re-authenticate on the user's behalf. You can't generate a link token (`/link-token` is forbidden) and you can't complete OAuth for them — always hand reconnection to the end user.
 
-## Supersedes / Reuses
+## Reuses
 
-- **New** — no prior guide covered account state; the other playbooks branch here for anything auth-shaped.
 - **Reuses** [Connection Flow](../../truto/references/connection-flow.md) (lifecycle + reconnection), [Integrated Account Context](../../truto/references/integrated-account-context.md) (the `context`/credentials model and shallow-merge rule), the [Error & evidence model](./error-and-evidence-model.md), and the `truto-cli` account-status commands. The user-facing reauthorization docs are a deep link **for the user to act on**, not a doc for you to fetch.

@@ -102,24 +102,9 @@ Result (shape):
 
 Transforms a list of Notion blocks back into a Markdown string, preserving headings, lists, and nested children.
 
-**Example:**
+**Input:** Notion API block objects as returned by `GET /blocks/{id}/children`. Each block keeps its content under its type key (`block.heading_1.rich_text`). Children are not nested: pass one flat list in which each child block's `parent_id` equals its parent's `id`, and the parent has `has_children: true`.
 
-Input Notion blocks:
-
-```
-[
-  { type: 'heading_1', text: { content: 'Introduction' } },
-  { type: 'paragraph', text: { content: 'This is a paragraph.' } },
-  {
-    type: 'bulleted_list_item',
-    text: { content: 'List item 1' },
-    children: [
-      { type: 'bulleted_list_item', text: { content: 'Nested item 1' } }
-    ]
-  },
-  { type: 'bulleted_list_item', text: { content: 'List item 2' } }
-]
-```
+**Example:** for blocks *Introduction* (`heading_1`), *This is a paragraph.* (`paragraph`), *List item 1* (`bulleted_list_item` with child *Nested item 1*), and *List item 2*:
 
 Expression: `$convertNotionToMarkdown(response.results)`
 
@@ -205,27 +190,15 @@ Converts Markdown into [Atlassian Document Format](https://developer.atlassian.c
 
 ## `$convertMdToPdf(markdown, options?)`
 
-Converts Markdown to a PDF `Blob` using jsPDF.
+Converts Markdown to a PDF `Blob` by calling Truto's document-parser service (`POST <documentParserApiUrl>/md-to-pdf`). Needs `documentParserApiUrl` / `documentParserApiKey`, which Truto injects inside its expression contexts.
 
-**Default options:**
+**Option fields** (all optional):
 
-```
-{
-  title: '',
-  pageSize: 'a4',
-  embedImages: false,
-  pageMargins: [40, 60, 40, 60],
-  defaultStyle: { fontSize: 12, lineHeight: 1.4 }
-}
-```
-
-**Option fields:**
-
-- `**title`** — Optional document title.
-- `**pageSize**` — jsPDF page size string (e.g. `'a4'`, `'LETTER'`).
-- `**embedImages**` — Reserved for future use.
-- `**pageMargins**` — `[left, top, right, bottom]` in points.
-- `**defaultStyle**` — `{ fontSize: number, lineHeight: number }`.
+- **`title`** — Document title.
+- **`pageSize`** — e.g. `'A4'`, `'Letter'`.
+- **`margin`** — `{ top, bottom, left, right }` as CSS lengths.
+- **`displayHeaderFooter`**, **`headerTemplate`**, **`footerTemplate`** — Page header/footer.
+- **`embedImages`**, **`preferCssPageSize`**, **`styles`**, **`baseUrl`**, **`filename`**.
 
 **Example:**
 
@@ -276,6 +249,6 @@ resources.`knowledge-base`.pages.{ "id": id, "title": title, "slack_blocks": $co
 **Sync Job V4 destination `payload` build** — convert each record's body to a PDF blob attachment for an outbound webhook (inside a destination's `config.expression` where `payload.records` is in scope):
 
 ```
-payload.records.{ "id": id, "title": title, "pdf": $convertMdToPdf(body.content, { "format": "a4" }) }
+payload.records.{ "id": id, "title": title, "pdf": $convertMdToPdf(body.content, { "pageSize": "A4" }) }
 ```
 

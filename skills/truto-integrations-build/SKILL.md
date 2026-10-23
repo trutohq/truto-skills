@@ -21,8 +21,6 @@ This skill covers **build -> optional edit -> apply -> eligible read verificatio
 - Per-environment overrides -- see [customizing-integrations.md](../truto/references/customizing-integrations.md).
 - JSONata in config expressions -- see the [truto-jsonata](../truto-jsonata/SKILL.md) skill.
 
-Trigger phrases: "integrations build", "build an integration", "scaffold integration", "create integration from docs", "integrations apply", "integrations lint", "lint integration", "IntegrationFile", "convert API docs to Truto".
-
 ---
 
 ## One-time setup

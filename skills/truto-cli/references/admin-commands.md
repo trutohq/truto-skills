@@ -64,7 +64,7 @@ truto integrations validate --file integration.json   # validate a local file
 cat integration.json | truto integrations validate --stdin
 ```
 
-`init` supports auth formats `api_key`, `oauth2`, `oauth2_client_credentials`, `basic`, `keka_oauth`, `oauth`. The scaffold seeds `credentials`, `authorization`, a starter `resources` block (CRUD method skeletons per resource you list), and an optional `webhook` block. `validate` checks for missing `label`, `credentials`, valid `authorization.format`, parseable resource methods, and a non-empty `webhook` block — server-side schema validation still happens at create/update time.
+`init` supports auth formats `api_key`, `oauth2`, `oauth2_client_credentials`, `basic`, `keka_oauth`, `oauth`. The scaffold seeds `credentials`, `authorization`, a starter `resources` block (CRUD method skeletons per resource you list), and an optional `webhook` block. `validate` checks the config against the `IntegrationConfig` schema from the OpenAPI spec, plus local checks for `label`, `credentials`, and the `base_url` path prefix — server-side validation still happens at create/update time.
 
 For the full `integration.config` schema, all five credential formats (`api_key`, `oauth2`, `oauth2_client_credentials`, `oauth`, `keka_oauth`), and an end-to-end Acme CRM worked example that uses `init → validate → create`, see the [Authoring Integrations](../../truto/references/authoring-integrations.md) reference in the `truto` skill.
 
@@ -87,11 +87,11 @@ truto accounts list --features-super-query wnam                      # SuperQuer
 truto accounts list --created-at 2024-01-01T00:00:00Z                # ISO 8601 timestamp filters
 truto accounts get <id>
 truto accounts create -b '{"environment_integration_id":"...","tenant_id":"...","context":{...},"authentication_method":"oauth2","region":"wnam"}'
-truto accounts update <id> -b '{"status":"inactive"}'
+truto accounts update <id> -b '{"status":"needs_reauth"}'
 truto accounts delete <id>
 ```
 
-**Filters exposed by the CLI** (CLI ≥ 0.17.0; mapped 1:1 to [the API docs](https://truto.one/docs/api-reference/admin/integrated-accounts/list.md)):
+**Filters exposed by the CLI** (mapped 1:1 to [the API docs](https://truto.one/docs/api-reference/admin/integrated-accounts/list.md)):
 
 
 | Flag                              | API param              | Notes                                                                                                       |
@@ -166,7 +166,7 @@ truto tenants delete <id>
 
 **Filters:** `--id`, `--name`
 
-**Create fields:** `id` (required — URL-path-safe: letters, digits, `. _ : @ + -`, up to 255 chars; immutable), `name` (optional; defaults to `id`), `metadata` (optional JSON object)
+**Create fields:** `id` (required — free-form, up to 255 chars; `/`, spaces, and non-ASCII are allowed; not `.` or `..`; no leading or trailing whitespace; immutable), `name` (optional; defaults to `id`), `metadata` (optional JSON object)
 
 **Update fields:** `name`, `metadata` (`PATCH` replaces the whole metadata object; merge client-side for partial updates)
 
@@ -258,18 +258,17 @@ truto environment-integrations override-pagination <id> \
   --config '{"cursor_path":"meta.next","limit_param":"page_size"}'
 truto environment-integrations override-pagination <id> --clear
 
-# Rate-limit override (each value is a JSONata expression evaluated against the response)
+# Rate-limit override (each value is a JSONata expression evaluated against { headers, status })
 truto environment-integrations override-rate-limit <id> \
-  --is-rate-limited '$response.status = 429' \
-  --retry-after-header '$number($header."retry-after")' \
-  --rate-limit-header '$number($header."x-rate-limit-remaining")'
+  --is-rate-limited 'status = 429' \
+  --retry-after-header '$number(headers.`retry-after`)'
 
-# Webhook override (signature verification, accept gate, payload transform)
+# Webhook override (signature verification)
 truto environment-integrations override-webhook <id> \
-  --signature-verification '{"format":"hmac","config":{"algorithm":"sha256","parts":["$body"],"secret":"{{credentials.webhook_secret}}","compare_with":"$header.x-signature"}}' \
-  --handle-verification '$event.event_type != "test"' \
-  --payload-transform '{ "type": $event.event_type, "data": $event.data }'
+  --signature-verification '{"format":"hmac","config":{"algorithm":"sha256","parts":["$body"],"secret":"{{credentials.webhook_secret}}","compare_with":"$header.x-signature"}}'
 ```
+
+`--handle-verification` and `--payload-transform` take JSONata evaluated against the inbound payload (`body`, `raw_body`, `headers`, `query_params`, `context`). `payload_transform` runs first and its result replaces that payload. `handle_verification` must return an object whose `type` is `verify`, `payload`, or `meta`; any other result skips signature verification.
 
 For end-to-end workflows (when to override what, JSONata scope per surface, debugging tips), see the [Customizing Integrations](../../truto/references/customizing-integrations.md) reference in the `truto` skill.
 
@@ -480,7 +479,7 @@ truto unified-model-mappings update <id> -b '{"config":{...},"version":2}'
 truto unified-model-mappings delete <id>
 ```
 
-**Filters:** `--unified_model_id`, `--integration_name`, `--resource_name`, `--method_name`, `--version`
+**Filters:** `--unified_model_id`, `--integration_name`, `--resource_name`, `--method_name`, `--lock-version` (the `version` field; `--version` prints the CLI version)
 
 **Create fields:** `unified_model_id` (required), `integration_name` (required), `resource_name` (required), `method_name` (required), `config` (JSON — typically holds `response_mapping`, `query_mapping`, `request_body_mapping`, `error_mapping`)
 
@@ -522,7 +521,7 @@ truto env-unified-model-mappings update <id> -b '{"config":{...},"version":1}'
 truto env-unified-model-mappings delete <id>
 ```
 
-**Filters:** `--environment_unified_model_id`, `--integration_name`, `--resource_name`, `--method_name`, `--version`
+**Filters:** `--environment_unified_model_id`, `--integration_name`, `--resource_name`, `--method_name`, `--lock-version`
 
 **Create fields:** `environment_unified_model_id` (required), `integration_name` (required), `resource_name` (required), `method_name` (required), `config` (JSON)
 
@@ -540,12 +539,14 @@ Scoped to an integrated account. Unlike other resources, the account ID is a **p
 truto mcp-tokens list <account-id>
 truto mcp-tokens get <account-id> <token-id>
 truto mcp-tokens create <account-id> --name "my-mcp-token"
-truto mcp-tokens create <account-id> -b '{"name":"custom","scopes":[...]}'
+truto mcp-tokens create <account-id> --name "discovery" --tool-exposure discovery
+truto mcp-tokens create <account-id> --name custom -b '{"name":"custom","config":{"methods":["read"],"tags":["crm"],"tool_exposure":"all"}}'
+truto mcp-tokens update <account-id> <token-id> --tool-exposure all
 truto mcp-tokens update <account-id> <token-id> -b '{"name":"renamed"}'
 truto mcp-tokens delete <account-id> <token-id> [-f]
 ```
 
-`--name` is always required when creating.
+`--name` is always required when creating. `--tool-exposure` accepts `all` (default — full tool schemas) or `discovery` (only `search_tools` / `get_tool_schema` / `call_tool`). See the **truto** skill [MCP Tokens](../../truto/references/mcp-tokens.md) reference for config details and method-level `tool_tags`.
 
 ### Datastores (`truto datastores`)
 
@@ -659,6 +660,8 @@ truto link-tokens create -b '{"tenant_id":"..."}'
 truto link-tokens create --tenant-id <tid>
 truto link-tokens create --tenant-id <tid> --integrated-account-id <id>
 ```
+
+`create --integrated-account-id <id>` is refused (`400`, `truto_error_code: app_credentials_not_configured`) when the account's integration has no usable authentication method left: every method it has is a bring-your-own-app one with no app credentials configured in the environment. Reconnecting may switch method, so an integration that still has a working method is not refused, and a `--tenant-id`-only token never is. Fix is in the integration's **Configuration** tab (**Use your own OAuth settings**; **Use your own signing credentials** for AWS STS), not a retry.
 
 ### Users (`truto users`)
 

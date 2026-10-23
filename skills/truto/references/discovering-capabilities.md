@@ -11,7 +11,7 @@ GET https://api.truto.one/integrated-account/{integrated_account_id}/capabilitie
 
 | Endpoint | Use when |
 |----------|----------|
-| `/integration/{slug-or-id}/capabilities` | Catalog browsing — what does this integration support in general? Useful before any account is connected, or when building a "supported integrations" page. No `account` field in the response, no `env_overridden` flags. |
+| `/integration/{slug-or-id}/capabilities` | Catalog browsing — what does this integration support in general? Useful before any account is connected, or when building a "supported integrations" page. No `account` field in the response; `env_overridden` reflects your token's environment. |
 | `/integrated-account/{uuid}/capabilities` | The actionable one — what does THIS connected account expose, including environment-level overrides? Includes `account.{status, is_blocked, authentication_method}` so you can gate calls on account health. |
 
 Both accept the same query-param filters and return the same response shape.
@@ -54,7 +54,7 @@ type CapabilitiesResponse = {
     label: string;    // human label, e.g. "HubSpot"
     category: string; // e.g. "crm"
   };
-  environment_id?: string; // present on the account variant only
+  environment_id: string | null; // the environment the response was resolved for
 
   proxy: Array<{
     resource: string; // e.g. "contacts"
@@ -101,7 +101,7 @@ type CapabilitiesResponse = {
 
   account?: { // only on the integrated-account endpoint
     id: string;
-    status: string; // "active" | "blocked" | "paused" | "expired" | ...
+    status: string; // "connecting" | "active" | "needs_reauth" | "validation_error" | "post_install_error"
     authentication_method: string;
     is_blocked: boolean;
   };
@@ -250,7 +250,7 @@ const actions = [
 ```typescript
 const caps = await getCapabilities({ kind: "account", accountId });
 if (caps.account?.is_blocked) {
-  // Force a reconnect via Truto Link before attempting any data call.
+  // Truto has blocked this account (calls return 503) — contact Truto support; a reconnect won't clear it.
 }
 if (caps.account?.status !== "active") {
   // Try refresh-credentials or surface a "Reconnect" CTA to the end user.
@@ -272,9 +272,9 @@ const supportedUnifiedModels = [...new Set(caps.unified.map(u => u.model))];
 |---------|--------------|-----|
 | `404 Not Found` on the capabilities URL | Wrong target shape (e.g. account UUID passed as integration slug, or vice versa) | Check the path you constructed; the account variant takes a UUID, the integration variant takes a slug or integration UUID. |
 | `proxy: []` despite the integration clearly supporting proxy | `?type=unified` filter passed (or omitted `?has_description=false` and no methods are documented) | Drop the `type` filter or pass `?has_description=false`. Re-check `ai_readiness.proxy_methods_with_descriptions`. |
-| `unified: []` for a CRM integration | The integration doesn't have a unified mapping installed for this environment | Install or override via the dashboard, or via `truto env-unified-models install` in the CLI. |
+| `unified: []` for a CRM integration | The integration doesn't have a unified mapping installed for this environment | Install or override via the dashboard, or via `truto env-unified-models create -b '{"environment_id":"…","unified_model_id":"…"}'` in the CLI. |
 | Data call still 404s after the route appears in capabilities | `env_overridden: true` and the override changes the URL/method shape | Inspect via `truto env-unified-model-mappings list` or the `env-unified-model-resource-method` admin endpoint. |
-| `account.is_blocked: true` | Credentials revoked / account paused | Reconnect via Truto Link or call `POST /integrated-account/refresh-credentials`. |
+| `account.is_blocked: true` | Truto has blocked the account (calls return `503`) | Contact `support@truto.one` — a reconnect or credential refresh won't clear it. For `status: needs_reauth`, reconnect via Truto Link. |
 
 ## See also
 

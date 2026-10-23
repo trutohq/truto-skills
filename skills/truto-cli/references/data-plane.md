@@ -263,7 +263,7 @@ From `[truto capabilities <account-id> -o json](#step-0-discover-capabilities-fi
 
 ### 404 → "Did you mean…?" auto-hint
 
-When a proxy call returns 404, the CLI automatically re-runs capabilities for the account and appends a hint to the error before exiting. There are five outcomes — read the hint and act on it instead of guessing:
+When a proxy call returns 404, the CLI automatically re-runs capabilities for the account and appends a hint to the error before exiting. There are five outcomes — read the hint and act on it instead of guessing. The hint prints only with `-o table` or `-o csv`; with `-o json`, `ndjson`, or `yaml` stderr gets only the `{"error": …}` envelope, so re-run without `-o` to see it.
 
 
 | Hint                                                                                                            | Meaning                                                                    |

@@ -30,10 +30,6 @@ mappings. It does NOT cover:
 - Hand-editing per-environment unified mapping overrides via the admin CLI (`unified-model-mappings`, `env-unified-model-mappings`) -- see [customizing-integrations.md](../truto/references/customizing-integrations.md) and the [truto-cli](../truto-cli/SKILL.md) skill.
 - General CLI auth, profiles, and data-plane commands -- see [truto-cli](../truto-cli/SKILL.md).
 
-Trigger phrases: "unified-mappings build", "build unified mappings", "map this
-integration to crm", "generate response_mapping", "MappingFile", "unified
-mappings apply", "map proxy responses to the unified model".
-
 ---
 
 ## One-time setup
@@ -183,7 +179,7 @@ essentials:
 |-------|---------|
 | `integration_name` / `unified_model_name` | What this file maps, by slug |
 | `write_target` | `base` (team-owned) or `env` (per-environment override) |
-| `cells[]` | One entry per unified resource/method: a `config` (mapping fields) + `db_info` (apply action) |
+| `cells[]` | One entry per unified resource/method: a `config` (mapping fields) + `apply_db_action` (apply action) |
 | `build_summary` | `status`, `counts`, `built`, `skipped` (with reasons), `unbuilt_routed`, `warnings` |
 
 The `build_summary` is built for human review. `skipped` lists **why** a cell

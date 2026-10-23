@@ -77,7 +77,7 @@ List responses use the [standard list envelope](./unified-api.md#list-envelope):
 
 **Single-resource calls** (`GET /proxy/{resource}/{id}`) return the upstream provider's response body verbatim — same shape, same field names. There is no wrapping envelope.
 
-**Errors** from the upstream provider are surfaced through Truto's standard [error envelope](./unified-api.md#error-envelope), with the upstream status code preserved in `statusCode` and the original error included in `details`.
+**Errors** from the upstream provider are surfaced through Truto's standard [error envelope](./unified-api.md#error-envelope), with the upstream status code preserved in `statusCode`, `truto_is_remote_error: true`, and the provider's original body in `raw_response`.
 
 ### Binary Passthrough
 
@@ -204,7 +204,7 @@ Authoring tips:
 
 - **Sandbox accounts can't call write methods.** Custom methods on proxy resources go through the same sandbox guard as `POST /proxy/...` — they return `405` for sandbox accounts.
 - **Idempotency.** `POST /proxy/{resource}/{method}` honors the `Idempotency-Key` header (keyed by `integrated_account_id` + path + key), so you can safely retry mutating custom methods.
-- **Use `tool_tags` to surface the method.** Adding the resource to `tool_tags` (e.g. `"contacts": ["write", "bulk"]`) lets MCP tooling filter on it.
+- **Use `tool_tags` to surface the method.** Resource-level (e.g. `"contacts": ["write", "bulk"]`) tags every method on that resource. Method-level (e.g. `"contacts.merge": ["bulk"]`) is unioned onto that method only — useful when one action is destructive or special-cased for MCP `config.tags` filters.
 - **Store nothing.** Like CRUD methods, custom methods are stateless — they're a description of *how to call* the upstream, nothing more.
 
 ### Pattern 2 — Ad-hoc `/custom/{path}` with `methodConfig`
@@ -244,7 +244,7 @@ When to prefer Pattern 2 over Pattern 1:
 
 ### Where Custom Methods Run
 
-Custom methods (both patterns) execute through the same `fetchResourceForIntegratedAccount` pipeline as standard CRUD: integration-level `before` steps, `headers`/`query` merging, placeholder substitution, JSONata transforms, pagination, error mapping, and credential refresh all apply. There's no separate "custom handler" runtime — they're regular method configs invoked by a different route.
+Custom methods (both patterns) execute through the same `fetchResourceForIntegratedAccount` pipeline as standard CRUD: `headers`/`query` merging, placeholder substitution, JSONata transforms, pagination, error mapping, and credential refresh all apply. There's no separate "custom handler" runtime — they're regular method configs invoked by a different route.
 
 ---
 
@@ -274,7 +274,7 @@ Batch requests execute multiple unified or proxy API calls in a single request, 
     {
       "resource": "crm/companies",
       "method": "list",
-      "depends_on": ["crm/contacts"]
+      "depends_on": "crm/contacts"
     }
   ],
   "args": {}
@@ -298,7 +298,7 @@ Batch requests execute multiple unified or proxy API calls in a single request, 
 | `id` | string | Resource ID for get/update/delete |
 | `query` | object | Query parameters |
 | `body` | object | Request body |
-| `depends_on` | string[] | Resources that must complete first |
+| `depends_on` | string | The one resource that must complete first |
 | `loop_on` | string | Iterate over results from another resource |
 | `persist` | boolean | Store results for dependent resources |
 | `response_format` | string | How to format the response |

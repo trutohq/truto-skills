@@ -10,8 +10,6 @@ Use this skill when running Truto commands in the terminal — setting up platfo
 
 To write integration code that calls the Truto API from the user's application, use the **Truto** skill instead.
 
-Trigger phrases: "truto cli", "truto command", "install truto", "truto login", "set up integration", "list accounts", "truto export", "debug truto".
-
 ## What is the Truto CLI?
 
 The Truto CLI is a terminal tool for administering the [Truto](https://truto.one) unified API platform. It covers:
@@ -234,7 +232,7 @@ For build/edit/apply/verification, follow [the artifact workflow](references/int
 6. **Use `truto context`** to get a full CLI reference as markdown, or `truto context --full` for the complete command tree with all flags.
 7. **Pagination:** List commands return 25 results by default. Use `truto export` for exhaustive data.
 8. **Resource path convention:** In `export`/`diff`, `crm/contacts` (with `/`) = unified API, `tickets` (no `/`) = proxy API.
-9. **Read the proxy 404 hint.** When `truto proxy` returns 404, the CLI auto-runs capabilities and prints either `Did you mean: <near-matches>?` or `Run \`truto capabilities --type proxy to list available resources.` — follow that hint instead of switching to a different approach.
+9. **Read the proxy 404 hint.** When `truto proxy` returns 404, the CLI auto-runs capabilities and prints either `Did you mean: <near-matches>?` or `Run \`truto capabilities --type proxy to list available resources.` — follow that hint instead of switching to a different approach. The hint prints only with `-o table` or `-o csv`; with `-o json`, `ndjson`, or `yaml` stderr gets only the `{"error": …}` envelope, so re-run without `-o` to see it.
 10. **Use `truto accounts identify <id>`** to quickly answer "what is this account?" — returns `integration_name`, `tenant_id`, `status`, and a connection hint (subdomain, domain, etc.) in a single compact JSON response. Much faster than parsing the full `accounts get` output.
 11. **Use `--brief` or `--select` on `get`** to cut down output. `truto accounts get <id> --brief -o json` returns only the list-view columns. `truto accounts get <id> --select id,integration.name,status -o json` returns only the named fields. Both avoid the full 100KB+ JSON dump.
 12. **Command name aliases:** `truto integrated-accounts` and `truto env-integrations` work as aliases. The canonical names are `accounts` and `environment-integrations`, but the aliases exist so you don't need to remember which got abbreviated.
@@ -249,10 +247,9 @@ For build/edit/apply/verification, follow [the artifact workflow](references/int
   - Streaming consumers: use `-o ndjson` and pipe to `head`, `jq -c`, `grep`, etc. — one JSON object per line, safe to truncate.
   - Anything that might be larger than a screen: redirect to a file first, then process. `truto … -o json > /tmp/out.json && jq … /tmp/out.json`.
   - The default `-o table` also truncates values silently — never rely on it for IDs, URLs, or anything you'll feed back into another command.
-- **`truto accounts list` server-side filters** (CLI ≥ 0.17.0) — `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status` (`active` / `connecting` / `post_install_error` / `validation_error` / `needs_reauth`), `--features-super-query` (alias `--features.super_query`, values `apac` / `wnam`), `--created-at`, `--updated-at`. Setting `--profile` is **not** a substitute — it only swaps token + API URL; you still need the filter flag to scope by integration. Verify with `truto accounts list --help`. Examples:
+- **`truto accounts list` server-side filters** — `--tenant-id`, `--is-sandbox`, `--integration-name` (alias `--integration.name`), `--status` (`active` / `connecting` / `post_install_error` / `validation_error` / `needs_reauth`), `--features-super-query` (alias `--features.super_query`, values `apac` / `wnam`), `--created-at`, `--updated-at`. Setting `--profile` is **not** a substitute — it only swaps token + API URL; you still need the filter flag to scope by integration. Verify with `truto accounts list --help`. Examples:
   - `truto accounts list --integration-name hubspot --status active -o json`
   - `truto accounts list --integration-name front --created-at 2024-01-01T00:00:00Z -o json`
-  - On older CLI versions, fall back to `truto accounts list -o json > /tmp/accs.json && jq '.[] | select(.integration.name=="front")' /tmp/accs.json`.
 - **Command name aliases** — Several CLI commands have shorter names than their API/docs counterparts. All aliases work interchangeably:
   - `accounts` (primary) = `integrated-accounts` = `integrated-account` = `account`
   - `environment-integrations` (primary) = `env-integrations` = `env-integration` = `environment-integration`
@@ -267,8 +264,8 @@ For build/edit/apply/verification, follow [the artifact workflow](references/int
 - `**override-*` helpers are deep patches\*\* — `truto environment-integrations override-auth/override-pagination/override-rate-limit/override-webhook` patch the relevant key inside `override` and leave siblings alone. Use `show-override` to inspect the current state, and pass `--clear` to null out a single key.
 - **`override` is a full replace on API and CLI `update`** — `PATCH` / `update -b '{"override":...}'` replace the stored `override` column wholesale. Always send the complete object (existing keys + changes). A partial body wipes omitted slots and `resources` keys. Only the `override-*` helpers fetch+merge for you. For `resources`: `show-override` → merge locally → `update` with the full override. See [Customizing Integrations §5](../truto/references/customizing-integrations.md#5-override-resources-full-override-required).
 - **`truto jsonata eval` is offline and generic** — evaluates any JSONata expression against a context JSON you supply (`--expression` / `--expression-file`, `--input` / `--context` / `--stdin`). No API token. Prefer this over ad-hoc Node scripts for JSONata checks.
-- **`unified test-mapping` is offline (`response_mapping` only)** — evaluates a JSONata `response_mapping` against a local sample raw body (no third-party HTTP call), optionally fetched from the platform. It cannot evaluate operator-style (object) mappings yet.
-- **Proxy 404s come with a "Did you mean…?" hint** — when `truto proxy` 404s, the CLI silently re-runs capabilities and either suggests near-matches (e.g. `Did you mean: contacts, companies?`) or points you at `truto capabilities <id> --type proxy`. The hint replaces guessing — read it instead of trying random resource names. Methods get the same treatment: `truto proxy contacts -m search` on an account that doesn't expose `search` yields `Method \`search is not implemented for contacts. Available: list, get, create, update, delete.`
+- **`unified test-mapping` runs locally (`response_mapping` only)** — evaluates a JSONata `response_mapping` against a local sample raw body (no third-party HTTP call), optionally fetched from the platform. It still needs an API token, even with `--mapping` and `--input`. It cannot evaluate operator-style (object) mappings yet.
+- **Proxy 404s come with a "Did you mean…?" hint** — when `truto proxy` 404s, the CLI silently re-runs capabilities and either suggests near-matches (e.g. `Did you mean: contacts, companies?`) or points you at `truto capabilities <id> --type proxy`. The hint replaces guessing — read it instead of trying random resource names. Methods get the same treatment: `truto proxy contacts -m search` on an account that doesn't expose `search` yields `Method \`search is not implemented for contacts. Available: list, get, create, update, delete.` The hint prints only with `-o table` or `-o csv`; with `-o json`, `ndjson`, or `yaml` stderr gets only the `{"error": …}` envelope, so re-run without `-o` to see it.
 
 ## References
 

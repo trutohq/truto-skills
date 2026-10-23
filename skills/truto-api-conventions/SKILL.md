@@ -89,7 +89,7 @@ GET https://api.truto.one/integrated-account/{integrated_account_id}/capabilitie
 | `type` | `proxy` \| `unified` \| `all` | Restrict the response to one surface. Default `all`. |
 | `methods` | Comma list, e.g. `list,get` | Only include methods matching one of these names. |
 | `resource` | Resource name | Only include the matching resource (in both `proxy[]` and `unified[]`). |
-| `has_description` | `true` \| `false` | Filter proxy methods by whether they have a description. Default `true`. |
+| `has_description` | `true` \| `false` | Default `true` returns only proxy methods that have a description; `false` includes undescribed methods too. |
 
 ### Response (abridged)
 
@@ -133,7 +133,7 @@ Pass `next_cursor` as a query parameter to fetch the next page. When `next_curso
 
 ## Idempotency
 
-Mutating unified/proxy/custom API calls support idempotency via the `Idempotency-Key` header:
+Unified and proxy create (`POST`), update (`PATCH`), and custom-method (`POST …/{method_name}`) calls, and `POST /batch-request`, support idempotency via the `Idempotency-Key` header. `DELETE` and `/custom/*` calls do not:
 
 ```
 Idempotency-Key: <unique_key>
@@ -141,4 +141,4 @@ Idempotency-Key: <unique_key>
 
 ## Admin API Pagination
 
-Admin endpoints (listing integrations, accounts, sync jobs, etc.) use the same cursor pattern. Filter parameters use structured query syntax: `field[operator]=value` (e.g., `id[in]=uuid1,uuid2`).
+Admin endpoints (listing integrations, accounts, sync jobs, etc.) use the same `next_cursor` pattern, but their envelope is `{ result, next_cursor, limit }` — no `prev_cursor`. Filter parameters use structured query syntax: `field[operator]=value` (e.g., `id[in]=uuid1,uuid2`).

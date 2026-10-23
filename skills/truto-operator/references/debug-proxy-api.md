@@ -46,7 +46,6 @@ If the cause is a config gap (the integration genuinely lacks the resource/metho
 - Inventing or guessing a resource name instead of reading capabilities.
 - Proposing a config `PATCH` for what is actually an auth problem — route it to [P6](./diagnose-integrated-account.md).
 
-## Supersedes / Reuses
+## Reuses
 
-- **Supersedes** the former thin proxy-api and integration-troubleshooting cheat sheets with real failure-mode reasoning.
 - **Reuses** [Proxy & Custom API](../../truto/references/proxy-and-custom-api.md), [Discovering Capabilities](../../truto/references/discovering-capabilities.md), [Files & Logs](../../truto/references/files-and-logs.md), and the [Error & evidence model](./error-and-evidence-model.md).

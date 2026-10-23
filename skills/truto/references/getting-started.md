@@ -51,7 +51,7 @@ truto whoami -o json
 
 On Windows PowerShell, use `$env:TRUTO_API_TOKEN` instead of `"$TRUTO_API_TOKEN"`.
 
-`truto whoami` prints your team, environment, and token info. If you see your team name, you're in.
+`truto whoami` prints your profile, API URL, user, and team. If you see your team name, you're in.
 
 > **Tip.** Skip `truto login` entirely by setting `TRUTO_API_TOKEN` and passing `--token "$TRUTO_API_TOKEN"` on every command. Useful for CI; `login` is the easier path for local development.
 
@@ -93,12 +93,6 @@ truto accounts list --is_sandbox true -o json
 
 Save the `id` field as `$ACCOUNT_ID`. We'll use it everywhere below.
 
-> **Tip.** If you want every CLI command in this tutorial to use this account by default, set it as a profile-level default:
->
-> ```bash
-> truto profiles set default-integrated-account "$ACCOUNT_ID"
-> ```
-
 ---
 
 ## Step 4 — Make your first unified-API call from the CLI
@@ -134,7 +128,7 @@ Now move from the terminal into your application code. Your backend needs **one*
 
 The route handles **both** new connections (pass `tenant_id`) and reconnections (pass `integrated_account_id` instead). Wiring both from the start prevents users from creating duplicate accounts when an existing connection fails.
 
-`tenant_id` refers to a [tenant](./core-resources.md#tenants) — the environment-scoped identity that owns integrated accounts. If a tenant with that ID doesn't exist yet, Truto auto-creates one when the account connects (as long as the ID matches `[A-Za-z0-9._:@+\-]{1,255}`). Pre-create via `POST /tenant` or `truto tenants create` first when you need `metadata` (tier, region, billing plan) attached before the customer's first connection.
+`tenant_id` refers to a [tenant](./core-resources.md#tenants) — the environment-scoped identity that owns integrated accounts. If a tenant with that ID doesn't exist yet, Truto auto-creates one when the account connects (any 1–255 character ID works except control characters, leading or trailing whitespace, and `.` or `..`). Pre-create via `POST /tenant` or `truto tenants create` first when you need `metadata` (tier, region, billing plan) attached before the customer's first connection.
 
 ### Express
 
@@ -154,6 +148,11 @@ app.post("/api/truto/link-token", async (req, res) => {
     },
     body: JSON.stringify(body),
   });
+
+  if (!response.ok) {
+    // Pass the refusal through as-is (see below).
+    return res.status(response.status).json(await response.json());
+  }
 
   const { link_token } = await response.json();
   res.json({ linkToken: link_token });
@@ -179,6 +178,11 @@ export async function POST(req: Request) {
     body: JSON.stringify(body),
   });
 
+  if (!response.ok) {
+    // Pass the refusal through as-is (see below).
+    return Response.json(await response.json(), { status: response.status });
+  }
+
   const { link_token } = await response.json();
   return Response.json({ linkToken: link_token });
 }
@@ -203,12 +207,23 @@ app.post("/api/truto/link-token", async (c) => {
     body: JSON.stringify(body),
   });
 
+  if (!response.ok) {
+    // Pass the refusal through as-is: the body carries `message` and, for the
+    // one case below, a `truto_error_code` the frontend can branch on.
+    return new Response(response.body, {
+      status: response.status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const { link_token } = await response.json();
   return c.json({ linkToken: link_token });
 });
 ```
 
 The shape is the same in every framework — a server-side `fetch` to `POST /link-token` carrying the API token. Pick the variant that matches your stack.
+
+Handle one refusal in this route, on the reconnect branch: when `integrated_account_id` names an account whose integration has no usable sign-in method left — every method it has is a bring-your-own-app one (OAuth 2.0 client id, AWS STS access key) with no app credentials configured in the environment — the API answers `400` with `truto_error_code: "app_credentials_not_configured"` and no token. Reconnecting may switch method, so an integration that still has a working method is not refused. That is an admin's job (add the credentials in the integration's Configuration tab — **Use your own OAuth settings**, or **Use your own signing credentials** for AWS STS), not the end user's; return the message to whoever operates the environment rather than showing the end user a reconnect button that cannot work. A body with only `tenant_id` is never refused for this reason.
 
 > **`TRUTO_API_TOKEN` must stay on the server.** Never expose it to the browser, and never hardcode it in client bundles. The whole point of link tokens is that they're short-lived, single-use credentials safe for the frontend; the API token isn't.
 
@@ -286,7 +301,7 @@ Then handle it in your app:
 app.post("/webhooks/truto", async (req, res) => {
   const event = req.body;
 
-  switch (event.event_type) {
+  switch (event.event) {
     case "integrated_account:active":
       await onAccountReady(event.payload);
       break;
