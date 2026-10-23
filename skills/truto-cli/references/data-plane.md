@@ -118,7 +118,7 @@ truto unified crm contacts -a <id> -q "next_cursor=abc123"
 
 ### Evaluate JSONata Locally (`truto jsonata eval`)
 
-Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata` (same runtime as production).
+Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata`; the CLI and worker use different versions, so local success does not prove production behavior.
 
 ```bash
 truto jsonata eval --expression <jsonata> [options]
