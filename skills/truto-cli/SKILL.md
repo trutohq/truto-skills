@@ -220,6 +220,10 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
 
 **LLM rule of thumb:** default to `-o ndjson` for anything you'll pipe; default to `-o json > /tmp/out.json` for anything you'll `jq` over more than once.
 
+## Integration engineering workflow
+
+For build/edit/apply/verification, follow [the artifact workflow](references/integration-workflow.md). Reports and fresh checks are automatic; preserve `.committed` recovery state, explicit partial outcomes and concurrent edits. Use only authorized marked accounts for eligible reads, and keep saved/applied/local checks/live tests distinct.
+
 ## LLM Agent Tips
 
 1. **For any LLM-driven workflow, always pass `-o json` or `-o ndjson` — `table` is for humans only and silently truncates IDs, URLs, and JSON/HTML bodies.** Prefer `ndjson` when piping to `head`, `tail`, `less`, `grep`, `jq -c`, etc. — `json` is buffered and gets truncated mid-token by SIGPIPE, causing `jq: parse error`. For larger results, redirect to a file first: `truto … -o json > /tmp/out.json && jq … /tmp/out.json`. See the gotcha below.

@@ -68,6 +68,8 @@ cat integration.json | truto integrations validate --stdin
 
 For the full `integration.config` schema, all five credential formats (`api_key`, `oauth2`, `oauth2_client_credentials`, `oauth`, `keka_oauth`), and an end-to-end Acme CRM worked example that uses `init → validate → create`, see the [Authoring Integrations](../../truto/references/authoring-integrations.md) reference in the `truto` skill.
 
+For artifact-based integration/mapping work, optional prepared execution and explicit restores with `integrations update --body-file` / `docs update --body-file`, see [the artifact workflow](integration-workflow.md). Secret-preservation holds apply to ordinary updates and restores too.
+
 ### Integrated Accounts (`truto accounts`)
 
 Live tenant connections to integrations. **Full CRUD.**
@@ -94,7 +96,7 @@ truto accounts delete <id>
 
 | Flag                              | API param              | Notes                                                                                                       |
 | --------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `--tenant-id <tid>`               | `tenant_id`            | Filter by [tenant](../truto/references/core-resources.md#tenants) id.                                       |
+| `--tenant-id <tid>`               | `tenant_id`            | Filter by [tenant](../../truto/references/core-resources.md#tenants) id.                                       |
 | `--is-sandbox <bool>`             | `is_sandbox`           | `true` / `false`.                                                                                           |
 | `--integration-name <slug>`       | `integration.name`     | Integration slug, e.g. `hubspot`, `salesforce`, `front`. Also accepts the dotted form `--integration.name`. |
 | `--status <state>`                | `status`               | One of `active`, `connecting`, `post_install_error`, `validation_error`, `needs_reauth`.                    |

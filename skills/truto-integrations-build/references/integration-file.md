@@ -111,18 +111,14 @@ Other types (`note`, `end_user_guide`) are valid but not authored by the build l
 
 ## How apply uses the file
 
-1. **Parse + validate** -- the file is validated against the IntegrationFile JSON Schema. Schema violations reject early with detailed error messages.
-2. **Split** -- `splitForApply` partitions the file into: upsert payload (config + record-level fields), documentation rows, and audit notes.
-3. **Upsert integration** -- CREATE (POST) when `id` is absent; UPDATE (PATCH) when `id` is present. On UPDATE, `apply` fetches the live record's `version` for optimistic locking (the file's version may be stale).
-4. **Diff + push documentation** -- per-method rows and integration-wide rows are diffed against the live state. Only changes are pushed. Rows on the server but absent from the file are LEFT IN PLACE (no silent deletions).
-5. **Summary** -- prints counts of added, patched, and unchanged rows per category.
+Apply checks edited input, reconciles the artifact/baseline/live state, validates the projected values, commits the prepared candidate locally, then writes and rereads each result. It uses the file id or prior committed id, never a coincidentally matching slug. CREATE is private beta; UPDATE does not publish. Doc rows follow their changed method, and explicit removal flags control deletion.
 
----
+The `_build` marker and `<artifact>.committed` report carry recovery/source/check state. Do not edit or apply sidecars. Reports and lint are inspection surfaces; apply automatically rechecks manual edits. See [the artifact workflow](../../truto-cli/references/integration-workflow.md) for plans, conflicts, partial results and marked-account verification.
 
 ## Tips for hand-editing
 
-- **Edit `config` freely** -- the build produces valid config, but you can hand-tune any field. The full field reference is in [authoring-integrations.md](../../truto/references/authoring-integrations.md).
-- **Don't edit `documentation` by hand unless you know the YAML schema format** -- `query_schema` and `body_schema` are YAML-encoded JSON Schema strings. If you need to edit them, use a YAML-aware editor.
-- **`audit_notes` are informational** -- you can delete them without affecting `apply`. They're there so you can review what the auditor flagged.
-- **Adding `id` switches to UPDATE mode** -- if you're creating a new integration, remove the `id` field. If you're updating an existing one, include it (the build does this automatically when you pass an existing slug).
-- **Arrays replace, objects merge** -- when the agent patches a section, arrays (like `documentation`, `fields`) are treated as atomic and replaced entirely. Object keys not mentioned in the patch are left untouched.
+- Edit the artifact's authored config and doc rows; preserve unrelated fields and inheritance. Schema rows may be JSON objects or YAML-encoded JSON Schema strings.
+- A changed method can trigger grounded regeneration of unedited docs. Manually edited rows remain yours; apply does not silently replace them.
+- `audit_notes` are informational. Removing notes or `_build` does not clear blocked-method or recovery evidence retained in `.committed`.
+- Do not remove an id or sidecar to force CREATE against another target. The CLI creates a target-specific working copy.
+- Literal credential secrets are refused in artifacts. Use the explicit secret/update workflow and respect backend prerequisite holds.

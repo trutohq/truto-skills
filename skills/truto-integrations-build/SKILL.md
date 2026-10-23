@@ -14,7 +14,7 @@ whenToUse: Building new integrations from vendor API docs via truto integrations
 
 Use this skill when the user wants to **create or refine a Truto integration definition** from vendor API documentation. The `build` command drives an LLM-powered loop that discovers endpoints, generates config, and produces a single JSON artifact (the **IntegrationFile**) that can be linted and applied to the Truto platform.
 
-This skill covers the **build -> lint -> apply** workflow. It does NOT cover:
+This skill covers **build -> optional edit -> apply -> eligible read verification**. Fresh checks and reports are automatic; lint/recheck are optional inspection tools. It does NOT cover:
 
 - The `integration.config` field-by-field schema reference -- see [authoring-integrations.md](../truto/references/authoring-integrations.md) in the `truto` skill.
 - General CLI auth, profiles, data-plane commands -- see the [truto-cli](../truto-cli/SKILL.md) skill.
@@ -67,16 +67,14 @@ Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KE
 
 ## The workflow
 
-Three commands, in order:
+Build, optionally edit the artifact, then apply:
 
 ```bash
 # 1. Build — generates <slug>.integration.json from API docs
 truto integrations build https://api.acme.com/openapi.json acme
 
-# 2. Lint — static audit, no LLM, no writes
-truto integrations lint acme.integration.json
-
-# 3. Apply — push config + doc rows to the Truto platform
+# Optionally edit acme.integration.json
+# Apply freshly checks the projected config and doc rows
 truto integrations apply acme.integration.json
 ```
 
@@ -129,7 +127,7 @@ Special commands during Phase B:
 | `:edit` | Opens the working file in your editor (`$VISUAL` / `$EDITOR` / `--editor` flag) for manual editing |
 | *(empty input)* | Exits Phase B and proceeds to the docs phase |
 
-After Phase B, the build runs a **docs phase** that generates per-method documentation rows (descriptions, query schemas, body schemas, response schemas). These ride alongside the config in the output file.
+After Phase B, the docs phase generates per-method descriptions and schemas. All finalization precedes checks of the exact saved candidate; a matching report and committed pair are automatic. Semantic corrections share a two-round allowance for the entire authorized run. Partial scope, blocked methods and unrun checks remain explicit.
 
 ### Lint
 
@@ -167,23 +165,19 @@ See [references/lint-and-audit.md](references/lint-and-audit.md) for the full au
 
 ### Apply
 
-Push the IntegrationFile to the Truto platform -- config upsert + per-method documentation rows.
-
 ```bash
-# Dry-run: parse + validate, print what would be applied
-truto integrations apply acme.integration.json --dry-run
-
-# Apply (non-interactive, fire-and-go)
 truto integrations apply acme.integration.json
+truto integrations apply acme.integration.json --dry-run  # optional offline preview
+truto integrations build --recheck acme.integration.json # optional report refresh
 ```
 
-| Flag | Effect |
-|------|--------|
-| `--dry-run` | Validate the file and print a summary; no API calls |
-| `--slug-override <slug>` | Override the file's `name` on CREATE only (ignored on UPDATE) |
-| `--docs-only` | Push only per-method documentation rows (integration must already exist) |
+Apply rechecks edited artifacts, reconciles against committed/live state, preserves concurrent edits and observes every write. Eligible methods can land while skipped/held items remain pending. A method doc-input change can regenerate unedited documentation from its recorded source using configured model access; manual doc edits and rows whose generation fails are retained.
 
-Apply is non-interactive by design -- there is no `--yes` flag because there is no interactive prompt to skip. The operator already decided what to push during `build`. It exits 0 on success, 1 on any failure.
+Use `--prepare [--plan-out <path>]` and then `--plan <path> --expect-digest <digest>` when an exact prepared candidate is useful. Resolve a reported clash with `--resolve '<item>=mine|theirs'`; use `--docs-only` for documentation, and deliberate removal flags only for the listed removals. Apply is non-interactive and needs no `--yes`.
+
+Mark/select a test account with `truto profiles set test-account.<integration> <id>` or `--test-account <id>`. Only proven eligible reads run, with Truto-side token/reauth/webhook effects disclosed. Saved, applied, checked and tested remain distinct; missing evidence is not a pass. Exit codes: 0 complete, 2 partial, 3 blocked, 1 auth/unexpected error, 4 executed test failure on an otherwise complete run.
+
+See [the shared artifact workflow](../truto-cli/references/integration-workflow.md) for exact plan, partial/recovery, secret prerequisites, two-round repair, verification and restore behavior.
 
 ---
 
@@ -242,7 +236,7 @@ truto integrations build https://api.acme.com/openapi.json --docs-only acme
 truto integrations build https://api.acme.com/openapi.json --docs-only acme --resource contacts,deals
 ```
 
-The source URL is still required (the docs phase uses Orama source snippets to ground the descriptions).
+The source URL is still required. Config is preserved exactly, and docs save separately as `<slug>.docs.integration.json` or `<input-stem>.docs.integration.json`; a failed method keeps its existing docs. Apply with `--docs-only`.
 
 ---
 
