@@ -262,24 +262,25 @@ truto integrations build https://docs.example.com acme \
 
 ### Fireworks model presets
 
-Fireworks uses a **shared workhorse model** for agent + extraction, plus a separate cheap **classification** model. Pin the workhorse with `--llm-model` (or the aliases `--llm-agent-model` / `--llm-extraction-model` — they set the same shared model). Override classification with `--llm-classification-model`.
+Fireworks uses a **shared workhorse model** for agent + extraction, plus a separate cheap **classification** model. Naming a workhorse — `--llm-model`, `--llm-agent-model` / `--llm-extraction-model` (the same shared model; not combined with `--llm-model`, and equal if both are given), or a pick at the interactive prompt — pins classification to it too. Override classification with `--llm-classification-model`. Without a model flag and without a TTY, the defaults below apply.
 
 | Tier | Claude default | Fireworks default | Used for |
 |------|----------------|-------------------|----------|
-| Agent + extraction | Opus + Sonnet | `kimi-k2p7` (one model for both) | Discovery agent, build loop, docs, schemas |
-| Classification | `claude-haiku-4-5` | `deepseek-v4-flash` | Page classification, routing |
+| Agent + extraction | Opus + Sonnet | `glm-5p2` (one model for both) | Discovery agent, build loop, docs, schemas |
+| Classification | `claude-haiku-4-5` | `deepseek-v4p1-flash` | Page classification, routing |
 
 **Workhorse presets** (pick one for agent + extraction):
 
 | Preset | Fireworks model | Notes |
 |--------|-----------------|-------|
-| `kimi-k2p7` | `accounts/fireworks/models/kimi-k2p7-code` | Coding specialist, MCP workflows (default) |
-| `glm-5p2` | `accounts/fireworks/models/glm-5p2` | 1M context flagship agent |
+| `kimi-k2p7` | `accounts/fireworks/models/kimi-k2p7-code` | Coding specialist, MCP workflows |
+| `glm-5p2` | `accounts/fireworks/models/glm-5p2` | 1M context flagship agent (default) |
+| `glm-5p3-flash` | `accounts/fireworks/models/glm-5p3-flash` | Smaller GLM model |
 | `minimax-m3` | `accounts/fireworks/models/minimax-m3` | K2.7-class agent, 512k context |
 | `qwen3p7-plus` | `accounts/fireworks/models/qwen3p7-plus` | Strong structured JSON for docs/schemas |
 | `deepseek-v4-pro` | `accounts/fireworks/models/deepseek-v4-pro` | 1M context reasoning |
 
-**Classification presets:** `deepseek-v4-flash` (default) or `gpt-oss-20b`. Raw `accounts/.../models/...` IDs also work on any tier flag.
+**Classification presets:** `deepseek-v4p1-flash` (default; `deepseek-v4-flash` is an alias) or `gpt-oss-20b`. Raw `accounts/.../models/...` IDs also work on any tier flag.
 
 > **Don't mix `--anthropic-model` with `--llm-provider fireworks`** — the CLI hard-errors. With Fireworks, use `--llm-model` or the tier flags. With Anthropic, use `--anthropic-model`.
 
@@ -353,10 +354,10 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--anthropic-api-key <key>` | Profile / env / prompt | Anthropic API key (default provider) |
 | `--anthropic-model <model>` | Tiered: `claude-opus-4-6` (agent), `claude-sonnet-4-6` (extraction), `claude-haiku-4-5` (classification) | Override Claude model for all tasks (Anthropic provider only) |
 | `--fireworks-api-key <key>` | Profile / env / prompt | Fireworks API key (required for `--llm-provider fireworks`) |
-| `--llm-model <model>` | `kimi-k2p7` (Fireworks) | Pin Fireworks agent + extraction to one model. Presets: `kimi-k2p7`, `glm-5p2`, `minimax-m3`, `qwen3p7-plus`, `deepseek-v4-pro`, or a raw `accounts/.../models/...` ID |
-| `--llm-agent-model <model>` | same as `--llm-model` | Alias for `--llm-model` (agent and extraction share one model) |
-| `--llm-extraction-model <model>` | same as `--llm-model` | Alias for `--llm-model` |
-| `--llm-classification-model <model>` | `deepseek-v4-flash` (Fireworks) | Fireworks classification-tier model. Presets: `deepseek-v4-flash`, `gpt-oss-20b` |
+| `--llm-model <model>` | `glm-5p2` (Fireworks) | Pin one Fireworks model for agent, extraction and classification. Presets: `glm-5p2`, `glm-5p3-flash`, `kimi-k2p7`, `minimax-m3`, `qwen3p7-plus`, `deepseek-v4-pro`, or a raw `accounts/.../models/...` ID |
+| `--llm-agent-model <model>` | same as `--llm-model` | Alternative to `--llm-model` (not combined with it); agent and extraction share one model |
+| `--llm-extraction-model <model>` | same as `--llm-model` | Alternative to `--llm-model`; must equal `--llm-agent-model` if both are given |
+| `--llm-classification-model <model>` | `deepseek-v4p1-flash` (Fireworks) | Fireworks classification-tier model. Presets: `deepseek-v4p1-flash`, `gpt-oss-20b` |
 | `--embedding-provider <provider>` | `local` | `local` (MiniLM ONNX, no API key) or `fireworks` (Qwen3, requires `FIREWORKS_API_KEY`) |
 | `--embedding-model <model>` | `local-minilm` (local), `qwen3-embedding-8b` (fireworks) | Embedding model preset |
 | `--firecrawl-api-key <key>` | Profile / env / prompt | Firecrawl API key (web crawl + Fireworks web tools) |
@@ -367,6 +368,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--no-editor` | -- | Don't spawn an editor |
 | `--source-tier <tier>` | `auto` | Pin extraction tier |
 | `--legacy-discovery` | agentic (default) | Force legacy deterministic discovery instead of the agentic loop |
+| `--allow-partial-coverage` | -- | Turn off agentic discovery's thin-coverage guards for a deliberate partial re-discovery. Without it an UPDATE finding under half the live resources stops, and a thin CREATE falls back to legacy discovery (recorded incomplete) |
 | `--no-spec-web-search` | -- | Skip web search when hunting for an OpenAPI spec URL |
 | `--max-pages <n>` | 200 | Cap on doc pages |
 | `--only-missing` | -- | UPDATE mode: add missing methods only; requires existing slug |

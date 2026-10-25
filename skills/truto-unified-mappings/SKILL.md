@@ -71,7 +71,7 @@ Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KE
 
 > **Note:** Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`, ~35 MB) downloaded automatically on first use. No external API key is required for embeddings.
 >
-> **LLM provider:** Mapping builds support Anthropic and Fireworks. Select `--llm-provider anthropic|fireworks`. `--anthropic-model` overrides Anthropic tiers; Fireworks uses `--llm-model` for all tiers or the separate `--llm-agent-model`, `--llm-extraction-model` and `--llm-classification-model` flags. Web search through Fireworks requires Firecrawl access.
+> **LLM provider:** Mapping builds support Anthropic and Fireworks. Select `--llm-provider anthropic|fireworks`. `--anthropic-model` overrides Anthropic tiers. Fireworks uses one shared agent + extraction model and a classification model: `--llm-model` pins all three (`--llm-classification-model` may still override classification); `--llm-agent-model` / `--llm-extraction-model` are alternatives to `--llm-model`, cannot be combined with it, and must name the same model. Without these flags a TTY prompts for the model; otherwise the built-in Fireworks defaults apply. Web search through Fireworks requires Firecrawl access.
 
 ---
 
@@ -81,7 +81,7 @@ Build, optionally edit, then apply. Validation is automatic at apply; the separa
 
 ```bash
 # 1. Build — generates <integration>.<model>.mappings.json
-#    At least one of --account or --source-url is required
+#    At least one of --account (or a marked test account) or --source-url is required
 truto unified-mappings build acme crm --account <integrated-account-id>
 
 # Optional validation — deterministic target reads, no LLM or writes
@@ -133,7 +133,8 @@ free-form instruction (for example `engagements.create: strip the trailing Z
 from start times`) and the agent rebuilds the affected cell. Type `:show` to
 print the full per-cell review in the terminal. Press Enter on an empty line to
 finish. The loop is skipped with `--no-refine`, `--yes`, `--only-missing`, or
-when output is piped.
+when output is piped. An instruction does not spend the build's two repair
+rounds; the rebuilt cell's automatic repairs still count.
 
 ### Validate
 
@@ -216,13 +217,13 @@ The refinement loop is skipped in this mode.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-a, --account <id>` | -- | Integrated account ID for live (read-only) proxy samples |
-| `--source-url <url\|path>` | -- | API docs URL or local file path (repeatable, comma-separated; merged into one source index). Supports glob patterns (e.g. `'./specs/*.json'`). At least one of `--account` or `--source-url` is required. |
-| `--yes` | -- | Non-interactive: skip account/docs prompts. Requires `--account` and/or `--source-url`. |
-| `--llm-provider <provider>` | profile / environment / anthropic | Select `anthropic` or `fireworks` |
+| `-a, --account <id>` | marked test account | Integrated account ID for live proxy samples (proven reads only). Without it the integration's marked test account (`truto profiles set test-account.<integration> <id>`) is used; the profile `defaultIntegratedAccount` never is |
+| `--source-url <url\|path>` | -- | API docs URL or local file path (repeatable, comma-separated; merged into one source index). Supports glob patterns (e.g. `'./specs/*.json'`). At least one of an account (`--account` or a marked test account) or `--source-url` is required. |
+| `--yes` | -- | Non-interactive: skip account/docs prompts. Requires an account (`--account` or a marked test account) and/or `--source-url`. |
+| `--llm-provider <provider>` | interactive pick on a TTY; `anthropic` under `CI` or without a TTY | Select `anthropic` or `fireworks` |
 | `--anthropic-api-key <key>` | env / profile / prompt | Override Anthropic API key |
 | `--fireworks-api-key <key>` | env / profile / prompt | Override Fireworks API key |
-| `--llm-model <model>` | configured Fireworks tiers | Fireworks preset/model for all tiers; use `--llm-agent-model`, `--llm-extraction-model` or `--llm-classification-model` for individual tiers |
+| `--llm-model <model>` | TTY prompt, else `glm-5p2` + `deepseek-v4p1-flash` | Fireworks preset/model for agent, extraction and classification. `--llm-agent-model` / `--llm-extraction-model` are alternatives (one shared model, not combined with `--llm-model`); `--llm-classification-model` overrides classification |
 | `--firecrawl-api-key <key>` | env / profile / prompt | Override Firecrawl API key |
 | `--no-firecrawl` | -- | Skip Firecrawl; use cheaper extraction only for doc sites |
 | `--resources <list>` | all planned | Comma-separated unified resources to build |
