@@ -126,9 +126,30 @@ full tool list, and the sampling ladder.
 Write cells (`create`/`update`/`delete`) are built from the proxy's documented
 request body, so they do not need a live response sample.
 
+#### Questions and confidence
+
+A read cell with no observed sample (only the spec's field names, another integration's sample, or nothing), a read cell the build couldn't finish for want of a sample, or a low-confidence route waits on a question instead of shipping a guess -- the agent can also ask directly, with the same `ask_question` tool and loop as integration methods, using mapping-specific reasons (`no_sample`, `required_field_unknown`, `route_unclear`, `value_list_unknown`). A waiting cell is saved with `apply_db_action: "skip"`, so even an older CLI won't write it.
+
+`truto unified-mappings build … -o json` never prompts: progress moves to stderr, and stdout carries one JSON document at the end -- the run result (the same shape and exit contract as `apply`, below: 0 complete, 3 nothing landed and something is pending or blocked, 1 on failure), plus `questions` and `report_path`. In a terminal, any open question is asked first, before the refinement loop below starts.
+
+**The agent loop:**
+
+1. `truto unified-mappings build acme crm --account $ACCOUNT -o json` (or `--source-url`).
+2. Read the document. `questions` lists what's open; `report_path` names `acme.crm.mappings.report.json` (and a `.report.md` alongside it, for people) -- one record per cell with its route, sample source, checks, assumptions and `confidence`.
+3. Ask the human each open question in chat, in plain words, with its suggestion. **Never put a credential in an answer** -- it's refused outright, exit 3; say where the value actually comes from instead.
+4. `truto unified-mappings build --continue acme.crm.mappings.json --answer q1="…"` (repeatable; or `--answers <file>`, `-` for stdin). Only the cells waiting on now-answered questions rebuild; every other cell stays as committed (a change to one is put back, and a cell the agent adds is dropped).
+5. `truto unified-mappings validate acme.crm.mappings.json`, then `truto unified-mappings apply acme.crm.mappings.json --prepare`. Show the human the plan.
+6. On their approval only: `truto unified-mappings apply acme.crm.mappings.json --plan <path> --expect-digest <digest>`.
+
+`--continue` takes only the file -- no integration slug, unified model, `--resources`, `--methods`, `--fresh`, `--only-missing`, `--out` or `--recheck`.
+
+**Confidence** is information only -- it never blocks `apply`. Use the low-confidence cells in `report_path` and their `assumptions` to point review at the routes worth a second look first, the same way as for integration methods -- see [truto-integrations-build: Questions, confidence and the agent loop](../truto-integrations-build/SKILL.md#questions-confidence-and-the-agent-loop).
+
+**Follow-ups.** Mapping build has no `--refine` / `--instructions` flag -- its refinement loop (below) is terminal-only. For a scripted follow-up, either edit `acme.crm.mappings.json` by hand and run `truto unified-mappings build --recheck acme.crm.mappings.json` (offline: refreshes the report only, no LLM, no sampling), or re-run the build command itself -- it resumes from the existing file and retries failed/empty cells (see [Iterating on an existing file](#iterating-on-an-existing-file) below).
+
 #### Refinement loop
 
-In an interactive terminal the build ends in a **refinement loop**: type a
+In an interactive terminal, once any open question above is answered or skipped, the build ends in a **refinement loop**: type a
 free-form instruction (for example `engagements.create: strip the trailing Z
 from start times`) and the agent rebuilds the affected cell. Type `:show` to
 print the full per-cell review in the terminal. Press Enter on an empty line to
@@ -230,6 +251,10 @@ The refinement loop is skipped in this mode.
 | `--methods <list>` | all | Comma-separated methods (`list,get,create,update,delete,…`) |
 | `--structured` | agentic | Run a fixed per-cell pipeline instead of the agentic loop (still LLM-generated; only the orchestration is fixed) |
 | `--no-web-search` | -- | Disable `web_search` / `web_fetch` tools and the source web-search rung |
+| `--recheck <file>` | -- | Offline: revalidate an edited MappingFile and refresh its report without rebuilding (no LLM, discovery, sampling or network) |
+| `--continue <file>` | -- | Rebuild only the cells waiting on now-answered questions; every other cell stays as committed. Takes `--answer`/`--answers` (in a terminal, with neither, it asks); takes no integration or model, and no `--resources`, `--methods`, `--fresh`, `--only-missing`, `--out` or `--recheck` |
+| `--answer <id=text>` | -- | With `--continue`: one question's answer, e.g. `--answer q1="…"`. Repeatable |
+| `--answers <file>` | -- | With `--continue`: answers from a file (`-` for stdin) -- a JSON object `{ "q1": "…" }` or one `q1=…` per line |
 | `--fresh` | -- | Ignore an existing working/final file and start from scratch |
 | `--only-missing` | -- | Build only absent cells; don't retry failures or modify existing cells |
 | `--no-refine` | -- | Skip the interactive post-build refinement loop |

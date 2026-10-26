@@ -76,6 +76,8 @@ truto integrations build https://api.acme.com/openapi.json acme
 truto integrations apply acme.integration.json
 ```
 
+This is the happy path. When the build stops on an open question instead, see [Questions, confidence and the agent loop](#questions-confidence-and-the-agent-loop) below.
+
 ### Build
 
 The `build` command accepts one or more source URLs (OpenAPI spec, Postman collection, Mintlify/Readme docs, GraphQL endpoint, or a generic doc page) and an optional integration slug. It auto-selects the highest-fidelity source (openapi > postman > graphql > docs).
@@ -105,7 +107,7 @@ The build runs in three phases. See [references/orchestrator-phases.md](referenc
 
 **Phase A -- autonomous build.** The agent reads the source index, inspects the pattern catalog, and builds the entire IntegrationFile autonomously. It emits cascade patches (multi-section updates) that are applied silently. Phase A ends when the agent signals `build_complete` or the turn budget is exhausted.
 
-The agent has access to 15 tools (13 local + 2 web):
+The agent has access to 16 tools (14 local + 2 web):
 
 | Group | Tools |
 |-------|-------|
@@ -114,6 +116,7 @@ The agent has access to 15 tools (13 local + 2 web):
 | In-progress | `read_current` |
 | Reference docs | `list_patterns`, `read_pattern` |
 | Validation | `validate_integration` |
+| Stop and ask | `ask_question` — stops one or more methods (or shared config, named as `config.<key>`) on something only the docs or the user can settle, after searching once (one web search, up to two page fetches). See [Questions, confidence and the agent loop](#questions-confidence-and-the-agent-loop) below |
 | Web | `web_search`, `web_fetch` — Anthropic **server-side** under `--llm-provider anthropic` (default); **client-side via Firecrawl** under `--llm-provider fireworks` (requires `FIRECRAWL_API_KEY`) |
 
 **Phase B -- interactive refinement.** After Phase A, the CLI opens your editor on the working JSON and enters a refinement loop. You type a free-text instruction; the agent proposes patches; you accept, reject, or refine further. Press Enter with no input to finish.
@@ -126,6 +129,45 @@ Special commands during Phase B:
 | *(empty input)* | Exits Phase B and proceeds to the docs phase |
 
 After Phase B, the docs phase generates per-method descriptions and schemas. All finalization precedes checks of the exact saved candidate; a matching report and committed pair are automatic. Semantic corrections share a two-round allowance for the entire authorized run. Partial scope, blocked methods and unrun checks remain explicit.
+
+### Questions, confidence and the agent loop
+
+Every build ends with a short summary -- on stderr in a terminal, and ONCE as a single JSON document on stdout with `-o json` (nothing else prompts: no instructions prompt, no provider/key picker, no editor; Phase B runs only if you scripted it with `--refine` / `--refinements-file` / `--auto-accept-patches`). It names the status, counts, open questions, blocked and low-confidence methods, and the next command:
+
+```json
+{
+  "status": "waiting",
+  "exit": 3,
+  "counts": { "methods": 42, "built": 39, "waiting": 2, "blocked": 1, "excluded": 0, "high": 30, "medium": 8, "low": 4 },
+  "gaps": ["2 methods wait for an answer (1 open question)"],
+  "questions": [{ "id": "q1", "text": "…", "suggestion": "…", "methods": ["invoices.get", "payments.list"] }],
+  "blocked": [{ "method": "files.upload", "reason": "audit:file_input — …" }],
+  "low_confidence": [{ "method": "invoices.get", "reasons": ["open question q1", "not tested live"] }],
+  "out_path": "/abs/acme.integration.json",
+  "report_path": "/abs/acme.integration.report.json",
+  "next": "truto integrations build --continue acme.integration.json --answer q1=\"…\""
+}
+```
+
+`status` is `complete`, `incomplete` (smaller gaps only, e.g. a missing doc row -- still exits 0), `waiting` (methods, or the shared config, wait on an answer), `blocked`, or `failed`. Exit codes (`--fail-on` picks what counts as failed; default `blocking`): **0** complete or incomplete with only smaller gaps, **3** finished but something still waits or is blocked, **1** failed. `--fail-on none` never exits 3 (still 1 on a thrown error or an unsaved report); `errors` / `incomplete` widen what counts as failed.
+
+**The loop an agent runs:**
+
+1. `truto integrations build <source> acme -o json`.
+2. Read the JSON summary. `complete`/`incomplete` -> go straight to lint. Otherwise there are open `questions` and/or `blocked`/`low_confidence` methods to look at first.
+3. Ask the human each open question in chat, in plain words, with its `suggestion`. **Never put a credential (a key, token, password) in an answer** -- it's refused outright, nothing runs, exit 3. Say where the value actually comes from (a credential field, a setup step) instead.
+4. `truto integrations build --continue acme.integration.json --answer q1="…" --answer q2="…"` (repeatable; or `--answers <file>`, a JSON object or one `q1=…` per line, `-` for stdin). Only the methods still waiting on the answered questions are rebuilt, as a new run that spends no repair round; every other method stays byte-identical -- if the model touches one anyway, the CLI puts it back, and a method it adds is dropped. If the rebuild turns up a new gap, that's a new question; the one you just answered is never asked again.
+5. `truto integrations lint acme.integration.json`.
+6. `truto integrations apply acme.integration.json --prepare`. Show the human the plan.
+7. On their approval only: `truto integrations apply acme.integration.json --plan acme.integration.json.plan.json --expect-digest <digest>`.
+
+`--continue` takes only the file -- no source URL, slug, `--out`, `--docs-only`, `--only-missing`, `--refine`, `--instructions` or `--spec`. In a real terminal (no `-o json`), the build asks each open question itself at the end instead of exiting -- press Enter to skip one (it stays open). Answers are saved in the report with who gave them and when; a later build or `--continue` of the same file never asks an already-answered question again.
+
+**Confidence** is information only -- it never blocks apply or publishing. Each method in the report (`acme.integration.report.json`, and `acme.integration.report.md` for people) carries a `confidence.level` (`high`/`medium`/`low`) and `confidence.reasons`. A method is `low` with no doc section, an ERROR or stop finding, a failed read test, or an open question. `high` needs its own doc section, a response example, clean lint (no warning either), a spec match or a passed read test, and at most one assumption. The model's own rating can move a method one step toward its own level, except that an ERROR, a stop finding, a failed read test or an open question keeps it `low` whatever the model thinks. Use the summary's `low_confidence` list to point the human's review at those methods and their `assumptions` first -- not as something that has to clear before moving on.
+
+**Follow-ups.** Give `--instructions "<text>"` up front to skip the interactive instructions prompt. Afterwards, there's no feedback command -- either edit `acme.integration.json` by hand and run `truto integrations build --recheck acme.integration.json` (offline: no LLM, no discovery, just refreshed checks and report), or make the model change something with `truto integrations build <source> acme --refine "rename list_2 in contacts to get"` (repeatable; `--refinements-file <path>` for many at once, one per line; `--auto-accept-patches` to skip the accept/skip/chat prompt for a headless run).
+
+Cross-check new or edited methods against [Known Mistakes](references/known-mistakes.md) -- especially anything the summary doesn't flag.
 
 ### Lint
 
@@ -363,7 +405,15 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--firecrawl-api-key <key>` | Profile / env / prompt | Firecrawl API key (web crawl + Fireworks web tools) |
 | `--integration-config-dir <path>` | Profile / env / walk-up | Existing config corpus for pattern matching |
 | `--out <file>` | `<slug>.integration.json` | Output file path |
+| `--fail-on <level>` | `blocking` | What counts as a failed build (exit 1): `blocking` (new platform-schema error or a thrown error), `errors` (also any new final-audit ERROR), `incomplete` (also an incomplete verdict), `none` (exit 0 once the file is written, never 3) |
+| `--recheck <file>` | -- | Offline: revalidate an edited file and refresh its report/`known_skips` without rebuilding (no LLM, no discovery). Exit 0 if clean, 3 if a method waits or is blocked (or the file holds a literal secret), 1 on error |
+| `--continue <file>` | -- | Rebuild only the methods waiting on now-answered questions; every other method stays byte-identical. Takes `--answer`/`--answers` (in a terminal, with neither, it asks); takes no source or slug, and refuses flags that change what is built (`--out`, `--docs-only`, `--only-missing`, `--refine`, `--instructions`, `--spec`, …) |
+| `--answer <id=text>` | -- | With `--continue`: one question's answer, e.g. `--answer q1="…"`. Repeatable |
+| `--answers <file>` | -- | With `--continue`: answers from a file (`-` for stdin) -- a JSON object `{ "q1": "…" }` or one `q1=…` per line |
 | `--instructions <text>` | Interactive prompt | Skip the instructions prompt |
+| `--refine <text>` | Interactive prompt | Run one Phase B refinement turn non-interactively instead of prompting for it. Repeatable, in order |
+| `--refinements-file <path>` | -- | Many `--refine` instructions, one per line (`#` comments and blank lines skipped); runs after any `--refine` flags |
+| `--auto-accept-patches` | -- | Accept every Phase B patch without the accept/skip/chat prompt (headless runs) |
 | `--editor <cmd>` | `$VISUAL` / `$EDITOR` / profile | Editor for `:edit` command |
 | `--no-editor` | -- | Don't spawn an editor |
 | `--source-tier <tier>` | `auto` | Pin extraction tier |
@@ -393,7 +443,8 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 |-----------|---------|
 | [Orchestrator Phases](references/orchestrator-phases.md) | Phase A (autonomous build), Phase B (interactive refinement), docs phase, agent tools, patch format |
 | [IntegrationFile](references/integration-file.md) | Output JSON shape, field-by-field breakdown, hand-editing tips, relationship to `apply` |
-| [Lint and Audit](references/lint-and-audit.md) | All audit sources (method_naming, pattern_match, presence_check, critic, description_quality, method_coverage), severities, exit codes, structured output |
+| [Lint and Audit](references/lint-and-audit.md) | All audit sources (method_naming, pattern_match, presence_check, critic, description_quality, method_coverage, docs_completeness), severities, exit codes, structured output |
+| [Known Mistakes](references/known-mistakes.md) | Patterns that have broken real integrations before: what each looks like, how the CLI flags it (or doesn't), and the fix |
 | [Troubleshooting](references/troubleshooting.md) | Source-tier selection, cache invalidation, Firecrawl tiers, stuck builds, `--legacy-flow` |
 
 ## Related skills

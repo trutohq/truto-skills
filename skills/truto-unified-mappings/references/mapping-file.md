@@ -113,6 +113,8 @@ Informational, but the single best thing to read before `apply`:
 }
 ```
 
+`build_summary` lives inside this file and is always informational. A separate sidecar report (`<file>.report.json`, mirrored as `<file>.report.md` for people -- e.g. `acme.crm.mappings.report.json`) carries the per-cell audit trail the build loop used to decide what to ask about: route, sample source, checks, assumptions, any open question, and a `confidence` rating. `report_path` in `unified-mappings build -o json`'s output names it. See [truto-integrations-build: Questions, confidence and the agent loop](../../truto-integrations-build/SKILL.md#questions-confidence-and-the-agent-loop) for how confidence and questions work; the mapping report's cell records use the same confidence rule and questions, with a cell's route and sample in place of a method's doc section and example.
+
 ### `status` vs `outcome`
 
 - **`status`** is the verdict: `complete` (every routed cell built), `partial`

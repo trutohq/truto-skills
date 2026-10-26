@@ -118,6 +118,10 @@ truto integrations build https://api.acme.com/openapi.json acme --companion-docs
 
 ## Stuck or slow builds
 
+### The build exited 3 and some methods are `waiting` or `blocked`
+
+This isn't stuck -- the build finished and committed the file; it just has something left to settle. Read the end-of-build summary (or `-o json`): `waiting` methods need an answer to an open question, `blocked` methods failed a check, and `apply` skips them until they pass. See [Questions, confidence and the agent loop](../SKILL.md#questions-confidence-and-the-agent-loop) for answering and rebuilding only what waits. A `blocked` method needs a fix instead -- `truto integrations lint <file>` shows the same findings with more detail, and [Known Mistakes](known-mistakes.md) covers the common shapes.
+
 ### Phase A takes too many turns
 
 The autonomous build has a turn budget. If the agent keeps iterating without reaching `build_complete`:

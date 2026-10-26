@@ -6,7 +6,7 @@
 
 ## Audit sources
 
-The auditor consolidates six independent signal sources. Each finding carries a `source` field so you can filter by category.
+The auditor consolidates seven independent signal sources. Each finding carries a `source` field so you can filter by category.
 
 ### `presence_check`
 
@@ -68,6 +68,14 @@ Two categories of checks:
 - **Severity:** `warn`
 - **Example:** `method "get" has a non-canonical id placeholder as its last path segment ("{{query.attachment_id}}"). The last segment must be {{id}}.`
 - **Action:** Rewrite the path to end in `{{id}}`. Parent/scoping parameters still use `{{query.<name>}}`, but the record's own identifier is always `{{id}}`.
+
+### `docs_completeness`
+
+Whole-file check: does at least one method have a description? Fires once, for the whole file, not per method.
+
+- **Severity:** `warn` -- deliberately not an `error`. The integration still works over the proxy/unified APIs without it; it just has nothing to show in the MCP tool list or the capabilities API.
+- **Example:** "none of the 12 method(s) has a description (no `description` documentation row and no inline `description`), so the integration exposes zero MCP tools..."
+- **Action:** `truto integrations build <docs-url> --docs-only <slug>` to generate description rows, then `truto integrations apply <slug>.docs.integration.json --docs-only`. See [Known Mistakes](known-mistakes.md) for the full pattern and which betas have hit it.
 
 ---
 

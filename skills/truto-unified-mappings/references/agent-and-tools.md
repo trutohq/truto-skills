@@ -58,6 +58,7 @@ The agentic loop has these tools (local tools + 2 Anthropic server tools):
 | Generation | `propose_mapping_field`, `build_mapping_cell` (full per-cell pipeline) |
 | Validation | `eval_jsonata`, `validate_mapping_output`, `audit_unified_mappings` |
 | Existing state | `read_existing_mapping_row` |
+| Stop and ask | `ask_question` — stops a cell on something only a sample or the user can settle, instead of guessing: `no_sample`, `required_field_unknown`, `route_unclear`, `value_list_unknown`. The cell waits (`apply_db_action: "skip"`) until answered. See the parent skill's [Questions and confidence](../SKILL.md#questions-and-confidence) |
 | Finish | `finalize_mappings` (writes the build summary and ends the loop) |
 | Web (Anthropic server tools, or Firecrawl-backed under Fireworks) | `web_search`, `web_fetch` |
 
