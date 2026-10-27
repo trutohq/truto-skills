@@ -299,7 +299,7 @@ truto integrations build https://docs.example.com acme
 export FIREWORKS_API_KEY=...
 truto integrations build https://docs.example.com acme \
   --llm-provider fireworks \
-  --llm-model kimi-k2p7
+  --llm-model minimax-m3
 ```
 
 ### Fireworks model presets
@@ -315,15 +315,12 @@ Fireworks uses a **shared workhorse model** for agent + extraction, plus a separ
 
 | Preset | Fireworks model | Notes |
 |--------|-----------------|-------|
-| `kimi-k2p7` | `accounts/fireworks/models/kimi-k2p7-code` | Coding specialist, MCP workflows |
 | `glm-5p3-flash` | `accounts/fireworks/models/glm-5p3-flash` | 1M context, efficient coding/agent (default) |
 | `minimax-m3` | `accounts/fireworks/models/minimax-m3` | K2.7-class agent, 512k context |
-| `qwen3p7-plus` | `accounts/fireworks/models/qwen3p7-plus` | Strong structured JSON for docs/schemas |
-| `deepseek-v4-pro` | `accounts/fireworks/models/deepseek-v4-pro` | 1M context reasoning |
 
-`glm-5p2` was the default until Fireworks stopped serving it serverless; the name still works and now resolves to `glm-5p3-flash`.
+`glm-5p2` was the default until Fireworks stopped serving it serverless; the name still works and now resolves to `glm-5p3-flash`. `kimi-k2p7`, `qwen3p7-plus`, `deepseek-v4-pro`, `kimi-k2p6` and `gpt-oss-20b` are no longer offered, because Fireworks does not serve them serverless; their names still resolve, so a run that pins one stops at the model check before the build starts.
 
-**Classification presets:** `deepseek-v4p1-flash` (default; `deepseek-v4-flash` is an alias) or `gpt-oss-20b`. Raw `accounts/.../models/...` IDs also work on any tier flag.
+**Classification preset:** `deepseek-v4p1-flash` (default; `deepseek-v4-flash` is an alias). Raw `accounts/.../models/...` IDs also work on any tier flag.
 
 > **Don't mix `--anthropic-model` with `--llm-provider fireworks`** — the CLI hard-errors. With Fireworks, use `--llm-model` or the tier flags. With Anthropic, use `--anthropic-model`.
 
@@ -397,10 +394,10 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--anthropic-api-key <key>` | Profile / env / prompt | Anthropic API key (default provider) |
 | `--anthropic-model <model>` | Tiered: `claude-opus-4-6` (agent), `claude-sonnet-4-6` (extraction), `claude-haiku-4-5` (classification) | Override Claude model for all tasks (Anthropic provider only) |
 | `--fireworks-api-key <key>` | Profile / env / prompt | Fireworks API key (required for `--llm-provider fireworks`) |
-| `--llm-model <model>` | `glm-5p3-flash` (Fireworks) | Pin one Fireworks model for agent, extraction and classification. Presets: `glm-5p3-flash`, `kimi-k2p7`, `minimax-m3`, `qwen3p7-plus`, `deepseek-v4-pro`, or a raw `accounts/.../models/...` ID |
+| `--llm-model <model>` | `glm-5p3-flash` (Fireworks) | Pin one Fireworks model for agent, extraction and classification. Presets: `glm-5p3-flash` (the default), `minimax-m3`, or a raw `accounts/.../models/...` ID |
 | `--llm-agent-model <model>` | same as `--llm-model` | Alternative to `--llm-model` (not combined with it); agent and extraction share one model |
 | `--llm-extraction-model <model>` | same as `--llm-model` | Alternative to `--llm-model`; must equal `--llm-agent-model` if both are given |
-| `--llm-classification-model <model>` | `deepseek-v4p1-flash` (Fireworks) | Fireworks classification-tier model. Presets: `deepseek-v4p1-flash`, `gpt-oss-20b` |
+| `--llm-classification-model <model>` | `deepseek-v4p1-flash` (Fireworks) | Fireworks classification-tier model. Preset: `deepseek-v4p1-flash` |
 | `--embedding-provider <provider>` | `local` | `local` (MiniLM ONNX, no API key) or `fireworks` (Qwen3, requires `FIREWORKS_API_KEY`) |
 | `--embedding-model <model>` | `local-minilm` (local), `qwen3-embedding-8b` (fireworks) | Embedding model preset |
 | `--firecrawl-api-key <key>` | Profile / env / prompt | Firecrawl API key (web crawl + Fireworks web tools) |
