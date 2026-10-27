@@ -202,7 +202,7 @@ If a Fireworks build skips `web_search` / `web_fetch` or the OpenAPI spec hunt, 
 
 ### Capacity-exceeded errors
 
-Fireworks (and the AI Gateway in front of it) can return capacity-exceeded errors under load. The CLI recognizes these and retries with adaptive backoff; in unattended / non-TTY runs it skips the interactive retry prompt and continues with whatever was already built. If you see persistent capacity errors, switch workhorse model (`--llm-model glm-5p2` or `--llm-model minimax-m3`) or fall back to `--llm-provider anthropic`.
+Fireworks (and the AI Gateway in front of it) can return capacity-exceeded errors under load. The CLI recognizes these and retries with adaptive backoff; in unattended / non-TTY runs it skips the interactive retry prompt and continues with whatever was already built. If you see persistent capacity errors, switch the workhorse model (for example `--llm-model minimax-m3`) or fall back to `--llm-provider anthropic`.
 
 ### Mixing `--anthropic-model` with Fireworks
 

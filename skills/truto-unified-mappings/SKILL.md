@@ -244,7 +244,7 @@ The refinement loop is skipped in this mode.
 | `--llm-provider <provider>` | interactive pick on a TTY; `anthropic` under `CI` or without a TTY | Select `anthropic` or `fireworks` |
 | `--anthropic-api-key <key>` | env / profile / prompt | Override Anthropic API key |
 | `--fireworks-api-key <key>` | env / profile / prompt | Override Fireworks API key |
-| `--llm-model <model>` | TTY prompt, else `glm-5p2` + `deepseek-v4p1-flash` | Fireworks preset/model for agent, extraction and classification. `--llm-agent-model` / `--llm-extraction-model` are alternatives (one shared model, not combined with `--llm-model`); `--llm-classification-model` overrides classification |
+| `--llm-model <model>` | TTY prompt, else `glm-5p3-flash` + `deepseek-v4p1-flash` | Fireworks preset/model for agent, extraction and classification. `--llm-agent-model` / `--llm-extraction-model` are alternatives (one shared model, not combined with `--llm-model`); `--llm-classification-model` overrides classification |
 | `--firecrawl-api-key <key>` | env / profile / prompt | Override Firecrawl API key |
 | `--no-firecrawl` | -- | Skip Firecrawl; use cheaper extraction only for doc sites |
 | `--resources <list>` | all planned | Comma-separated unified resources to build |

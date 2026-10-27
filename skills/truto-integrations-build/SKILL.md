@@ -308,7 +308,7 @@ Fireworks uses a **shared workhorse model** for agent + extraction, plus a separ
 
 | Tier | Claude default | Fireworks default | Used for |
 |------|----------------|-------------------|----------|
-| Agent + extraction | Opus + Sonnet | `glm-5p2` (one model for both) | Discovery agent, build loop, docs, schemas |
+| Agent + extraction | Opus + Sonnet | `glm-5p3-flash` (one model for both) | Discovery agent, build loop, docs, schemas |
 | Classification | `claude-haiku-4-5` | `deepseek-v4p1-flash` | Page classification, routing |
 
 **Workhorse presets** (pick one for agent + extraction):
@@ -316,11 +316,12 @@ Fireworks uses a **shared workhorse model** for agent + extraction, plus a separ
 | Preset | Fireworks model | Notes |
 |--------|-----------------|-------|
 | `kimi-k2p7` | `accounts/fireworks/models/kimi-k2p7-code` | Coding specialist, MCP workflows |
-| `glm-5p2` | `accounts/fireworks/models/glm-5p2` | 1M context flagship agent (default) |
-| `glm-5p3-flash` | `accounts/fireworks/models/glm-5p3-flash` | Smaller GLM model |
+| `glm-5p3-flash` | `accounts/fireworks/models/glm-5p3-flash` | 1M context, efficient coding/agent (default) |
 | `minimax-m3` | `accounts/fireworks/models/minimax-m3` | K2.7-class agent, 512k context |
 | `qwen3p7-plus` | `accounts/fireworks/models/qwen3p7-plus` | Strong structured JSON for docs/schemas |
 | `deepseek-v4-pro` | `accounts/fireworks/models/deepseek-v4-pro` | 1M context reasoning |
+
+`glm-5p2` was the default until Fireworks stopped serving it serverless; the name still works and now resolves to `glm-5p3-flash`.
 
 **Classification presets:** `deepseek-v4p1-flash` (default; `deepseek-v4-flash` is an alias) or `gpt-oss-20b`. Raw `accounts/.../models/...` IDs also work on any tier flag.
 
@@ -396,7 +397,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--anthropic-api-key <key>` | Profile / env / prompt | Anthropic API key (default provider) |
 | `--anthropic-model <model>` | Tiered: `claude-opus-4-6` (agent), `claude-sonnet-4-6` (extraction), `claude-haiku-4-5` (classification) | Override Claude model for all tasks (Anthropic provider only) |
 | `--fireworks-api-key <key>` | Profile / env / prompt | Fireworks API key (required for `--llm-provider fireworks`) |
-| `--llm-model <model>` | `glm-5p2` (Fireworks) | Pin one Fireworks model for agent, extraction and classification. Presets: `glm-5p2`, `glm-5p3-flash`, `kimi-k2p7`, `minimax-m3`, `qwen3p7-plus`, `deepseek-v4-pro`, or a raw `accounts/.../models/...` ID |
+| `--llm-model <model>` | `glm-5p3-flash` (Fireworks) | Pin one Fireworks model for agent, extraction and classification. Presets: `glm-5p3-flash`, `kimi-k2p7`, `minimax-m3`, `qwen3p7-plus`, `deepseek-v4-pro`, or a raw `accounts/.../models/...` ID |
 | `--llm-agent-model <model>` | same as `--llm-model` | Alternative to `--llm-model` (not combined with it); agent and extraction share one model |
 | `--llm-extraction-model <model>` | same as `--llm-model` | Alternative to `--llm-model`; must equal `--llm-agent-model` if both are given |
 | `--llm-classification-model <model>` | `deepseek-v4p1-flash` (Fireworks) | Fireworks classification-tier model. Presets: `deepseek-v4p1-flash`, `gpt-oss-20b` |
