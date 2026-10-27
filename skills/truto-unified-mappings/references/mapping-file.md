@@ -40,33 +40,38 @@ pushed.
 
 ## MappingCell
 
-One per unified resource/method:
+One per unified resource/method. The build writes this shape:
 
 ```jsonc
 {
-  "resource_name": "contacts",
-  "method_name": "list",
+  "unified_resource_name": "contacts",
+  "unified_method_name": "list",
   "config": { /* the mapping — see below */ },
-  "apply_db_action": "create",           // "create" | "update" | "skip"
-  "existing_row_id": "…",                // set when a row already exists (→ update)
-  "existing_version": 3,
-  "sample_provenance": "live",           // live | docs | source | spec | corpus | manual | none
-  "proxy_match": { "confidence": "high", "routing_notes": "…", "conditional": null },
-  "validation": { "compile_ok": true, "response_mapping_ok": true, "schema_ok": true },
-  "sample": { /* raw API sample kept for review / re-validation */ }
+  "db_info": {                             // build context for apply
+    "action": "create",                    // "create" | "update" | "skip"
+    "existing": { "id": "…", "version": 3 } // set when a row already existed at build time
+  },
+  "sample": { "source": "docs", "data": { /* … */ } }, // no "data" for a live sample
+  "ai": {
+    "match_confidence": "high",
+    "routing_notes": "…",
+    "conditional": null,
+    "validation": { "compile_ok": true, "response_mapping_ok": true, "schema_ok": true }
+  }
 }
 ```
 
 | Field | Meaning |
 |-------|---------|
-| `resource_name` / `method_name` | The unified cell this row maps (for example `contacts` / `list`) |
+| `unified_resource_name` / `unified_method_name` | The unified cell this row maps (for example `contacts` / `list`) |
 | `config` | The mapping itself (the `IntegrationMappingMethod` JSON stored in the DB row) |
-| `apply_db_action` | What `apply` does with this cell: `create` (insert), `update` (patch existing), `skip` (no-op) |
-| `existing_row_id` / `existing_version` | Populated when the platform already has a row — drives `update` + optimistic locking |
-| `sample_provenance` | Where the grounding sample came from (`live` proxy, `docs`, `source` URL, …) |
-| `proxy_match` | Routing audit — `confidence` (`high`/`medium`/`low`), `routing_notes`, optional `conditional` guard |
-| `validation` | Per-cell check results: `compile_ok`, `response_mapping_ok`, `schema_ok`, `unverified`, `error` |
-| `sample` | The raw API sample, retained so `validate` can re-check without a live call |
+| `db_info.action` | The build's action for the cell: `create`, `update` or `skip`. `skip` keeps the cell out of apply; otherwise apply decides from its baseline and the live rows (see [How `apply` consumes the file](#how-apply-consumes-the-file)) |
+| `db_info.existing` | The row (`id`, `version`) the platform had at build time: context, not authority |
+| `sample.source` | Where the grounding sample came from: `live` proxy, `docs`, `source` URL, `spec`, `corpus`, `manual` or `none` |
+| `sample.data` | The sample (a list trimmed for storage), kept for review and re-validation. Never saved for a `live` sample: account data stays in memory |
+| `ai` | Routing audit (`match_confidence` `high`/`medium`/`low`, `routing_notes`, an optional `conditional` guard) and the per-cell check results (`validation`: `compile_ok`, `response_mapping_ok`, `schema_ok`, `unverified`, `error`) |
+
+Files with the older flat names (`resource_name`, `method_name`, `apply_db_action`, `existing_row_id` / `existing_version`, `sample` + `sample_provenance`, `proxy_match`, `validation`) are still read.
 
 ### The `config` (mapping fields)
 

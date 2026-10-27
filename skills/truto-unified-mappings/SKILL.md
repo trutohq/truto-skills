@@ -128,7 +128,7 @@ request body, so they do not need a live response sample.
 
 #### Questions and confidence
 
-A read cell with no observed sample (only the spec's field names, another integration's sample, or nothing), a read cell the build couldn't finish for want of a sample, or a low-confidence route waits on a question instead of shipping a guess -- the agent can also ask directly, with the same `ask_question` tool and loop as integration methods, using mapping-specific reasons (`no_sample`, `required_field_unknown`, `route_unclear`, `value_list_unknown`). A waiting cell is saved with `apply_db_action: "skip"`, so even an older CLI won't write it.
+A read cell with no observed sample (only the spec's field names, another integration's sample, or nothing), a read cell the build couldn't finish for want of a sample, or a low-confidence route waits on a question instead of shipping a guess -- the agent can also ask directly, with the same `ask_question` tool and loop as integration methods, using mapping-specific reasons (`no_sample`, `required_field_unknown`, `route_unclear`, `value_list_unknown`). A waiting cell is saved with `db_info.action: "skip"`, so even an older CLI won't write it.
 
 `truto unified-mappings build … -o json` never prompts: progress moves to stderr, and stdout carries one JSON document at the end -- the run result (the same shape and exit contract as `apply`, below: 0 complete, 3 nothing landed and something is pending or blocked, 1 on failure), plus `questions` and `report_path`. In a terminal, any open question is asked first, before the refinement loop below starts.
 
@@ -141,7 +141,7 @@ A read cell with no observed sample (only the spec's field names, another integr
 5. `truto unified-mappings validate acme.crm.mappings.json`, then `truto unified-mappings apply acme.crm.mappings.json --prepare`. Show the human the plan.
 6. On their approval only: `truto unified-mappings apply acme.crm.mappings.json --plan <path> --expect-digest <digest>`.
 
-`--continue` takes only the file -- no integration slug, unified model, `--resources`, `--methods`, `--fresh`, `--only-missing`, `--out` or `--recheck`.
+`--continue` takes only the file -- no integration slug, unified model, `--resources`, `--methods`, `--fresh`, `--only-missing`, `--out` or `--recheck`. It needs the file to be exactly the committed build: after a hand edit, run `build --recheck <file>` first, which takes an edited cell off its question; an answer to a question left holding nothing is refused (exit 1). Until a question is answered, `apply` skips each cell waiting on it, built or not, as "waiting for an answer (q1)" with the `--continue` command as its next step.
 
 **Confidence** is information only -- it never blocks `apply`. Use the low-confidence cells in `report_path` and their `assumptions` to point review at the routes worth a second look first, the same way as for integration methods -- see [truto-integrations-build: Questions, confidence and the agent loop](../truto-integrations-build/SKILL.md#questions-confidence-and-the-agent-loop).
 
@@ -201,7 +201,7 @@ essentials:
 |-------|---------|
 | `integration_name` / `unified_model_name` | What this file maps, by slug |
 | `write_target` | `base` (team-owned) or `env` (per-environment override) |
-| `cells[]` | One entry per unified resource/method: a `config` (mapping fields) + `apply_db_action` (apply action) |
+| `cells[]` | One entry per unified resource/method: a `config` (mapping fields) + `db_info` (apply action) |
 | `build_summary` | `status`, `counts`, `built`, `skipped` (with reasons), `unbuilt_routed`, `warnings` |
 
 The `build_summary` is built for human review. `skipped` lists **why** a cell
