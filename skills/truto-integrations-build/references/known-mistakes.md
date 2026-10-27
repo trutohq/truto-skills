@@ -46,9 +46,9 @@ Patterns that have broken real integrations before. Check a new or edited integr
 
 ## `body_format: json` overwrites a custom Content-Type
 
-**Looks like:** `config.headers` sets a specific Content-Type, but the method's own `body_format: json` (or `form`/`xml`) silently overwrites it when the request goes out.
+**Looks like:** a Content-Type header (in `config.headers`, or in a method's own `headers`) is silently overwritten by the method's `body_format: json` (or `form`/`xml`) when the request goes out.
 
-**CLI:** ERROR.
+**CLI:** ERROR when the method's own `headers` sets it; WARN when `config.headers` does (the whole-integration header).
 
 **Fix:** use `body_format: raw` with `body_format_config.content_type` instead, whenever the content type isn't the plain default for that body format.
 
