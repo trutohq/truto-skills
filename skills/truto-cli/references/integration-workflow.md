@@ -38,7 +38,7 @@ Eligible work can land while individual items are skipped, held, clashing, rejec
 
 Each write is reread. Lost responses and crashes retain enough state to reconcile a later run; never delete sidecars or add dummy edits to force retries. An editor save during the run is preserved. Integration method/doc removals need `--allow-method-removal` / `--prune-docs`; CREATE is private beta, and UPDATE never publishes or changes beta status. After a CREATE with `--slug-override`, apply writes the new `id` and the override as `name` into the artifact. A build whose output file is committed for another host/team/environment/integration stops with exit 1; pass another `--out`.
 
-Apply exits 0 for complete/unchanged, 2 for landed writes with pending work, 3 for blocked/nothing-written with pending work, 1 for auth/unexpected failure and 4 for an otherwise complete run with an executed test failure. `-o json` emits one structured result. Dry run is a preview, not readiness proof.
+Apply exits 0 for complete/unchanged, 2 for landed writes with pending work, 3 for blocked/nothing-written with pending work, 1 for auth/unexpected failure and 4 for an otherwise complete run with an executed test failure. `--prepare` writes nothing, so it exits 3 whenever its plan leaves something pending: read `blocked` (absent when the plan can run) and the items, not the exit code, before showing the plan. `-o json` emits one structured result. Dry run is a preview, not readiness proof.
 
 ## Documentation and repair
 
