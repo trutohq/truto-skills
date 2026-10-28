@@ -132,7 +132,7 @@ After Phase B, the docs phase generates per-method descriptions and schemas. All
 
 ### Questions, confidence and the agent loop
 
-Every build ends with a short summary -- on stderr in a terminal, and ONCE as a single JSON document on stdout with `-o json` (nothing else prompts: no instructions prompt, no provider/key picker, no editor; Phase B runs only if you scripted it with `--refine` / `--refinements-file` / `--auto-accept-patches`). It names the status, counts, open questions, blocked and low-confidence methods, and the next command:
+Every build ends with a short summary -- on stderr in a terminal, and ONCE as a single JSON document on stdout with `-o json` (nothing else prompts: no instructions prompt, no provider/key picker, no editor; Phase B runs only if you scripted it with `--refine` / `--refinements-file` / `--auto-accept-patches`, and with no terminal a scripted Phase B accepts each patch as `--auto-accept-patches` would). It names the status, counts, open questions, blocked and low-confidence methods, and the next command:
 
 ```json
 {
@@ -156,7 +156,7 @@ Every build ends with a short summary -- on stderr in a terminal, and ONCE as a 
 1. `truto integrations build <source> acme -o json`.
 2. Read the JSON summary. `complete`/`incomplete` -> go straight to lint. Otherwise there are open `questions` and/or `blocked`/`low_confidence` methods to look at first.
 3. Ask the human each open question in chat, in plain words, with its `suggestion`. **Never put a credential (a key, token, password) in an answer** -- it's refused outright, nothing runs, exit 3. Say where the value actually comes from (a credential field, a setup step) instead.
-4. `truto integrations build --continue acme.integration.json --answer q1="…" --answer q2="…"` (repeatable; or `--answers <file>`, a JSON object or one `q1=…` per line, `-` for stdin). Only the methods still waiting on the answered questions are rebuilt, as a new run that spends no repair round; every other method stays byte-identical -- if the model touches one anyway, the CLI puts it back, and a method it adds is dropped. If the rebuild turns up a new gap, that's a new question; the one you just answered is never asked again.
+4. `truto integrations build --continue acme.integration.json --answer q1="…" --answer q2="…"` (repeatable; or `--answers <file>`, a JSON object or one `q1=…` per line, `-` for stdin). Only the methods still waiting on the answered questions are rebuilt, as a new run that spends no repair round; every other method stays byte-identical -- if the model touches one anyway, the CLI puts it back, and a method it adds is dropped. If the rebuild turns up a new gap, that's a new question (it can only hold what was being rebuilt, never another method); the one you just answered is never asked again.
 5. `truto integrations lint acme.integration.json`. It exits 1 on warnings as well as errors; review the warnings, but only an ERROR blocks apply (`--ignore-warnings` makes lint fail on ERRORs only).
 6. `truto integrations apply acme.integration.json --prepare`. Show the human the plan.
 7. On their approval only: `truto integrations apply acme.integration.json --plan acme.integration.json.plan.json --expect-digest <digest>`.
@@ -276,7 +276,7 @@ truto integrations build https://api.acme.com/openapi.json --docs-only acme
 truto integrations build https://api.acme.com/openapi.json --docs-only acme --resource contacts,deals
 ```
 
-The source URL is still required. Config is preserved exactly, and docs save separately as `<slug>.docs.integration.json` or `<input-stem>.docs.integration.json`; a failed method keeps its existing docs. Apply with `--docs-only`.
+The source URL is still required. Config is preserved exactly (except a credential secret the read returned in plaintext, which is never written), and docs save separately as `<slug>.docs.integration.json` or `<input-stem>.docs.integration.json`; a failed method keeps its existing docs. Apply with `--docs-only`.
 
 ---
 
@@ -318,7 +318,7 @@ Fireworks uses a **shared workhorse model** for agent + extraction, plus a separ
 | `glm-5p3-flash` | `accounts/fireworks/models/glm-5p3-flash` | 1M context, efficient coding/agent (default) |
 | `minimax-m3` | `accounts/fireworks/models/minimax-m3` | K2.7-class agent, 512k context |
 
-`glm-5p2` was the default until Fireworks stopped serving it serverless; the name still works and now resolves to `glm-5p3-flash`. `kimi-k2p7`, `qwen3p7-plus`, `deepseek-v4-pro`, `kimi-k2p6` and `gpt-oss-20b` are no longer offered, because Fireworks does not serve them serverless; their names still resolve, so a run that pins one stops at the model check before the build starts.
+`glm-5p2` was the default until Fireworks stopped serving it serverless; the name still works and now resolves to `glm-5p3-flash`. `kimi-k2p7`, `qwen3p7-plus`, `deepseek-v4-pro`, `kimi-k2p6` and `gpt-oss-20b` are no longer offered, because Fireworks does not serve them serverless; their names still resolve, so a run that pins one gets Fireworks' error instead of silently using another model: an agent or extraction model stops the build at agentic discovery's model check (or at its first model call where that check does not run, such as a local spec or `--legacy-discovery`), and a classification model only warns and falls back to the extraction model.
 
 **Classification preset:** `deepseek-v4p1-flash` (default; `deepseek-v4-flash` is an alias). Raw `accounts/.../models/...` IDs also work on any tier flag.
 
@@ -409,7 +409,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--answer <id=text>` | -- | With `--continue`: one question's answer, e.g. `--answer q1="…"`. Repeatable |
 | `--answers <file>` | -- | With `--continue`: answers from a file (`-` for stdin) -- a JSON object `{ "q1": "…" }` or one `q1=…` per line |
 | `--instructions <text>` | Interactive prompt | Skip the instructions prompt |
-| `--refine <text>` | Interactive prompt | Run one Phase B refinement turn non-interactively instead of prompting for it. Repeatable, in order |
+| `--refine <text>` | Interactive prompt | Run one Phase B refinement turn non-interactively instead of prompting for it. Repeatable, in order. With no terminal its patches are accepted as `--auto-accept-patches` would |
 | `--refinements-file <path>` | -- | Many `--refine` instructions, one per line (`#` comments and blank lines skipped); runs after any `--refine` flags |
 | `--auto-accept-patches` | -- | Accept every Phase B patch without the accept/skip/chat prompt (headless runs) |
 | `--editor <cmd>` | `$VISUAL` / `$EDITOR` / profile | Editor for `:edit` command |

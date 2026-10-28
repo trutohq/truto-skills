@@ -120,6 +120,6 @@ The `_build` marker and `<artifact>.committed` report carry recovery/source/chec
 - Edit the artifact's authored config and doc rows; preserve unrelated fields and inheritance. Schema rows may be JSON objects or YAML-encoded JSON Schema strings.
 - A changed method can trigger grounded regeneration of unedited docs. Manually edited rows remain yours; apply does not silently replace them.
 - `audit_notes` are informational. Removing notes or `_build` does not clear blocked-method or recovery evidence retained in `.committed`.
-- Older CLIs (checked: 1.0.26 to 1.0.34) refuse an artifact carrying `_build` as an unknown key. Tell the user to upgrade (`truto upgrade`); never remove the marker or pass `--allow-audit-errors` to get past it.
+- Older CLIs (checked: 1.0.26 to 1.0.36) refuse an artifact carrying `_build` as an unknown key. Tell the user to upgrade (`truto upgrade`); never remove the marker or pass `--allow-audit-errors` to get past it.
 - Do not remove an id or sidecar to force CREATE against another target. The CLI creates a target-specific working copy.
 - Literal credential secrets are refused in artifacts. Use the explicit secret/update workflow and respect backend prerequisite holds.

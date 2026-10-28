@@ -72,7 +72,7 @@ Patterns that have broken real integrations before. Check a new or edited integr
 
 **Looks like:** the integration ships one hardcoded OAuth client id/secret for every customer, but the vendor actually requires each customer to register and use their own app. Seen on acumatica, clover, simpplr and timely.
 
-**CLI:** ERROR when the connect form collects the customer's own client id but the runtime still uses the literal hardcoded one, or when the token host is something the user types in by hand instead of coming from a credential field. Otherwise the build stops and asks whether each customer needs their own app.
+**CLI:** ERROR when the connect form collects the customer's own client id but the runtime still uses the literal hardcoded one, or when the token host is something the user types in by hand instead of coming from a credential field. Otherwise the CLI raises no stop for it; the build agent may ask (`oauth_app_ownership_unknown`) when the docs leave it open.
 
 **Fix:** collect the customer's client id/secret (and token host, if it varies by customer) as credential fields, and use those fields at runtime -- never a literal value.
 

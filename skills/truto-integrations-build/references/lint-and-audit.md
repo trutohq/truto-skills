@@ -151,7 +151,7 @@ CSV column order: `severity`, `section`, `source`, `resource`, `method`, `messag
 truto integrations lint ./acme.integration.json
 ```
 
-Offline except one read of the category list, which falls back to the built-in list. Loads the file, parses via the IntegrationFile schema, runs all audit sources. If `--integration-config-dir` or the profile's `integrationConfigDir` points at a corpus, `pattern_match` fires; otherwise it silently skips.
+Offline except two reads: the category list, which falls back to the built-in list, and, for a file with an `id`, that integration's live documentation rows for the orphan-row check (skipped with a notice when the read fails). Loads the file, parses via the IntegrationFile schema, runs all audit sources. If `--integration-config-dir` or the profile's `integrationConfigDir` points at a corpus, `pattern_match` fires; otherwise it silently skips.
 
 ### Slug mode
 
