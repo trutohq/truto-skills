@@ -107,12 +107,12 @@ The build runs in three phases. See [references/orchestrator-phases.md](referenc
 
 **Phase A -- autonomous build.** The agent reads the source index, inspects the pattern catalog, and builds the entire IntegrationFile autonomously. It emits cascade patches (multi-section updates) that are applied silently. Phase A ends when the agent signals `build_complete` or the turn budget is exhausted.
 
-The agent has access to 16 tools (14 local + 2 web):
+The agent's tools:
 
 | Group | Tools |
 |-------|-------|
 | Corpus (read existing integrations) | `list_integrations`, `find_examples`, `read_integration_summary`, `read_integration_section`, `read_integration_resource`, `read_integration_method` |
-| Source (query the discovered API docs) | `read_source_overview`, `read_source_method`, `search_source` |
+| Source (query the discovered API docs) | `read_source_overview`, `read_source_resource`, `read_source_method`, `search_source`, `list_source_pages`, `read_source_page` |
 | In-progress | `read_current` |
 | Reference docs | `list_patterns`, `read_pattern` |
 | Validation | `validate_integration` |
@@ -201,7 +201,7 @@ Key flags:
 | `--ignore-info` | Suppress `info`-level findings from human-readable output (machine formats always include them) |
 | `--integration-config-dir <path>` | Point the `pattern_match` source at a config corpus |
 
-See [references/lint-and-audit.md](references/lint-and-audit.md) for the full audit source breakdown.
+See [references/lint-and-audit.md](references/lint-and-audit.md) for the main audit sources. Every finding names its rule in `source` (`lint -o json`).
 
 ### Apply
 
@@ -431,7 +431,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--refresh-firecrawl-cache` | -- | Bypass the Firecrawl 24h cache |
 | `--legacy-flow` | -- | Use the older section-by-section orchestrator (escape hatch) |
 
-> **Don't propose deprecated flags.** `--resources`, `--dry-run`, `-y`/`--yes`, `--include-low-confidence`, `--plan-out`, `--report-out`, `-c`/`--category`, `-l`/`--label`, `--base-url`, `--no-bootstrap`, `--no-basic-details`, `--no-query-schema`, `--no-body-schema`, `--descriptions-only`, `--rewrite-bad-descriptions`, `--no-llm-canonicalize`, `--no-llm-regroup`, `--no-llm-split-buckets`, `--strict`, `--no-validate`, and `--keep-inline-docs` all hard-fail (exit `2`) before any LLM key resolution or crawling runs. Use the runtime error's suggested replacement.
+> **Don't propose deprecated flags.** `--resources`, `--dry-run`, `--yes`, `--include-low-confidence`, `--plan-out`, `--report-out`, `--category`, `--label`, `--base-url`, `--no-bootstrap`, `--no-basic-details`, `--no-query-schema`, `--no-body-schema`, `--descriptions-only`, `--rewrite-bad-descriptions`, `--no-llm-canonicalize`, `--no-llm-regroup`, `--no-llm-split-buckets`, `--strict`, `--no-validate`, `--keep-inline-docs`, `--lookup-only`, `--force-overwrite-bootstrap`, `--resanitise-existing-docs`, `--show-suppressed` and `--feedback-loop` all hard-fail (exit `2`) before any LLM key resolution or crawling runs. Their old short forms (`-y`, `-c`, `-l`) fail as an unknown option (exit `1`). Use the runtime error's suggested replacement.
 
 ---
 
@@ -441,7 +441,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 |-----------|---------|
 | [Orchestrator Phases](references/orchestrator-phases.md) | Phase A (autonomous build), Phase B (interactive refinement), docs phase, agent tools, patch format |
 | [IntegrationFile](references/integration-file.md) | Output JSON shape, field-by-field breakdown, hand-editing tips, relationship to `apply` |
-| [Lint and Audit](references/lint-and-audit.md) | All audit sources (method_naming, pattern_match, presence_check, critic, description_quality, method_coverage, docs_completeness), severities, exit codes, structured output |
+| [Lint and Audit](references/lint-and-audit.md) | The main audit sources (method_naming, pattern_match, presence_check, critic, description_quality, method_coverage, docs_completeness, and the CLI V2 checks credential_check, placeholder_supply, response_path, method_path), severities, exit codes, structured output |
 | [Known Mistakes](references/known-mistakes.md) | Patterns that have broken real integrations before: what each looks like, how the CLI flags it (or doesn't), and the fix |
 | [Troubleshooting](references/troubleshooting.md) | Source-tier selection, cache invalidation, Firecrawl tiers, stuck builds, `--legacy-flow` |
 

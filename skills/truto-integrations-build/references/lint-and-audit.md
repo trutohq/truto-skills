@@ -1,12 +1,12 @@
 # Lint and Audit
 
-`truto integrations lint` runs the static auditor over an IntegrationFile. No LLM, no writes, no cost. This reference covers every audit source, their finding types, and how to act on them.
+`truto integrations lint` runs the static auditor over an IntegrationFile. No LLM, no writes, no cost. This reference covers the audit sources an author meets most, their finding types, and how to act on them. Every finding names its rule in its `source` field; `lint -o json` shows it.
 
 ---
 
 ## Audit sources
 
-The auditor consolidates seven independent signal sources. Each finding carries a `source` field so you can filter by category.
+The auditor runs many checks; the ones below are the ones an author meets most. Each finding carries a `source` field so you can filter by category.
 
 ### `presence_check`
 
@@ -69,9 +69,30 @@ Two categories of checks:
 - **Example:** `method "get" has a non-canonical id placeholder as its last path segment ("{{query.attachment_id}}"). The last segment must be {{id}}.`
 - **Action:** Rewrite the path to end in `{{id}}`. Parent/scoping parameters still use `{{query.<name>}}`, but the record's own identifier is always `{{id}}`.
 
+### `credential_check`
+
+A credential the connecting user types in (`api_key`, `basic`) that nothing checks at connect: no `request` step in `post_install` or `validation` fails on an HTTP error, so a wrong key still shows "Connection successful". A `throw_error: "process"` request counts when a later transform raises on its result with `$error(…)`.
+
+- **Severity:** `warn` (lint exits 1 on it). A build stops on it with a `credential_check_missing` question that holds `config.actions`.
+- **Action:** Add a `validation` action with one `request` step that calls the cheapest read any valid key can make (the current user or account, else a list of one item).
+
+### `placeholder_supply` and `response_path`
+
+`placeholder_supply`: a `{{value}}` in a path, header, query, base_url or authorization that nothing supplies (no credential field, no action writing it to context, not caller input). `response_path`: a list with no `response_path` whose documented response is an envelope with the rows under one key; the runtime then returns the wrapper as one record.
+
+- **Severity:** `warn`; a build stops on each with a question for the methods involved.
+- **Action:** Supply the value (a credential field, an action, or `{{query.<name>}}`), or set `response_path` to the key the rows sit under.
+
+### `method_path`
+
+A method path that cannot be called as written: a placeholder path (`/__deleted__`), a missing `path`, a `base_url` path the method's path replaces, or a path parameter written the way docs write it (`{id}`, `:id`, `<id>`, `%7Bid%7D`), which the runtime sends literally.
+
+- **Severity:** `error`.
+- **Action:** Use `{{id}}` for the record id of get, update and delete, or `{{query.<name>}}` for any other value; put the base path at the start of every method path.
+
 ### `docs_completeness`
 
-Whole-file check: does at least one method have a description? Fires once, for the whole file, not per method.
+Fires once for the whole file when no method has a description (zero MCP tools), and once per method for a documentation row the method lacks: a `response_schema` for a described method, a `body_schema` for a method that declares a JSON `body_format`.
 
 - **Severity:** `warn` -- deliberately not an `error`. The integration still works over the proxy/unified APIs without it; it just has nothing to show in the MCP tool list or the capabilities API.
 - **Example:** "none of the 12 method(s) has a description (no `description` documentation row and no inline `description`), so the integration exposes zero MCP tools..."

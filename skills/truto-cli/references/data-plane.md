@@ -86,6 +86,12 @@ truto unified crm contacts <id> -m delete -a <account-id>
 # Custom method (e.g., search) — no ID, method becomes a path segment
 truto unified crm contacts -m search -a <account-id> -b '{"query":"Jane"}'
 
+# -m names a Truto method: list/get/create/update/delete in any case (-m DELETE is delete);
+# any other name is a custom method, sent as typed. The id and names are sent as encoded path
+# segments; an id that reads as . or .., an empty id, and an id given to list, create or a
+# custom method (their routes have none) are refused. A -q integrated_account_id that differs
+# from -a is refused too.
+
 # With query parameters
 truto unified crm contacts -a <account-id> -q "limit=10,status=active"
 
