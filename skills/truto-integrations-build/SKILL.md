@@ -14,7 +14,7 @@ whenToUse: Building new integrations from vendor API docs via truto integrations
 
 Use this skill when the user wants to **create or refine a Truto integration definition** from vendor API documentation. The `build` command drives an LLM-powered loop that discovers endpoints, generates config, and produces a single JSON artifact (the **IntegrationFile**) that can be linted and applied to the Truto platform.
 
-This skill covers the **build -> lint -> apply** workflow. It does NOT cover:
+This skill covers **build -> optional edit -> apply -> eligible read verification**. Fresh checks and reports are automatic; lint/recheck are optional inspection tools. It does NOT cover:
 
 - The `integration.config` field-by-field schema reference -- see [authoring-integrations.md](../truto/references/authoring-integrations.md) in the `truto` skill.
 - General CLI auth, profiles, data-plane commands -- see the [truto-cli](../truto-cli/SKILL.md) skill.
@@ -65,18 +65,18 @@ Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KE
 
 ## The workflow
 
-Three commands, in order:
+Build, optionally edit the artifact, then apply:
 
 ```bash
 # 1. Build — generates <slug>.integration.json from API docs
 truto integrations build https://api.acme.com/openapi.json acme
 
-# 2. Lint — static audit, no LLM, no writes
-truto integrations lint acme.integration.json
-
-# 3. Apply — push config + doc rows to the Truto platform
+# Optionally edit acme.integration.json
+# Apply freshly checks the projected config and doc rows
 truto integrations apply acme.integration.json
 ```
+
+This is the happy path. When the build stops on an open question instead, see [Questions, confidence and the agent loop](#questions-confidence-and-the-agent-loop) below.
 
 ### Build
 
@@ -107,15 +107,16 @@ The build runs in three phases. See [references/orchestrator-phases.md](referenc
 
 **Phase A -- autonomous build.** The agent reads the source index, inspects the pattern catalog, and builds the entire IntegrationFile autonomously. It emits cascade patches (multi-section updates) that are applied silently. Phase A ends when the agent signals `build_complete` or the turn budget is exhausted.
 
-The agent has access to 15 tools (13 local + 2 web):
+The agent's tools:
 
 | Group | Tools |
 |-------|-------|
 | Corpus (read existing integrations) | `list_integrations`, `find_examples`, `read_integration_summary`, `read_integration_section`, `read_integration_resource`, `read_integration_method` |
-| Source (query the discovered API docs) | `read_source_overview`, `read_source_method`, `search_source` |
+| Source (query the discovered API docs) | `read_source_overview`, `read_source_resource`, `read_source_method`, `search_source`, `list_source_pages`, `read_source_page` |
 | In-progress | `read_current` |
 | Reference docs | `list_patterns`, `read_pattern` |
 | Validation | `validate_integration` |
+| Stop and ask | `ask_question` — stops one or more methods (or shared config, named as `config.<key>`) on something only the docs or the user can settle, after searching once (one web search, up to two page fetches). See [Questions, confidence and the agent loop](#questions-confidence-and-the-agent-loop) below |
 | Web | `web_search`, `web_fetch` — Anthropic **server-side** under `--llm-provider anthropic` (default); **client-side via Firecrawl** under `--llm-provider fireworks` (requires `FIRECRAWL_API_KEY`) |
 
 **Phase B -- interactive refinement.** After Phase A, the CLI opens your editor on the working JSON and enters a refinement loop. You type a free-text instruction; the agent proposes patches; you accept, reject, or refine further. Press Enter with no input to finish.
@@ -127,7 +128,46 @@ Special commands during Phase B:
 | `:edit` | Opens the working file in your editor (`$VISUAL` / `$EDITOR` / `--editor` flag) for manual editing |
 | *(empty input)* | Exits Phase B and proceeds to the docs phase |
 
-After Phase B, the build runs a **docs phase** that generates per-method documentation rows (descriptions, query schemas, body schemas, response schemas). These ride alongside the config in the output file.
+After Phase B, the docs phase generates per-method descriptions and schemas. All finalization precedes checks of the exact saved candidate; a matching report and committed pair are automatic. Semantic corrections share a two-round allowance for the entire authorized run. Partial scope, blocked methods and unrun checks remain explicit.
+
+### Questions, confidence and the agent loop
+
+Every build ends with a short summary -- on stderr in a terminal, and ONCE as a single JSON document on stdout with `-o json` (nothing else prompts: no instructions prompt, no provider/key picker, no editor; Phase B runs only if you scripted it with `--refine` / `--refinements-file` / `--auto-accept-patches`, and with no terminal a scripted Phase B accepts each patch as `--auto-accept-patches` would). It names the status, counts, open questions, blocked and low-confidence methods, and the next command:
+
+```json
+{
+  "status": "waiting",
+  "exit": 3,
+  "counts": { "methods": 42, "built": 39, "waiting": 2, "blocked": 1, "excluded": 0, "high": 30, "medium": 8, "low": 4 },
+  "gaps": ["2 methods wait for an answer (1 open question)"],
+  "questions": [{ "id": "q1", "text": "…", "suggestion": "…", "methods": ["invoices.get", "payments.list"] }],
+  "blocked": [{ "method": "files.upload", "reason": "audit:file_input — …" }],
+  "low_confidence": [{ "method": "invoices.get", "reasons": ["open question q1", "not tested live"] }],
+  "out_path": "/abs/acme.integration.json",
+  "report_path": "/abs/acme.integration.report.json",
+  "next": "truto integrations build --continue acme.integration.json --answer q1=\"…\""
+}
+```
+
+`status` is `complete`, `incomplete` (smaller gaps only, e.g. a missing doc row -- still exits 0), `waiting` (methods, or the shared config, wait on an answer), `blocked`, or `failed`. Exit codes (`--fail-on` picks what counts as failed; default `blocking`): **0** complete or incomplete with only smaller gaps, **3** finished but something still waits or is blocked, **1** failed. `--fail-on none` never exits 3 (still 1 on a thrown error or an unsaved report); `errors` / `incomplete` widen what counts as failed.
+
+**The loop an agent runs:**
+
+1. `truto integrations build <source> acme -o json`.
+2. Read the JSON summary. `complete`/`incomplete` -> go straight to lint. Otherwise there are open `questions` and/or `blocked`/`low_confidence` methods to look at first.
+3. Ask the human each open question in chat, in plain words, with its `suggestion`. **Never put a credential (a key, token, password) in an answer** -- it's refused outright, nothing runs, exit 3. Say where the value actually comes from (a credential field, a setup step) instead.
+4. `truto integrations build --continue acme.integration.json --answer q1="…" --answer q2="…"` (repeatable; or `--answers <file>`, a JSON object or one `q1=…` per line, `-` for stdin). Only the methods still waiting on the answered questions are rebuilt, as a new run that spends no repair round; every other method stays byte-identical -- if the model touches one anyway, the CLI puts it back, and a method it adds is dropped. If the rebuild turns up a new gap, that's a new question (it can only hold what was being rebuilt or shared config, never another method); the one you just answered is never asked again.
+5. `truto integrations lint acme.integration.json`. It exits 1 on warnings as well as errors; review the warnings, but only an ERROR blocks apply (`--ignore-warnings` makes lint fail on ERRORs only).
+6. `truto integrations apply acme.integration.json --prepare`. Show the human the plan.
+7. On their approval only: `truto integrations apply acme.integration.json --plan acme.integration.json.plan.json --expect-digest <digest>`.
+
+`--continue` takes only the file -- no source URL, slug, `--out`, `--docs-only`, `--only-missing`, `--refine`, `--instructions` or `--spec`. In a real terminal (no `-o json`), the build asks each open question itself at the end instead of exiting -- press Enter to skip one (it stays open). Answers are saved in the report with who gave them and when; a later build or `--continue` of the same file never asks an already-answered question again.
+
+**Confidence** is information only -- it never blocks apply or publishing. Each method in the report (`acme.integration.report.json`, and `acme.integration.report.md` for people) carries a `confidence.level` (`high`/`medium`/`low`) and `confidence.reasons`. A method is `low` with no doc section, an ERROR or stop finding, a failed read test, or an open question. `high` needs its own doc section, a response example, clean lint (no warning either), a spec match or a passed read test, and at most one assumption. The model's own rating can move a method one step toward its own level, except that an ERROR, a stop finding, a failed read test or an open question keeps it `low` whatever the model thinks. Use the summary's `low_confidence` list to point the human's review at those methods and their `assumptions` first -- not as something that has to clear before moving on.
+
+**Follow-ups.** Give `--instructions "<text>"` up front to skip the interactive instructions prompt. Afterwards, there's no feedback command -- either edit `acme.integration.json` by hand and run `truto integrations build --recheck acme.integration.json` (offline: no LLM, no discovery, just refreshed checks and report, plus the `_build` marker when its known skips change; a method you fixed by hand no longer waits on its question, and a question left holding nothing is no longer asked or offered; `--continue` refuses an answer to it, exit 1), or make the model change something with `truto integrations build <source> acme --refine "rename list_2 in contacts to get"` (repeatable; `--refinements-file <path>` for many at once, one per line; `--auto-accept-patches` to skip the accept/skip/chat prompt for a headless run).
+
+Cross-check new or edited methods against [Known Mistakes](references/known-mistakes.md) -- especially anything the summary doesn't flag.
 
 ### Lint
 
@@ -161,27 +201,23 @@ Key flags:
 | `--ignore-info` | Suppress `info`-level findings from human-readable output (machine formats always include them) |
 | `--integration-config-dir <path>` | Point the `pattern_match` source at a config corpus |
 
-See [references/lint-and-audit.md](references/lint-and-audit.md) for the full audit source breakdown.
+See [references/lint-and-audit.md](references/lint-and-audit.md) for the main audit sources. Every finding names its rule in `source` (`lint -o json`).
 
 ### Apply
 
-Push the IntegrationFile to the Truto platform -- config upsert + per-method documentation rows.
-
 ```bash
-# Dry-run: parse + validate, print what would be applied
-truto integrations apply acme.integration.json --dry-run
-
-# Apply (non-interactive, fire-and-go)
 truto integrations apply acme.integration.json
+truto integrations apply acme.integration.json --dry-run  # optional offline preview
+truto integrations build --recheck acme.integration.json # optional report refresh
 ```
 
-| Flag | Effect |
-|------|--------|
-| `--dry-run` | Validate the file and print a summary; no API calls |
-| `--slug-override <slug>` | Override the file's `name` on CREATE only (ignored on UPDATE) |
-| `--docs-only` | Push only per-method documentation rows (integration must already exist) |
+Apply rechecks edited artifacts, reconciles against committed/live state, preserves concurrent edits and observes every write. Eligible methods can land while skipped/held items remain pending. A method doc-input change can regenerate unedited documentation from its recorded source using configured model access; manual doc edits and rows whose generation fails are retained.
 
-Apply is non-interactive by design -- there is no `--yes` flag because there is no interactive prompt to skip. The operator already decided what to push during `build`. It exits 0 on success, 1 on any failure.
+Use `--prepare [--plan-out <path>]` and then `--plan <path> --expect-digest <digest>` when an exact prepared candidate is useful. Resolve a reported clash with `--resolve '<item>=mine|theirs'`; use `--docs-only` for documentation, and deliberate removal flags only for the listed removals. Apply is non-interactive and needs no `--yes`.
+
+Mark/select a test account with `truto profiles set test-account.<integration> <id>` or `--test-account <id>`. Only proven eligible reads run, with Truto-side token/reauth/webhook effects disclosed. Saved, applied, checked and tested remain distinct; missing evidence is not a pass. Exit codes: 0 complete, 2 partial, 3 blocked, 1 auth/unexpected error, 4 executed test failure on an otherwise complete run.
+
+See [the shared artifact workflow](../truto-cli/references/integration-workflow.md) for exact plan, partial/recovery, secret prerequisites, two-round repair, verification and restore behavior.
 
 ---
 
@@ -240,7 +276,7 @@ truto integrations build https://api.acme.com/openapi.json --docs-only acme
 truto integrations build https://api.acme.com/openapi.json --docs-only acme --resource contacts,deals
 ```
 
-The source URL is still required (the docs phase uses Orama source snippets to ground the descriptions).
+The source URL is still required. Config is preserved exactly (except a credential secret the read returned in plaintext, which is never written), and docs save separately as `<slug>.docs.integration.json` or `<input-stem>.docs.integration.json`; a failed method keeps its existing docs. Apply with `--docs-only`.
 
 ---
 
@@ -263,29 +299,28 @@ truto integrations build https://docs.example.com acme
 export FIREWORKS_API_KEY=...
 truto integrations build https://docs.example.com acme \
   --llm-provider fireworks \
-  --llm-model kimi-k2p7
+  --llm-model minimax-m3
 ```
 
 ### Fireworks model presets
 
-Fireworks uses a **shared workhorse model** for agent + extraction, plus a separate cheap **classification** model. Pin the workhorse with `--llm-model` (or the aliases `--llm-agent-model` / `--llm-extraction-model` — they set the same shared model). Override classification with `--llm-classification-model`.
+Fireworks uses a **shared workhorse model** for agent + extraction, plus a separate cheap **classification** model. Naming a workhorse — `--llm-model`, `--llm-agent-model` / `--llm-extraction-model` (the same shared model; not combined with `--llm-model`, and equal if both are given), or a pick at the interactive prompt — pins classification to it too. Override classification with `--llm-classification-model`. Without a model flag and without a TTY, the defaults below apply.
 
 | Tier | Claude default | Fireworks default | Used for |
 |------|----------------|-------------------|----------|
-| Agent + extraction | Opus + Sonnet | `kimi-k2p7` (one model for both) | Discovery agent, build loop, docs, schemas |
-| Classification | `claude-haiku-4-5` | `deepseek-v4-flash` | Page classification, routing |
+| Agent + extraction | Opus + Sonnet | `glm-5p3-flash` (one model for both) | Discovery agent, build loop, docs, schemas |
+| Classification | `claude-haiku-4-5` | `deepseek-v4p1-flash` | Page classification, routing |
 
 **Workhorse presets** (pick one for agent + extraction):
 
 | Preset | Fireworks model | Notes |
 |--------|-----------------|-------|
-| `kimi-k2p7` | `accounts/fireworks/models/kimi-k2p7-code` | Coding specialist, MCP workflows (default) |
-| `glm-5p2` | `accounts/fireworks/models/glm-5p2` | 1M context flagship agent |
+| `glm-5p3-flash` | `accounts/fireworks/models/glm-5p3-flash` | 1M context, efficient coding/agent (default) |
 | `minimax-m3` | `accounts/fireworks/models/minimax-m3` | K2.7-class agent, 512k context |
-| `qwen3p7-plus` | `accounts/fireworks/models/qwen3p7-plus` | Strong structured JSON for docs/schemas |
-| `deepseek-v4-pro` | `accounts/fireworks/models/deepseek-v4-pro` | 1M context reasoning |
 
-**Classification presets:** `deepseek-v4-flash` (default) or `gpt-oss-20b`. Raw `accounts/.../models/...` IDs also work on any tier flag.
+`glm-5p2` was the default until Fireworks stopped serving it serverless; the name still works and now resolves to `glm-5p3-flash`. `kimi-k2p7`, `qwen3p7-plus`, `deepseek-v4-pro`, `kimi-k2p6` and `gpt-oss-20b` are no longer offered, because Fireworks does not serve them serverless; their names still resolve, so a run that pins one gets Fireworks' error instead of silently using another model: an agent or extraction model stops the build at agentic discovery's model check (or at its first model call where that check does not run, such as a local spec or `--legacy-discovery`), and a classification model only warns and falls back to the extraction model. A rejected model key, no credit or a quota error during agentic discovery stops the build (exit 1) instead of falling back to legacy discovery, which would crawl with Firecrawl and then fail on the same key.
+
+**Classification preset:** `deepseek-v4p1-flash` (default; `deepseek-v4-flash` is an alias). Raw `accounts/.../models/...` IDs also work on any tier flag.
 
 > **Don't mix `--anthropic-model` with `--llm-provider fireworks`** — the CLI hard-errors. With Fireworks, use `--llm-model` or the tier flags. With Anthropic, use `--anthropic-model`.
 
@@ -359,20 +394,29 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--anthropic-api-key <key>` | Profile / env / prompt | Anthropic API key (default provider) |
 | `--anthropic-model <model>` | Tiered: `claude-opus-4-6` (agent), `claude-sonnet-4-6` (extraction), `claude-haiku-4-5` (classification) | Override Claude model for all tasks (Anthropic provider only) |
 | `--fireworks-api-key <key>` | Profile / env / prompt | Fireworks API key (required for `--llm-provider fireworks`) |
-| `--llm-model <model>` | `kimi-k2p7` (Fireworks) | Pin Fireworks agent + extraction to one model. Presets: `kimi-k2p7`, `glm-5p2`, `minimax-m3`, `qwen3p7-plus`, `deepseek-v4-pro`, or a raw `accounts/.../models/...` ID |
-| `--llm-agent-model <model>` | same as `--llm-model` | Alias for `--llm-model` (agent and extraction share one model) |
-| `--llm-extraction-model <model>` | same as `--llm-model` | Alias for `--llm-model` |
-| `--llm-classification-model <model>` | `deepseek-v4-flash` (Fireworks) | Fireworks classification-tier model. Presets: `deepseek-v4-flash`, `gpt-oss-20b` |
+| `--llm-model <model>` | `glm-5p3-flash` (Fireworks) | Pin one Fireworks model for agent, extraction and classification. Presets: `glm-5p3-flash` (the default), `minimax-m3`, or a raw `accounts/.../models/...` ID |
+| `--llm-agent-model <model>` | same as `--llm-model` | Alternative to `--llm-model` (not combined with it); agent and extraction share one model |
+| `--llm-extraction-model <model>` | same as `--llm-model` | Alternative to `--llm-model`; must equal `--llm-agent-model` if both are given |
+| `--llm-classification-model <model>` | `deepseek-v4p1-flash` (Fireworks) | Fireworks classification-tier model. Preset: `deepseek-v4p1-flash` |
 | `--embedding-provider <provider>` | `local` | `local` (MiniLM ONNX, no API key) or `fireworks` (Qwen3, requires `FIREWORKS_API_KEY`) |
 | `--embedding-model <model>` | `local-minilm` (local), `qwen3-embedding-8b` (fireworks) | Embedding model preset |
 | `--firecrawl-api-key <key>` | Profile / env / prompt | Firecrawl API key (web crawl + Fireworks web tools) |
 | `--integration-config-dir <path>` | Profile / env / walk-up | Existing config corpus for pattern matching |
 | `--out <file>` | `<slug>.integration.json` | Output file path |
+| `--fail-on <level>` | `blocking` | What counts as a failed build (exit 1): `blocking` (new platform-schema error or a thrown error), `errors` (also any new final-audit ERROR), `incomplete` (also an incomplete verdict), `none` (exit 0 once the file is written, never 3) |
+| `--recheck <file>` | -- | Offline: revalidate an edited file and refresh its report/`known_skips` without rebuilding (no LLM, no discovery). Exit 0 if clean, 3 if a method waits or is blocked (or the file holds a literal secret), 1 on error |
+| `--continue <file>` | -- | Rebuild only the methods waiting on now-answered questions; every other method stays byte-identical. Takes `--answer`/`--answers` (in a terminal, with neither, it asks); takes no source or slug, and refuses flags that change what is built (`--out`, `--docs-only`, `--only-missing`, `--refine`, `--instructions`, `--spec`, …) |
+| `--answer <id=text>` | -- | With `--continue`: one question's answer, e.g. `--answer q1="…"`. Repeatable |
+| `--answers <file>` | -- | With `--continue`: answers from a file (`-` for stdin) -- a JSON object `{ "q1": "…" }` or one `q1=…` per line |
 | `--instructions <text>` | Interactive prompt | Skip the instructions prompt |
+| `--refine <text>` | Interactive prompt | Run one Phase B refinement turn non-interactively instead of prompting for it. Repeatable, in order. With no terminal its patches are accepted as `--auto-accept-patches` would |
+| `--refinements-file <path>` | -- | Many `--refine` instructions, one per line (`#` comments and blank lines skipped); runs after any `--refine` flags |
+| `--auto-accept-patches` | -- | Accept every Phase B patch without the accept/skip/chat prompt (headless runs) |
 | `--editor <cmd>` | `$VISUAL` / `$EDITOR` / profile | Editor for `:edit` command |
 | `--no-editor` | -- | Don't spawn an editor |
 | `--source-tier <tier>` | `auto` | Pin extraction tier |
 | `--legacy-discovery` | agentic (default) | Force legacy deterministic discovery instead of the agentic loop |
+| `--allow-partial-coverage` | -- | Turn off agentic discovery's thin-coverage guards for a deliberate partial re-discovery. Without it an UPDATE finding under half the live resources stops, and a thin CREATE falls back to legacy discovery (recorded incomplete) |
 | `--no-spec-web-search` | -- | Skip web search when hunting for an OpenAPI spec URL |
 | `--max-pages <n>` | 200 | Cap on doc pages |
 | `--only-missing` | -- | UPDATE mode: add missing methods only; requires existing slug |
@@ -387,7 +431,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 | `--refresh-firecrawl-cache` | -- | Bypass the Firecrawl 24h cache |
 | `--legacy-flow` | -- | Use the older section-by-section orchestrator (escape hatch) |
 
-> **Don't propose deprecated flags.** `--resources`, `--dry-run`, `-y`/`--yes`, `--include-low-confidence`, `--plan-out`, `--report-out`, `-c`/`--category`, `-l`/`--label`, `--base-url`, `--no-bootstrap`, `--no-basic-details`, `--no-query-schema`, `--no-body-schema`, `--descriptions-only`, `--rewrite-bad-descriptions`, `--no-llm-canonicalize`, `--no-llm-regroup`, `--no-llm-split-buckets`, `--strict`, `--no-validate`, and `--keep-inline-docs` all hard-fail (exit `2`) before any LLM key resolution or crawling runs. Use the runtime error's suggested replacement.
+> **Don't propose deprecated flags.** `--resources`, `--dry-run`, `--yes`, `--include-low-confidence`, `--plan-out`, `--report-out`, `--category`, `--label`, `--base-url`, `--no-bootstrap`, `--no-basic-details`, `--no-query-schema`, `--no-body-schema`, `--descriptions-only`, `--rewrite-bad-descriptions`, `--no-llm-canonicalize`, `--no-llm-regroup`, `--no-llm-split-buckets`, `--strict`, `--no-validate`, `--keep-inline-docs`, `--lookup-only`, `--force-overwrite-bootstrap`, `--resanitise-existing-docs`, `--show-suppressed` and `--feedback-loop` all hard-fail (exit `2`) before any LLM key resolution or crawling runs. Their old short forms (`-y`, `-c`, `-l`) fail as an unknown option (exit `1`). Use the runtime error's suggested replacement.
 
 ---
 
@@ -397,7 +441,8 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 |-----------|---------|
 | [Orchestrator Phases](references/orchestrator-phases.md) | Phase A (autonomous build), Phase B (interactive refinement), docs phase, agent tools, patch format |
 | [IntegrationFile](references/integration-file.md) | Output JSON shape, field-by-field breakdown, hand-editing tips, relationship to `apply` |
-| [Lint and Audit](references/lint-and-audit.md) | All audit sources (method_naming, pattern_match, presence_check, critic, description_quality, method_coverage), severities, exit codes, structured output |
+| [Lint and Audit](references/lint-and-audit.md) | The main audit sources (method_naming, pattern_match, presence_check, critic, description_quality, method_coverage, docs_completeness, and the CLI V2 checks credential_check, placeholder_supply, response_path, method_path), severities, exit codes, structured output |
+| [Known Mistakes](references/known-mistakes.md) | Patterns that have broken real integrations before: what each looks like, how the CLI flags it (or doesn't), and the fix |
 | [Troubleshooting](references/troubleshooting.md) | Source-tier selection, cache invalidation, Firecrawl tiers, stuck builds, `--legacy-flow` |
 
 ## Related skills

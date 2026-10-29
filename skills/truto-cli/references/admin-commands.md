@@ -68,6 +68,8 @@ cat integration.json | truto integrations validate --stdin
 
 For the full `integration.config` schema, all five credential formats (`api_key`, `oauth2`, `oauth2_client_credentials`, `oauth`, `keka_oauth`), and an end-to-end Acme CRM worked example that uses `init → validate → create`, see the [Authoring Integrations](../../truto/references/authoring-integrations.md) reference in the `truto` skill.
 
+For artifact-based integration/mapping work, optional prepared execution and explicit restores with `integrations update --body-file` / `docs update --body-file`, see [the artifact workflow](integration-workflow.md). Secret-preservation holds apply to ordinary updates and restores too.
+
 ### Integrated Accounts (`truto accounts`)
 
 Live tenant connections to integrations. **Full CRUD.**

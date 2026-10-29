@@ -54,43 +54,61 @@ The agentic loop has these tools (local tools + 2 Anthropic server tools):
 |-------|-------|
 | Corpus (read exemplars + schema) | `list_mapping_integrations`, `find_mapping_examples`, `read_mapping_cell`, `read_unified_resource_schema` |
 | Proxy + routing | `list_proxy_resources`, `route_unified_resource`, `match_proxy_to_unified`, `read_proxy_method_config`, `record_proxy_match` |
-| Sampling | `fetch_proxy_sample` (live, **read-only GET**), `read_doc_response_example`, `search_source_docs`, `scrape_doc_page` |
+| Sampling | `fetch_proxy_sample` (live, **proven reads only**), `read_doc_response_example`, `search_source_docs`, `scrape_doc_page` |
 | Generation | `propose_mapping_field`, `build_mapping_cell` (full per-cell pipeline) |
 | Validation | `eval_jsonata`, `validate_mapping_output`, `audit_unified_mappings` |
 | Existing state | `read_existing_mapping_row` |
+| Stop and ask | `ask_question` — stops a cell on something only a sample or the user can settle, instead of guessing: `no_sample`, `required_field_unknown`, `route_unclear`, `value_list_unknown`. The cell waits (`db_info.action: "skip"`) until answered. See the parent skill's [Questions and confidence](../SKILL.md#questions-and-confidence) |
 | Finish | `finalize_mappings` (writes the build summary and ends the loop) |
-| Server (Anthropic) | `web_search`, `web_fetch` |
+| Web (Anthropic server tools, or Firecrawl-backed under Fireworks) | `web_search`, `web_fetch` |
 
 ## Sampling ladder
 
 Per cell, generation is grounded on the richest sample available, in order:
 
-1. **Live proxy** (`fetch_proxy_sample`) — only when `--account` is set. Issues a
-   single `GET` for `list` or `get`.
+1. **Live proxy** (`fetch_proxy_sample`) — only with an account: `--account`, the
+   integration's marked test account, or one picked at the prompt (never the
+   profile's `defaultIntegratedAccount`). A `list` or `get` sample is sent only
+   when its effective provider request is a provable read.
 2. **DB documentation** examples (`read_doc_response_example`) — response
-   examples stored on the platform's doc rows.
+   examples stored on the platform's doc rows, read as stored (JSON or YAML
+   text); every matching row is read, and a row that is only a schema is no
+   sample.
 3. **Source index** (`search_source_docs`) — the `--source-url` value(s) you
    passed (repeatable URLs and/or local paths, merged into one index). Local glob
    tokens (`'*.md'`, `'**/*.json'`) are expanded by the CLI before indexing; empty
    globs error. Hybrid BM25+cosine via local ONNX embeddings (automatic).
-4. **Single-page scrape** (`scrape_doc_page`) — last resort, needs Firecrawl.
+4. **Single-page scrape** (`scrape_doc_page`) — needs Firecrawl; the scraped
+   page is narrowed to the method's own sections, like a crawled one.
+5. **OpenAPI declared response** — a spec's response schema, field names only.
+   A cell built from it is marked unverified and waits on a `no_sample` question
+   (continue with `--account` or a `--source-url` whose docs show an example, or
+   confirm the mapping). A spec's response descriptor is never a sample.
 
 Write cells (`create`/`update`/`delete`) do not need a response sample — they are
 built from the proxy method's documented request body and validated structurally.
 
 ### Read-only sampling (security)
 
-Live sampling is strictly **read-only**. Both the `fetch_proxy_sample` tool and
-the internal sampler only ever issue a `GET` for `list`/`get`; any other method
-(create/update/delete or a custom write) is refused before a request is built.
-The trusted `integrated_account_id` is always applied last, so a model-supplied
-query cannot redirect a sample to a different connected account. This holds even
-under prompt injection from fetched docs or search content.
+Live samples, including bootstrap probes, pass the shared effective-request
+safety gate. A `list`/`get` name or a `GET` to Truto does not prove the provider
+request is a read: the gate checks the method's effective config, account and environment
+overrides and pagination, and sends a sample only when the result is a provable
+read. Any other method (create/update/delete or a custom one) is refused before
+a request is built. Model-supplied `truto_*` and `integrated_account_id` keys
+(in any bracket spelling), keys whose parsed name is unclear, and values
+containing `{{` are dropped. The trusted `integrated_account_id` is always
+applied last, so a model-supplied query cannot redirect a sample to a different
+connected account. Unsafe or unprovable samples are skipped and documentation
+examples are used instead. Before the first live sample the CLI discloses the
+Truto-side effects of reading the account once on stderr; a 401 or failed token
+refresh stops further samples on that account. This holds even under prompt
+injection from fetched docs or search content.
 
 ## Web tools
 
-By default the agent may call the Anthropic server tools `web_search` /
-`web_fetch` to ground a low-confidence route or an undocumented field against the
+By default the agent may call `web_search` / `web_fetch` (Anthropic server
+tools, or Firecrawl-backed tools under Fireworks) to ground a low-confidence route or an undocumented field against the
 provider's official docs. Usage is capped by `max_uses`. Pass `--no-web-search`
 to disable both tools **and** the source-index web-search rung — no outbound web
 calls beyond the proxy and Truto APIs. Use it for sensitive builds.

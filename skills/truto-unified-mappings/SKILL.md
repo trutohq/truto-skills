@@ -22,7 +22,7 @@ unified resource/method to a proxy endpoint, samples it, generates JSONata,
 validates it, and produces a single JSON artifact (the **MappingFile**) that can
 be validated and applied to the Truto platform.
 
-This skill covers the **build -> validate -> apply** workflow for unified
+This skill covers the **build -> optional edit -> apply -> eligible read verification** workflow for unified
 mappings. It does NOT cover:
 
 - Building the integration definition itself (proxy resources, auth, pagination) -- see the [truto-integrations-build](../truto-integrations-build/SKILL.md) skill. Build the integration first; it must have proxy resources before you can map them.
@@ -53,40 +53,41 @@ truto login --token $env:TRUTO_API_TOKEN
 ### 2. Store the API key and corpus directories in your profile
 
 ```bash
-truto profiles set-key anthropic                 # interactive, masked
-truto profiles set-key firecrawl sk-...           # only if you crawl a --source-url docs site
+truto profiles set-key anthropic                 # selected provider; interactive, masked
+# Or: truto profiles set-key fireworks
+truto profiles set-key firecrawl                  # crawling or Fireworks web tools
 truto profiles set unifiedMappingDir /path/to/truto/src/unified-model/mappings
 truto profiles set integrationConfigDir /path/to/truto/src/integration/integrationConfig
 ```
 
 | Key | Purpose | Without it |
 |-----|---------|------------|
-| `anthropicApiKey` | Powers the agentic build loop (Claude) | Build cannot start |
-| `firecrawlApiKey` | Crawls a `--source-url` docs site into clean markdown | Source crawling falls back to cheaper extraction |
+| `anthropicApiKey` / `fireworksApiKey` | Powers the selected provider | Build cannot start without its provider key |
+| `firecrawlApiKey` | Crawls docs and supports Fireworks web tools | Source crawling may use cheaper extraction; Fireworks web tools are unavailable |
 | `unifiedMappingDir` | Corpus of unified mapping exemplars (other integrations' `.mappings`/model files) | Falls back to a bundled subset; fewer exemplars to crib from |
 | `integrationConfigDir` | Proxy-config corpus for exemplars | Fewer proxy exemplars |
 
-Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$TRUTO_UNIFIED_MAPPING_DIR`, …) > active profile (`~/.truto/config.json`) > interactive prompt (Anthropic always).
+Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$TRUTO_UNIFIED_MAPPING_DIR`, …) > active profile (`~/.truto/config.json`) > interactive prompt when supported on a TTY.
 
 > **Note:** Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`, ~35 MB) downloaded automatically on first use. No external API key is required for embeddings.
 >
-> **LLM provider:** `truto unified-mappings build` defaults to **Anthropic Claude** (tiered: Opus for the agentic loop, Sonnet for the `--structured` pipeline); `--anthropic-model` overrides all tiers. Pass `--llm-provider fireworks` with `--fireworks-api-key` and the same `--llm-model` / `--llm-agent-model` / `--llm-extraction-model` / `--llm-classification-model` flags as `truto integrations build`.
+> **LLM provider:** Mapping builds support Anthropic and Fireworks. Select `--llm-provider anthropic|fireworks`. `--anthropic-model` overrides Anthropic tiers. Fireworks uses one shared agent + extraction model and a classification model: `--llm-model` pins all three (`--llm-classification-model` may still override classification); `--llm-agent-model` / `--llm-extraction-model` are alternatives to `--llm-model`, cannot be combined with it, and must name the same model. Without these flags a TTY prompts for the model; otherwise the built-in Fireworks defaults apply. Web search through Fireworks requires Firecrawl access.
 
 ---
 
 ## The workflow
 
-Three commands, in order:
+Build, optionally edit, then apply. Validation is automatic at apply; the separate validation command is useful for inspection.
 
 ```bash
 # 1. Build — generates <integration>.<model>.mappings.json
-#    At least one of --account or --source-url is required
+#    At least one of --account (or a marked test account) or --source-url is required
 truto unified-mappings build acme crm --account <integrated-account-id>
 
-# 2. Validate — deterministic audit, no LLM, no writes
+# Optional validation — deterministic target reads, no LLM or writes
 truto unified-mappings validate acme.crm.mappings.json
 
-# 3. Apply — push mapping rows to the platform (base or env override)
+# Apply — reconcile mapping rows with the platform (base or env override)
 truto unified-mappings apply acme.crm.mappings.json --target base
 ```
 
@@ -121,19 +122,40 @@ is fixed, not the JSONata output. See
 [references/agent-and-tools.md](references/agent-and-tools.md) for the loop, the
 full tool list, and the sampling ladder.
 
-**Live sampling is read-only.** `fetch_proxy_sample` only issues a `GET` for
-`list`/`get`; it never runs create/update/delete against the connected account.
+**Live samples and bootstrap calls pass the shared effective-request safety gate.** Method names alone never prove a read; overrides, dependencies and request behavior are checked. Unsafe or unproven calls are skipped, with documentation examples used where available.
 Write cells (`create`/`update`/`delete`) are built from the proxy's documented
 request body, so they do not need a live response sample.
 
+#### Questions and confidence
+
+A read cell with no observed sample (only the spec's field names, another integration's sample, or nothing), a read cell the build couldn't finish for want of a sample, or a low-confidence route waits on a question instead of shipping a guess -- the agent can also ask directly, with the same `ask_question` tool and loop as integration methods, using mapping-specific reasons (`no_sample`, `required_field_unknown`, `route_unclear`, `value_list_unknown`). A waiting cell is saved with `db_info.action: "skip"`, so even an older CLI won't write it.
+
+`truto unified-mappings build … -o json` never prompts: progress moves to stderr, and stdout carries one JSON document at the end -- the run result (the same shape and exit contract as `apply`, below: 0 complete, 3 nothing landed and something is pending or blocked, 1 on failure), plus `questions` and `report_path`. In a terminal, any open question is asked first, before the refinement loop below starts.
+
+**The agent loop:**
+
+1. `truto unified-mappings build acme crm --account $ACCOUNT -o json` (or `--source-url`).
+2. Read the document. `questions` lists what's open; `report_path` names `acme.crm.mappings.report.json` (and a `.report.md` alongside it, for people) -- one record per cell with its route, sample source, checks, assumptions and `confidence`.
+3. Ask the human each open question in chat, in plain words, with its suggestion. **Never put a credential in an answer** -- it's refused outright, exit 3; say where the value actually comes from instead.
+4. `truto unified-mappings build --continue acme.crm.mappings.json --answer q1="…"` (repeatable; or `--answers <file>`, `-` for stdin). It reuses the account and documentation sources the build recorded, so no `--account` / `--source-url` is needed (pass them only for a file built by an older CLI, or to override). Only the cells waiting on now-answered questions rebuild; every other cell stays as committed (a change to one is put back, and a cell the agent adds is dropped). A cell whose rebuild fails keeps waiting on its question with the failure in its reason -- re-ask the human or answer again.
+5. `truto unified-mappings validate acme.crm.mappings.json`, then `truto unified-mappings apply acme.crm.mappings.json --prepare`. Show the human the plan.
+6. On their approval only: `truto unified-mappings apply acme.crm.mappings.json --plan <path> --expect-digest <digest>`.
+
+`--continue` takes only the file -- no integration slug, unified model, `--resources`, `--methods`, `--fresh`, `--only-missing`, `--out` or `--recheck`. It needs the file to be exactly the committed build: after a hand edit, run `build --recheck <file>` first, which takes an edited cell off its question; an answer to a question left holding nothing is refused (exit 1). Until a question is answered, `apply` skips each cell waiting on it, built or not, as "waiting for an answer (q1)" with the `--continue` command as its next step.
+
+**Confidence** is information only -- it never blocks `apply`. Use the low-confidence cells in `report_path` and their `assumptions` to point review at the routes worth a second look first, the same way as for integration methods -- see [truto-integrations-build: Questions, confidence and the agent loop](../truto-integrations-build/SKILL.md#questions-confidence-and-the-agent-loop).
+
+**Follow-ups.** Mapping build has no `--refine` / `--instructions` flag -- its refinement loop (below) is terminal-only. For a scripted follow-up, either edit `acme.crm.mappings.json` by hand and run `truto unified-mappings build --recheck acme.crm.mappings.json` (offline: refreshes the report only, no LLM, no sampling), or re-run the build command itself -- it resumes from the existing file and retries failed/empty cells (see [Iterating on an existing file](#iterating-on-an-existing-file) below).
+
 #### Refinement loop
 
-In an interactive terminal the build ends in a **refinement loop**: type a
+In an interactive terminal, once any open question above is answered or skipped, the build ends in a **refinement loop**: type a
 free-form instruction (for example `engagements.create: strip the trailing Z
 from start times`) and the agent rebuilds the affected cell. Type `:show` to
 print the full per-cell review in the terminal. Press Enter on an empty line to
 finish. The loop is skipped with `--no-refine`, `--yes`, `--only-missing`, or
-when output is piped.
+when output is piped. An instruction does not spend the build's two repair
+rounds; the rebuilt cell's automatic repairs still count.
 
 ### Validate
 
@@ -144,34 +166,28 @@ truto unified-mappings validate acme.crm.mappings.json
 truto unified-mappings validate acme.crm.mappings.json -v   # list advisory warnings in full
 ```
 
-Validation recompiles every cell's JSONata and re-checks it against the unified
-JSON Schema. It exits non-zero on **errors**. Advisory **warnings** (the per-cell
+Validation reads target config/schema and checks the expressions and supported sample/example outputs. Missing samples and unsupported runtime behavior remain unverified. It exits non-zero on **errors**. Advisory **warnings** (the per-cell
 review flags in `build_summary.warnings`) never fail validation — they are
 summarized by default, listed in full with `-v`. Pass `--environment-id` to
 resolve env schema overrides.
 
 ### Apply
 
-Push the reviewed MappingFile to the platform:
-
 ```bash
-# Preview payloads without writing
-truto unified-mappings apply acme.crm.mappings.json --dry-run
-
-# Apply to base rows, or to per-environment override rows
 truto unified-mappings apply acme.crm.mappings.json --target base
-truto unified-mappings apply acme.crm.mappings.json --target env
+truto unified-mappings build --recheck acme.crm.mappings.json # optional offline report refresh
+truto unified-mappings apply acme.crm.mappings.json --dry-run # optional offline preview
+truto unified-mappings apply acme.crm.mappings.json --prepare
+truto unified-mappings apply acme.crm.mappings.json --plan acme.crm.mappings.json.plan.json --expect-digest <digest>
 ```
 
-Apply upserts each cell as a `unified_model_resource_method` row (or an
-`environment_unified_model_resource_method` override with `--target env`), using
-the create/update/skip action recorded per cell in `apply_db_action`.
+Build saves a matching report and committed pair. Apply freshly checks edited cells and reconciles their authored configuration with baseline/live rows, preserving inheritance and concurrent edits. Stale `db_info` action/id/version hints do not authorize an overwrite. Target changes use a separate copy. Eligible cells can land while others remain pending; every write is reread for recovery.
 
-| Flag | Effect |
-|------|--------|
-| `--target <base\|env>` | Write base rows or per-environment overrides |
-| `--dry-run` | Parse the file and print payloads; reads existing rows to plan, but writes nothing |
-| `--yes` | Skip confirmation prompts |
+`--target env` selects environment overrides (any value other than `base` or `env` exits 1). `--resolve '<cell>=mine|theirs'` resolves only a reported clash, with checks still enforced. `--yes` skips confirmation. `--plan-out` chooses a prepared-plan path; `--plan` requires `--expect-digest` and never regenerates. Dry run cannot certify a merge or live behavior.
+
+`--test-account <id>` or a profile `test-account.<integration>` enables eligible read verification with disclosed Truto token/reauth/webhook effects. Use only authorized marked accounts; never infer permission for provider mutations. Exit codes: 0 complete, 2 partial, 3 blocked, 1 auth/unexpected failure, 4 executed test failure on an otherwise complete run.
+
+See [the shared artifact workflow](../truto-cli/references/integration-workflow.md) for repairs, partial/crash recovery, secret handling, verification limits and restores. Local JSONata checks do not establish worker parity; engine versions and selection remain unchanged.
 
 ---
 
@@ -185,7 +201,7 @@ essentials:
 |-------|---------|
 | `integration_name` / `unified_model_name` | What this file maps, by slug |
 | `write_target` | `base` (team-owned) or `env` (per-environment override) |
-| `cells[]` | One entry per unified resource/method: a `config` (mapping fields) + `apply_db_action` (apply action) |
+| `cells[]` | One entry per unified resource/method: a `config` (mapping fields) + `db_info` (apply action) |
 | `build_summary` | `status`, `counts`, `built`, `skipped` (with reasons), `unbuilt_routed`, `warnings` |
 
 The `build_summary` is built for human review. `skipped` lists **why** a cell
@@ -222,26 +238,33 @@ The refinement loop is skipped in this mode.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-a, --account <id>` | -- | Integrated account ID for live (read-only) proxy samples |
-| `--source-url <url\|path>` | -- | API docs URL or local file path (repeatable, comma-separated; merged into one source index). Supports glob patterns (e.g. `'./specs/*.json'`). At least one of `--account` or `--source-url` is required. |
-| `--yes` | -- | Non-interactive: skip account/docs prompts. Requires `--account` and/or `--source-url`. |
+| `-a, --account <id>` | marked test account | Integrated account ID for live proxy samples (proven reads only). Without it the integration's marked test account (`truto profiles set test-account.<integration> <id>`) is used; the profile `defaultIntegratedAccount` never is |
+| `--source-url <url\|path>` | -- | API docs URL or local file path (repeatable, comma-separated; merged into one source index). Supports glob patterns (e.g. `'./specs/*.json'`). At least one of an account (`--account` or a marked test account) or `--source-url` is required. |
+| `--yes` | -- | Non-interactive: skip account/docs prompts. Requires an account (`--account` or a marked test account) and/or `--source-url`. |
+| `--llm-provider <provider>` | interactive pick on a TTY; `anthropic` under `CI` or without a TTY | Select `anthropic` or `fireworks` |
 | `--anthropic-api-key <key>` | env / profile / prompt | Override Anthropic API key |
+| `--fireworks-api-key <key>` | env / profile / prompt | Override Fireworks API key |
+| `--llm-model <model>` | TTY prompt, else `glm-5p3-flash` + `deepseek-v4p1-flash` | Fireworks preset/model for agent, extraction and classification. `--llm-agent-model` / `--llm-extraction-model` are alternatives (one shared model, not combined with `--llm-model`); `--llm-classification-model` overrides classification |
 | `--firecrawl-api-key <key>` | env / profile / prompt | Override Firecrawl API key |
 | `--no-firecrawl` | -- | Skip Firecrawl; use cheaper extraction only for doc sites |
 | `--resources <list>` | all planned | Comma-separated unified resources to build |
 | `--methods <list>` | all | Comma-separated methods (`list,get,create,update,delete,…`) |
 | `--structured` | agentic | Run a fixed per-cell pipeline instead of the agentic loop (still LLM-generated; only the orchestration is fixed) |
 | `--no-web-search` | -- | Disable `web_search` / `web_fetch` tools and the source web-search rung |
+| `--recheck <file>` | -- | Offline: revalidate an edited MappingFile and refresh its report without rebuilding (no LLM, discovery, sampling or network) |
+| `--continue <file>` | -- | Rebuild only the cells waiting on now-answered questions; every other cell stays as committed. Takes `--answer`/`--answers` (in a terminal, with neither, it asks); takes no integration or model, and no `--resources`, `--methods`, `--fresh`, `--only-missing`, `--out` or `--recheck` |
+| `--answer <id=text>` | -- | With `--continue`: one question's answer, e.g. `--answer q1="…"`. Repeatable |
+| `--answers <file>` | -- | With `--continue`: answers from a file (`-` for stdin) -- a JSON object `{ "q1": "…" }` or one `q1=…` per line |
 | `--fresh` | -- | Ignore an existing working/final file and start from scratch |
 | `--only-missing` | -- | Build only absent cells; don't retry failures or modify existing cells |
 | `--no-refine` | -- | Skip the interactive post-build refinement loop |
 | `--fail-fast` | skip + continue | Stop on the first cell error |
 | `--environment-id <id>` | -- | Resolve schema overrides / target env override rows |
-| `--target <base\|env>` | `base` | Write-target hint recorded for `apply` |
+| `--target <base\|env>` | `base` | Write-target hint recorded for `apply` (any other value exits 1) |
 | `--out <file>` | `<integration>.<model>.mappings.json` | Output path |
 | `--unified-mapping-dir <path>` | profile / env / bundled | Unified mapping exemplar corpus |
 | `--integration-config-dir <path>` | profile / env | Proxy-config exemplar corpus |
-| `--anthropic-model <model>` | Tiered (opus orchestration, sonnet generation) | Override all LLM tiers |
+| `--anthropic-model <model>` | Tiered (opus orchestration, sonnet generation) | Override Anthropic tiers |
 | `--debug-log <path>` / `--no-debug-log` | on, `~/.truto/logs/` | JSONL transcript of the build |
 | `--agent` | -- | Deprecated no-op (agentic is the default) |
 

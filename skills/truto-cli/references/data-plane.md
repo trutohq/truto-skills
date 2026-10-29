@@ -86,6 +86,12 @@ truto unified crm contacts <id> -m delete -a <account-id>
 # Custom method (e.g., search) — no ID, method becomes a path segment
 truto unified crm contacts -m search -a <account-id> -b '{"query":"Jane"}'
 
+# -m names a Truto method: list/get/create/update/delete in any case (-m DELETE is delete);
+# any other name is a custom method, sent as typed. The id and names are sent as encoded path
+# segments; an id that reads as . or .., an empty id, and an id given to list, create or a
+# custom method (their routes have none) are refused. A -q integrated_account_id that differs
+# from -a is refused too.
+
 # With query parameters
 truto unified crm contacts -a <account-id> -q "limit=10,status=active"
 
@@ -118,7 +124,9 @@ truto unified crm contacts -a <id> -q "next_cursor=abc123"
 
 ### Evaluate JSONata Locally (`truto jsonata eval`)
 
-Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata`, but the CLI pins its own version, which can lag the platform's — if a result differs from the platform, trust the platform.
+Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata`; the CLI and worker use different versions, so local success does not prove production behavior.
+
+It runs in the CLI's own bounded worker. A runaway expression is stopped and exits 1; if the worker cannot start, nothing is evaluated and it exits 1. Functions that call external services (`$generateEmbeddingsCohere`, `$parseDocument`, `$convertMdToPdf`, `$getArrayBuffer`, `$getDataUri`, `$teeStream`) are **not called**: they return the placeholder string `"[not run: external function $<name>]"` with a warning on stderr, and the command exits 0. With `-o json` that placeholder arrives on stdout as if it were the value, so check stderr before using it. A URL or date-time result prints as its JSON form (`href` / ISO string).
 
 ```bash
 truto jsonata eval --expression <jsonata> [options]

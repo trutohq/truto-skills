@@ -36,6 +36,7 @@ The agent runs on **Anthropic Claude** by default (tiered: Opus for the agent lo
 | `list_patterns` | Reference | List entries from the pattern catalog (SLUGS.md) |
 | `read_pattern` | Reference | Read a specific pattern entry with exemplar JSON |
 | `validate_integration` | Validation | Run the static auditor; returns findings with severities |
+| `ask_question` | Stop and ask | Stop one or more methods (or shared config, named as `config.<key>`) on something only the docs or the user can settle, instead of guessing. Searches once first (one web search, up to two page fetches, vendor docs first); the named method(s) wait for the user's answer and `apply` skips them until then. See the parent skill's [Questions, confidence and the agent loop](../SKILL.md#questions-confidence-and-the-agent-loop) |
 | `web_search` | Web | Search vendor docs for quirks (max 10 uses per build). Anthropic server tool under `--llm-provider anthropic`; **Firecrawl client-side** under `--llm-provider fireworks` (requires `FIRECRAWL_API_KEY`) |
 | `web_fetch` | Web | Fetch URLs from build instructions (max 20 uses, 32K tokens/page). Same provider split as `web_search` |
 
@@ -92,6 +93,8 @@ The agent checks these before emitting `build_complete`:
 - At least one resource with at least one method (including `path` and `method`).
 - `validate_integration` returns 0 errors.
 - All `source: "method_naming"` findings are resolved (numbered suffixes and non-canonical path templates).
+
+An open question does not block `build_complete` -- the method it names (or the shared config, for a config-level question) simply stays `waiting` until it's answered, and `apply` skips it until then.
 
 ---
 
