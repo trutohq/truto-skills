@@ -71,12 +71,19 @@ Per cell, generation is grounded on the richest sample available, in order:
    profile's `defaultIntegratedAccount`). A `list` or `get` sample is sent only
    when its effective provider request is a provable read.
 2. **DB documentation** examples (`read_doc_response_example`) — response
-   examples stored on the platform's doc rows.
+   examples stored on the platform's doc rows, read as stored (JSON or YAML
+   text); every matching row is read, and a row that is only a schema is no
+   sample.
 3. **Source index** (`search_source_docs`) — the `--source-url` value(s) you
    passed (repeatable URLs and/or local paths, merged into one index). Local glob
    tokens (`'*.md'`, `'**/*.json'`) are expanded by the CLI before indexing; empty
    globs error. Hybrid BM25+cosine via local ONNX embeddings (automatic).
-4. **Single-page scrape** (`scrape_doc_page`) — last resort, needs Firecrawl.
+4. **Single-page scrape** (`scrape_doc_page`) — needs Firecrawl; the scraped
+   page is narrowed to the method's own sections, like a crawled one.
+5. **OpenAPI declared response** — a spec's response schema, field names only.
+   A cell built from it is marked unverified and waits on a `no_sample` question
+   (continue with `--account` or a `--source-url` whose docs show an example, or
+   confirm the mapping). A spec's response descriptor is never a sample.
 
 Write cells (`create`/`update`/`delete`) do not need a response sample — they are
 built from the proxy method's documented request body and validated structurally.

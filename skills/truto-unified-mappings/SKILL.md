@@ -183,7 +183,7 @@ truto unified-mappings apply acme.crm.mappings.json --plan acme.crm.mappings.jso
 
 Build saves a matching report and committed pair. Apply freshly checks edited cells and reconciles their authored configuration with baseline/live rows, preserving inheritance and concurrent edits. Stale `db_info` action/id/version hints do not authorize an overwrite. Target changes use a separate copy. Eligible cells can land while others remain pending; every write is reread for recovery.
 
-`--target env` selects environment overrides. `--resolve '<cell>=mine|theirs'` resolves only a reported clash, with checks still enforced. `--yes` skips confirmation. `--plan-out` chooses a prepared-plan path; `--plan` requires `--expect-digest` and never regenerates. Dry run cannot certify a merge or live behavior.
+`--target env` selects environment overrides (any value other than `base` or `env` exits 1). `--resolve '<cell>=mine|theirs'` resolves only a reported clash, with checks still enforced. `--yes` skips confirmation. `--plan-out` chooses a prepared-plan path; `--plan` requires `--expect-digest` and never regenerates. Dry run cannot certify a merge or live behavior.
 
 `--test-account <id>` or a profile `test-account.<integration>` enables eligible read verification with disclosed Truto token/reauth/webhook effects. Use only authorized marked accounts; never infer permission for provider mutations. Exit codes: 0 complete, 2 partial, 3 blocked, 1 auth/unexpected failure, 4 executed test failure on an otherwise complete run.
 
@@ -260,7 +260,7 @@ The refinement loop is skipped in this mode.
 | `--no-refine` | -- | Skip the interactive post-build refinement loop |
 | `--fail-fast` | skip + continue | Stop on the first cell error |
 | `--environment-id <id>` | -- | Resolve schema overrides / target env override rows |
-| `--target <base\|env>` | `base` | Write-target hint recorded for `apply` |
+| `--target <base\|env>` | `base` | Write-target hint recorded for `apply` (any other value exits 1) |
 | `--out <file>` | `<integration>.<model>.mappings.json` | Output path |
 | `--unified-mapping-dir <path>` | profile / env / bundled | Unified mapping exemplar corpus |
 | `--integration-config-dir <path>` | profile / env | Proxy-config exemplar corpus |
