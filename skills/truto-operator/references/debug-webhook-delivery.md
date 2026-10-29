@@ -27,7 +27,7 @@ In order, because each gates the next:
 | **No webhook log entries at all** | Nothing was delivered. Either not subscribed to that event, `is_active: false`, or the upstream sync never produced records | Fix subscription/active state ([P1](./safe-admin-changes.md)); if records were expected, check the sync → [P4](./debug-sync-jobs.md) |
 | Entries with `webhook_endpoint_status` 2xx | Truto delivered and the endpoint accepted — delivery is **not** the problem | Look upstream (was the data ever produced?) or at the customer's processing |
 | Entries with non-2xx `webhook_endpoint_status` | The **customer's endpoint** rejected the delivery | Diagnose by code: `4xx` config/auth at their end, `5xx` their server is down, `413` payload too large, timeout |
-| Customer reports signatures rejected | Their verification of `X-Truto-Signature` (HMAC-SHA256 of the body with the webhook `secret`) is failing | Secret/signature mismatch — confirm before touching the secret |
+| Customer reports signatures rejected | Their verification of `X-Truto-Signature` (HMAC-SHA256 of the raw body bytes, keyed with the webhook `secret`, sent as base64url) is failing | If every delivery fails, check their verifier first: `v` is URL-safe base64 with no padding (not hex or standard base64), computed over the raw body before any parsing. Otherwise a secret/signature mismatch — confirm before touching the secret |
 | Retries exhausted | The endpoint failed persistently | Their endpoint needs to come back / accept the payload |
 
 When `webhook_endpoint_status` shows the customer's endpoint returned the error, the fix is on **their** side (or in `target_url`/subscription config) — not a Truto delivery bug.
