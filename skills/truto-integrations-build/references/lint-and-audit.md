@@ -85,7 +85,7 @@ A credential the connecting user types in (`api_key`, `basic`) that nothing chec
 
 ### `method_path`
 
-A method path that cannot be called as written: a placeholder path (`/__deleted__`), a missing `path`, a `base_url` path the method's path replaces, or a path parameter written the way docs write it (`{id}`, `:id`, `<id>`, `%7Bid%7D`), which the runtime sends literally.
+A method path that cannot be called as written: a placeholder path (`/__deleted__`), a missing `path`, a `base_url` path the method's path replaces, or a path parameter written the way docs write it (`{id}`, `:id`, `<id>`, `<int:id>`, `[id]`, `%7Bid%7D`), which the runtime sends literally.
 
 - **Severity:** `error`.
 - **Action:** Use `{{id}}` for the record id of get, update and delete, or `{{query.<name>}}` for any other value; put the base path at the start of every method path.
