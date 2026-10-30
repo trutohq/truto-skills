@@ -73,6 +73,10 @@ Dates are `YYYY-MM-DD`.
 - `skills/truto-cli/references/admin-commands.md` — Added a top-level "Unified Model Customization" group documenting all four CRUD commands with filters, create/update fields, and links into the `truto` skill's customization reference. Added subcommand docs for `integrations init` (interactive scaffolding with auth-format-aware credential blocks) and `integrations validate` (best-effort client-side schema check), each with a pointer to the new `authoring-integrations.md` reference for the full `integration.config` schema. Added subcommand docs for `environment-integrations override-auth/override-pagination/override-rate-limit/override-webhook/show-override` (with `--clear` and `--config` examples). Reordered MCP Tokens into the Platform Resources block at the bottom.
 - `skills/truto-cli/references/data-plane.md` — Added `truto jsonata eval` (generic local JSONata) and `truto unified test-mapping` (`response_mapping`) sections with flags, examples, and when to use each.
 
+### Fixed
+
+- `skills/truto/references/webhooks-and-notifications.md`, `skills/truto-operator/references/debug-webhook-delivery.md` — `X-Truto-Signature` is `format=sha256,v=<signature>`, where `<signature>` is the HMAC-SHA256 of the exact request body bytes keyed with the webhook `secret` as-is (its UTF-8 bytes), encoded as URL-safe base64 with no `=` padding (base64url); for `formdata` deliveries it covers the multipart bytes as sent. The reference said `v=<hex_hmac>`, and verification code written to it rejected every genuine delivery. Verify by recomputing over the raw body and comparing in constant time. The webhook-delivery playbook now checks the verifier's encoding before suspecting the secret.
+
 ## [0.3.1] - 2026-04-17
 
 ### Changed
