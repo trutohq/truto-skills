@@ -122,10 +122,19 @@ Informational, but the single best thing to read before `apply`:
 
 ### `status` vs `outcome`
 
-- **`status`** is the verdict: `complete` (every routed cell built), `partial`
-  (finished, but some routed cells had no verifiable sample — recorded in
-  `unbuilt_routed`; still a successful run), `incomplete` (cut short before every
-  cell was attempted; re-running may build more).
+- **`status`** is the verdict: `complete` (every routed cell was built, and
+  apply skips none of them), `partial` (the build finished but left recorded
+  gaps: routed cells it could not build, usually for want of a verifiable
+  sample, listed in `unbuilt_routed`; or built cells apply skips,
+  `counts.waiting` for those an open question holds until it is answered and
+  `counts.blocked` for those a failed local check holds until it passes;
+  `status_reason` names each; still a successful run), `incomplete` (cut short
+  before every cell was attempted; re-running may build more; it wins over
+  `partial`).
+- **`counts`**: `planned`, `built`, `routed_unbuilt`, `skipped`, `flagged`
+  (built cells with a review warning), and, only when non-zero, `waiting`
+  (built cells an open question holds) and `blocked` (built cells a failed
+  local check holds).
 - **`outcome`** is the diagnostic for *how the loop ended*: `finalized`,
   `stalled_no_progress`, `budget_exceeded`, `gave_up`, `structured`,
   `resumed_no_op`.
