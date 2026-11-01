@@ -7,7 +7,7 @@ hand-edit, diff, and commit.
 ## File → database mapping
 
 Each `cells[]` entry becomes **one row** in either table, depending on
-`write_target`:
+`write_target` (`base` or `env`; any other value is refused):
 
 | `write_target` | Table | Row identity (unique index) |
 |----------------|-------|------------------------------|
@@ -104,7 +104,7 @@ Informational, but the single best thing to read before `apply`:
   "counts": { "planned": 18, "built": 15, "routed_unbuilt": 2, "skipped": 1, "flagged": 3 },
   "built": { "contacts": ["list", "get", "create"], "accounts": ["list", "get"] },
   "unbuilt_routed": [
-    { "cell": "deals.update", "proxy": "opportunities.update", "reason": "no verifiable sample", "resolve": "re-run with --account or --source-url" }
+    { "cell": "deals.update", "proxy": "opportunities.update", "confidence": "high", "reason": "no verifiable sample", "resolve": "re-run with --account or --source-url" }
   ],
   "skipped": [
     { "cell": "notes.delete", "reason": "no proxy endpoint serves this method" }
@@ -135,8 +135,10 @@ Informational, but the single best thing to read before `apply`:
 - **`skipped`** — acceptable gaps: the router found **no** proxy endpoint serving
   that unified method. Nothing to fix.
 - **`unbuilt_routed`** — a proxy endpoint *was* matched but the cell could not be
-  built (usually no verifiable sample). Each carries a `reason` and often a
-  `resolve` (for example "re-run with `--account`").
+  built (usually no verifiable sample). Each carries the route's `confidence`, a
+  `reason` and often a `resolve` (for example "re-run with `--account`"). A
+  `--continue` rebuilds such a cell on that route, and its summary keeps the
+  gaps of the cells it did not rebuild.
 
 ### `warnings` and warning kinds
 
