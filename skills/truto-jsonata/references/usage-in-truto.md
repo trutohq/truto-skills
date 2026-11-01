@@ -121,7 +121,7 @@ This is the workhorse of the unified API. The expression's job is to take the ra
 | `rawQuery` | The unified-API query as the caller sent it (no coercion) |
 | `context` | The integrated account's context (credentials, instance config, custom keys) |
 
-The expression also has access to `documentParserApiUrl` and `documentParserApiKey` injected automatically — no need to thread API keys through context for `$parseDocument`.
+`$parseDocument` and `$convertMdToPdf` reach Truto's document parser on their own, so don't pass a URL or API key. The parser's URL and key are not readable from the expression.
 
 **Example — Salesforce contact list response:**
 

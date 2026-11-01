@@ -8,6 +8,10 @@ Dates are `YYYY-MM-DD`.
 
 ## [Unreleased]
 
+### Changed
+
+- `skills/truto-jsonata/references/usage-in-truto.md`, `core-functions.md`, `text-conversions.md` — `$parseDocument` and `$convertMdToPdf` reach the document parser on their own; the parser's URL and key are no longer readable from an expression (`$documentParserApiKey`, `context.documentParserApiKey`). Pairs with the truto security PR for audit run-1.
+
 ### Added
 
 - `skills/truto/references/connection-flow.md`, `skills/truto/references/getting-started.md`, `skills/truto-operator/references/diagnose-integrated-account.md`, `skills/truto-cli/references/admin-commands.md`, `skills/truto-link-sdk/SKILL.md` — Document the `POST /link-token` refusal `400` `truto_error_code: app_credentials_not_configured`: raised on a reconnect (`integrated_account_id`) when the account's integration has no usable sign-in method left — every method it has is a bring-your-own-app one (OAuth 2.0 client id / AWS STS access key) with no app credentials configured in the environment. Reconnecting may switch method, so an integration that still has a working method is not refused, and a `tenant_id`-only mint never is (the connect UI leaves such integrations out instead). It is an admin fix in the integration's Configuration tab, never a reconnect. The Link SDK surfaces it as `error_type: app_credentials_not_configured` from `authenticate()`, and the link-token route samples now check `response.ok` and pass a refusal through.
