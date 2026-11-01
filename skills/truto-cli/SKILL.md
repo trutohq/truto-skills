@@ -69,7 +69,7 @@ truto login
 
 # Non-interactive (for scripting / LLM agents)
 truto login --token <your-api-token>
-truto login --token <token> --profile-name staging --api-url https://custom.truto.one
+truto login --token <token> --profile-name staging --api-url https://custom.truto.one   # -p staging works too
 ```
 
 Verify credentials:
