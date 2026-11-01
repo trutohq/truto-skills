@@ -72,12 +72,14 @@ Per cell, generation is grounded on the richest sample available, in order:
    when its effective provider request is a provable read.
 2. **DB documentation** examples (`read_doc_response_example`) — response
    examples stored on the platform's doc rows, read as stored (JSON or YAML
-   text); every matching row is read, and a row that is only a schema is no
-   sample.
+   text); every matching row is read, and a row that is only a schema (or
+   prose) is no sample.
 3. **Source index** (`search_source_docs`) — the `--source-url` value(s) you
    passed (repeatable URLs and/or local paths, merged into one index). Local glob
    tokens (`'*.md'`, `'**/*.json'`) are expanded by the CLI before indexing; empty
-   globs error. Hybrid BM25+cosine via local ONNX embeddings (automatic).
+   globs error. Hybrid BM25+cosine via local ONNX embeddings (automatic). From
+   a spec, an example comes from a success response only (each 2xx, then `2XX`,
+   then `default`); an error response's example is never the sample.
 4. **Single-page scrape** (`scrape_doc_page`) — needs Firecrawl; the scraped
    page is narrowed to the method's own sections, like a crawled one.
 5. **OpenAPI declared response** — a spec's response schema, field names only.
