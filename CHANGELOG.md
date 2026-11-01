@@ -11,6 +11,7 @@ Dates are `YYYY-MM-DD`.
 ### Changed
 
 - `skills/truto-jsonata/references/usage-in-truto.md`, `core-functions.md`, `text-conversions.md` — `$parseDocument` and `$convertMdToPdf` reach the document parser on their own; the parser's URL and key are no longer readable from an expression (`$documentParserApiKey`, `context.documentParserApiKey`). Pairs with the truto security PR for audit run-1.
+- `skills/truto/references/authentication.md` — `POST /link-token` refuses `integrated_account_id` sent together with `tenant_id` and `environment_id` (`400`) instead of silently picking one flow; without `environment_id` it is a reconnect and `tenant_id` is ignored. Pairs with the same truto PR.
 
 ### Added
 
