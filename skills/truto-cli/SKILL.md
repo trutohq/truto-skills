@@ -72,6 +72,8 @@ truto login --token <your-api-token>
 truto login --token <token> --profile-name staging --api-url https://custom.truto.one   # -p staging works too
 ```
 
+An existing profile keeps its stored API URL unless `--api-url` names another. `login` makes the profile it saves the active one, so commands without `-p` use it from then on.
+
 Verify credentials:
 
 ```bash

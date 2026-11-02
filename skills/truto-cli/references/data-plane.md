@@ -354,6 +354,8 @@ truto custom /my-endpoint -a <account-id> -H "X-Custom-Header=value"
 echo '{"data":true}' | truto custom /my-endpoint -m POST -a <account-id> --stdin
 ```
 
+A path with a `.` or `..` segment (also percent-encoded), or one the URL parser would resolve outside `/custom`, is refused before anything is sent: it would leave `/custom` for another route. The parser reads `\` as `/` and drops tabs and a trailing space, so `/..\integration/x`, `/%2e%2e\integration/x` and `'.. '` are refused too.
+
 Default output format is `json` (not `table`).
 
 ---
