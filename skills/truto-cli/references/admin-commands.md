@@ -12,7 +12,7 @@ These flags are available across all resource commands:
 | `--limit <n>`            | `list`             | Results per page (default: 25)                              |
 | `--next-cursor <cursor>` | `list`             | Paginate to next page                                       |
 | `--stdin`                | `create`           | Read body from stdin (JSON array or NDJSON)                 |
-| `-b, --body <json>`      | `create`, `update` | Inline JSON request body                                    |
+| `-b, --body <json>`      | `create`, `update` | Inline JSON request body: one JSON object (anything else exits 1, nothing sent, the text never quoted) |
 | `-i, --interactive`      | `update`           | Pre-fill fields from current record for interactive editing |
 | `-f, --force`            | `delete`           | Skip confirmation prompt                                    |
 

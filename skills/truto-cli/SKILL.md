@@ -64,7 +64,7 @@ truto upgrade --force      # re-download even if current
 The CLI uses API tokens. Authenticate with:
 
 ```bash
-# Interactive (prompts for profile name, API URL, token)
+# Interactive (prompts for profile name, API URL, token; needs a terminal)
 truto login
 
 # Non-interactive (for scripting / LLM agents)
@@ -230,7 +230,7 @@ For build/edit/apply/verification, follow [the artifact workflow](references/int
 2. **Always run `truto capabilities <account-id> -o json` before any data-plane call.** It tells you which `proxy` resources/methods and which `unified` model/resource/methods are available for that account. Never guess them. See [Querying Data from Connected Accounts](#querying-data-from-connected-accounts-discovery-first) above and [references/querying-data.md](references/querying-data.md). Reach for `truto accounts tools <id>` only when you need the full `query_schema`/`body_schema` for a specific method.
 3. **Resource ID is positional, not a flag.** For `get`/`update`/`delete` on `truto unified` and `truto proxy`, the resource ID is the second positional argument — there is no `-d` / `--id` flag. Correct: `truto proxy contacts crd_xxx -a $ACCOUNT -m get`. Wrong: `truto proxy contacts -a $ACCOUNT -m get -d crd_xxx` (returns `error: unknown option '-d'`). Same convention for unified: `truto unified crm contacts crd_xxx -m get -a $ACCOUNT`.
 4. **Use `-v` (verbose)** to debug failures — shows raw HTTP request/response on stderr.
-5. **Non-interactive login:** `truto login --token <token>` skips all prompts.
+5. **Non-interactive login:** `truto login --token <token>` skips all prompts. Without a terminal `--token` is required: plain `truto login` there exits 1 and saves nothing.
 6. **Use `truto context`** to get a full CLI reference as markdown, or `truto context --full` for the complete command tree with all flags.
 7. **Pagination:** List commands return 25 results by default. Use `truto export` for exhaustive data.
 8. **Resource path convention:** In `export`/`diff`, `crm/contacts` (with `/`) = unified API, `tickets` (no `/`) = proxy API.
