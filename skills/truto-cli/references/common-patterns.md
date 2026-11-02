@@ -139,7 +139,7 @@ truto profiles set default-integrated-account <account-id>
 truto profiles get api-url
 ```
 
-`set` and `get` operate on the currently active profile. Switch profiles first if needed.
+`set`, `get` and `set-key` operate on the profile `-p` names (`truto -p staging profiles set-key anthropic`), else the active one. A `-p` naming a profile that does not exist is refused; nothing is saved.
 
 **Allowed profile keys** (all naming formats accepted):
 

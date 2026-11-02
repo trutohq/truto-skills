@@ -89,8 +89,8 @@ truto profiles use staging
 truto use staging
 ```
 
-**Token resolution:** `--token` flag > active profile's token > error.
-**API URL resolution:** `--api-url` flag > active profile's URL > `https://api.truto.one`.
+**Token resolution:** `--token` flag > with `-p <name>`, that profile's token, then `TRUTO_API_TOKEN`; without `-p`, `TRUTO_API_TOKEN`, then the active profile's token > error.
+**API URL resolution:** `--api-url` flag > with `-p <name>`, that profile's URL, then `TRUTO_API_URL`; without `-p`, `TRUTO_API_URL`, then the active profile's URL > `https://api.truto.one`.
 
 ## Quick Reference
 
