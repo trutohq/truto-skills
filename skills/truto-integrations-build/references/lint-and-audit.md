@@ -71,7 +71,7 @@ Two categories of checks:
 
 ### `credential_check`
 
-A credential the connecting user types in (`api_key`, `basic`) that nothing checks at connect: no `request` step in `post_install` or `validation` fails on an HTTP error, so a wrong key still shows "Connection successful". A `throw_error: "process"` request counts when a later transform raises on its result with `$error(…)`.
+A credential the connecting user types in (`api_key`, `basic`) that nothing checks at connect: no `request` step in `post_install` or `validation` fails on an HTTP error, so a wrong key still shows "Connection successful". A `throw_error: "process"` request counts when a later transform raises on its result with `$error(…)`. A request to a `no_auth` method (one that sends no Authorization header) counts only when it carries a typed-in credential field itself, as a login or token exchange does.
 
 - **Severity:** `warn` (lint exits 1 on it). A build stops on it with a `credential_check_missing` question that holds `config.actions`.
 - **Action:** Add a `validation` action with one `request` step that calls the cheapest read any valid key can make (the current user or account, else a list of one item).
@@ -85,7 +85,7 @@ A credential the connecting user types in (`api_key`, `basic`) that nothing chec
 
 ### `method_path`
 
-A method path that cannot be called as written: a placeholder path (`/__deleted__`), a missing `path`, a `base_url` path the method's path replaces, or a path parameter written the way docs write it (`{id}`, `:id`, `<id>`, `<int:id>`, `[id]`, `%7Bid%7D`), which the runtime sends literally.
+A method path that cannot be called as written: a placeholder path (`/__deleted__`), a missing `path`, a `base_url` path the method's path replaces, or a path parameter written the way docs write it (`{id}`, `:id`, `<id>`, `<int:id>`, `[id]`, `[...slug]`, the same percent-encoded such as `%7Bid%7D` or `%5Bid%5D`, a shell variable such as `$ACCOUNT_ID`, or a name in braces in the query string such as `?user={user_id}`), which the runtime sends literally. A lower-case `$value` or `$count` (OData) and a literal `$Task` are not flagged.
 
 - **Severity:** `error`.
 - **Action:** Use `{{id}}` for the record id of get, update and delete, or `{{query.<name>}}` for any other value; put the base path at the start of every method path.
