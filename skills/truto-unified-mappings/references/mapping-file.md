@@ -104,7 +104,13 @@ Informational, but the single best thing to read before `apply`:
   "counts": { "planned": 18, "built": 15, "routed_unbuilt": 2, "skipped": 1, "flagged": 3 },
   "built": { "contacts": ["list", "get", "create"], "accounts": ["list", "get"] },
   "unbuilt_routed": [
-    { "cell": "deals.update", "proxy": "opportunities.update", "confidence": "high", "reason": "no verifiable sample", "resolve": "re-run with --account or --source-url" }
+    { "cell": "deals.update", "proxy": "opportunities.update", "confidence": "high", "reason": "no verifiable sample", "resolve": "re-run with --account or --source-url" },
+    { "cell": "people.list", "proxy": "people.search", "confidence": "high",
+      "routes": [                          // a conditional routing: every route, `proxy` is the first
+        { "proxy": "people.search", "confidence": "high", "when": "$exists(rawQuery.q)" },
+        { "proxy": "people.list", "confidence": "medium" }
+      ],
+      "reason": "no verifiable sample", "resolve": "re-run with --account or --source-url" }
   ],
   "skipped": [
     { "cell": "notes.delete", "reason": "no proxy endpoint serves this method" }
@@ -145,8 +151,12 @@ Informational, but the single best thing to read before `apply`:
   that unified method. Nothing to fix.
 - **`unbuilt_routed`** — a proxy endpoint *was* matched but the cell could not be
   built (usually no verifiable sample). Each carries the route's `confidence`, a
-  `reason` and often a `resolve` (for example "re-run with `--account`"). A
-  `--continue` rebuilds such a cell on that route, and its summary keeps the
+  `reason` and often a `resolve` (for example "re-run with `--account`"). A cell the
+  build routed conditionally (more than one proxy method, each with a `when`
+  guard) also carries `routes`: every route as `{ proxy, confidence, when }`,
+  `proxy` being the first; it is omitted for a single route. A `--continue`
+  rebuilds such a cell on that route (on all of `routes`, each with its guard,
+  for a conditional one, as a fresh build would), and its summary keeps the
   gaps of the cells it did not rebuild.
 
 ### `warnings` and warning kinds
