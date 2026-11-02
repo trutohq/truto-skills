@@ -106,9 +106,9 @@ Patterns that have broken real integrations before. Check a new or edited integr
 
 **Looks like:** the connecting user types in an API key or a username and password, and nothing calls the provider while the account connects: no `request` step in `post_install` or `validation` (a `post_install` that only copies a field into the label calls nothing). A wrong or revoked key then shows "Connection successful", and the account looks active until its first real request fails. 53 of 119 integrations created after Oct 1, 2026 shipped like this.
 
-**CLI:** lint WARNs (`credential_check`). A new build stops the integration's config and asks which read any valid key can make. OAuth and token formats call the provider while connecting, so they are not flagged.
+**CLI:** lint WARNs (`credential_check`). For a typed API key, a new build first appends a request to a current-user read (one whose path has no unfilled `{{…}}`) at the end of `post_install`; with none, it stops the integration's config and asks which read any valid key can make. OAuth and token formats call the provider while connecting, so they are not flagged.
 
-**Fix:** add a `validation` action with one `request` step to the cheapest read every key can make: the current user or account (`/me`, `/whoami`, `/account`), else a list. A 401 or 403 there fails the connect. Never pick a read some keys cannot make (an admin listing, a plan-gated endpoint): it would fail good connects.
+**Fix:** add a `request` step at the end of `post_install` (a `validation` action's `request` step counts too) to the cheapest read every key can make: the current user or account (`/me`, `/whoami`, `/account`), else a list. A 401 or 403 there fails the connect. Never pick a read some keys cannot make (an admin listing, a plan-gated endpoint): it would fail good connects.
 
 ## Check by hand
 
