@@ -237,7 +237,7 @@ Behavior to know:
 - The response is wrapped in `{ result, next_cursor, prev_cursor }` when JSON; binary responses pass through unchanged.
 - A restricted integrated-account token (the browser-held kind, without full credentials) gets a `403` for `methodConfig.error_expression`, `methodConfig.query` or a non-null `methodConfig.pagination`. The integration's own error expression, query and pagination still apply, and the request's own query parameters still go on the URL. The same token gets a `403` for `truto_response_format=debug`, and a `400` on `/proxy`, `/custom` and `/unified` for:
   - a placeholder that reads a stored credential;
-  - a placeholder that reads the request itself (`{{query.…}}`, `{{body.…}}`, `{{id}}`, `{{headers.…}}`). Its placeholders may read only the account's saved settings, such as a connect form's `{{xero_tenant_id.value}}`;
+  - a placeholder that reads the request itself (`{{query.…}}`, `{{body.…}}`, `{{id}}`, `{{headers.…}}`) or a unified request's `before` step output (`{{before.…}}`). Its placeholders may read only the account's saved settings, such as a connect form's `{{xero_tenant_id.value}}`;
   - a `{{` or `}}` outside a whole placeholder (a nested placeholder, for example; single braces are fine), including one that the saved values make once the placeholders are filled in.
 
 When to prefer Pattern 2 over Pattern 1:
