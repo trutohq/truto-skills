@@ -235,6 +235,7 @@ Behavior to know:
 - If `methodConfig` is omitted, the path is forwarded as-is and the body is sent as-is. This is the "raw passthrough" mode.
 - `integrated_account_id` is removed from the query string before forwarding.
 - The response is wrapped in `{ result, next_cursor, prev_cursor }` when JSON; binary responses pass through unchanged.
+- A restricted integrated-account token (the browser-held kind, without full credentials) gets a `403` for `methodConfig.error_expression` or a non-null `methodConfig.pagination`: both run JSONata on the authenticated request and response. The integration's own error expression and pagination still apply. The same token gets a `403` for `truto_response_format=debug` and a `400` for a placeholder that reads a stored credential, on `/proxy`, `/custom` and `/unified`.
 
 When to prefer Pattern 2 over Pattern 1:
 

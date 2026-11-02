@@ -272,6 +272,8 @@ You can combine `--handle-verification`, `--payload-transform`, and `--signature
 
 `config` placeholders resolve against the inbound payload. For HMAC, `verification_content` is the list of strings joined to form the signed content (e.g. `["{{raw_body}}"]`); `secret` and `compare_with` are templated the same way. `string_type` (`hex` / `base64`) and `algorithm` select the digest encoding.
 
+The settings that decide whom a request is trusted from — `secret`, a `basic` `username` and `password`, and a JWT's `jwks_uri`, `issuer`, `email` and `subject` — may read only the stored context (`{{context.webhook_secret}}`). A placeholder there that reads the request (`headers`, `body`, `query_params`, `raw_body`) or an id from the webhook URL, or that has a `?:` default, fails every webhook with a `400`: the sender knows or chooses that value. `compare_with` and `verification_content` read the request as before.
+
 After the override lands, a URL-verification request gets its challenge echoed back, and every other request has its signature checked before Truto processes it.
 
 ---
