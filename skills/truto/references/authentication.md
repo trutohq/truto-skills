@@ -199,8 +199,6 @@ Integrated account tokens can only access:
 
 Any other endpoint returns **403**.
 
-A connect-flow token (the one the browser gets at the end of a connection) may not save a placeholder through `PATCH /integrated-account/me` or `POST /link-token/post-connect-form`: a `context` value holding `{{` or `}}` gets a **400**, unless it is the value already stored at that path. Single braces, as in a file name, are fine.
-
 ### Create an Integrated Account Token
 
 This call requires your **API token** — you generate integrated account tokens on your backend and pass them to the client.
