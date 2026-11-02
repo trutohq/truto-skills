@@ -10,10 +10,10 @@ Dates are `YYYY-MM-DD`.
 
 ### Changed
 
-- `skills/truto-jsonata/references/usage-in-truto.md`, `core-functions.md`, `text-conversions.md` — `$parseDocument` and `$convertMdToPdf` reach the document parser on their own; the parser's URL and key are no longer readable from an expression (`$documentParserApiKey`, `context.documentParserApiKey`). Pairs with the truto security PR for audit run-1.
+- `skills/truto-jsonata/references/usage-in-truto.md`, `core-functions.md`, `text-conversions.md` — `$parseDocument` and `$convertMdToPdf` reach the document parser on their own; the parser's URL and key are no longer readable from an expression (`$documentParserApiKey`, `context.documentParserApiKey`). Pairs with `trutohq/truto#2290`.
 - `skills/truto/references/authentication.md` — `POST /link-token` refuses `integrated_account_id` sent together with `tenant_id` and `environment_id` (`400`) instead of silently picking one flow; without `environment_id` it is a reconnect and `tenant_id` is ignored. Pairs with the same truto PR.
-- `skills/truto/references/proxy-and-custom-api.md` — a restricted integrated-account token gets a `403` for `methodConfig.error_expression` or `methodConfig.pagination` on `/custom`, a `403` for `truto_response_format=debug` and a `400` for placeholders that read stored credentials. Pairs with the same truto PR.
-- `skills/truto/references/customizing-integrations.md` — webhook `signature_verification` key material (`secret`, `username`, `password`, and a JWT's `jwks_uri`, `issuer`, `email`, `subject`) may read only `{{context.…}}`; anything read from the request, the webhook URL or a `?:` default is a `400`. Pairs with the same truto PR.
+- `skills/truto/references/proxy-and-custom-api.md` — a restricted integrated-account token gets a `403` for `methodConfig.error_expression`, `methodConfig.query` or `methodConfig.pagination` on `/custom`, a `403` for `truto_response_format=debug`, and a `400` for placeholders that read stored credentials or for `{{` / `}}` outside a whole placeholder. Pairs with the same truto PR.
+- `skills/truto/references/customizing-integrations.md` — webhook `signature_verification` key material (`secret`, `username`, `password`, and a JWT's `jwks_uri`, `issuer`, `email`, `subject`) may read only `{{context.…}}`; anything read from the request, the webhook URL or a `?:` default is a `400`. The webhook examples in `skills/truto/references/authoring-integrations.md` and `skills/truto-cli/references/admin-commands.md` read `{{context.webhook_secret}}`, and the older lines that said `secret` resolves against the inbound payload now say it reads the stored context. Pairs with the same truto PR.
 
 ### Added
 
