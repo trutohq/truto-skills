@@ -80,7 +80,7 @@ This is the happy path. When the build stops on an open question instead, see [Q
 
 ### Build
 
-The `build` command accepts one or more source URLs (OpenAPI spec, Postman collection, Mintlify/Readme docs, GraphQL endpoint, or a generic doc page) and an optional integration slug. It auto-selects the highest-fidelity source (openapi > postman > graphql > docs).
+The `build` command accepts one or more source URLs (OpenAPI spec, Postman collection, Mintlify/Readme docs, GraphQL endpoint, or a generic doc page) and an optional integration slug. It auto-selects the highest-fidelity source (openapi > postman > graphql > docs). A source URL carrying user info or a query string is refused outright (exit 2), before anything is fetched -- download the gated page to a local file and build from that path instead.
 
 By default the build runs on **Anthropic Claude** (tiered: Opus for the agent loop, Sonnet for extraction/docs, Haiku for classification). To run on **Fireworks AI** instead, pass `--llm-provider fireworks` and pick a workhorse model with `--llm-model` (see [LLM providers](#llm-providers) below).
 

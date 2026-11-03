@@ -32,7 +32,7 @@ Patterns that have broken real integrations before. Check a new or edited integr
 
 **Looks like:** two resources both define, say, `GET /invoices` -- usually from grouping the same endpoint under more than one name while exploring the docs.
 
-**CLI:** ERROR. The build also drops the duplicate automatically when it writes the file.
+**CLI:** ERROR. The build also drops the duplicate automatically when it writes the file -- except on a full UPDATE build, where a method already in the live config is never dropped this way, even when it shares a verb+path with another live method the dedupe can't otherwise tell apart (a body field it doesn't recognize as a GraphQL/RPC dispatch, for example). Only a duplicate the build itself just created is auto-dropped.
 
 **Fix:** keep the endpoint under the one resource it actually belongs to.
 

@@ -72,7 +72,7 @@ truto login --token <your-api-token>
 truto login --token <token> --profile-name staging --api-url https://custom.truto.one   # -p staging works too
 ```
 
-An existing profile keeps its stored API URL unless `--api-url` names another. `login` makes the profile it saves the active one, so commands without `-p` use it from then on.
+An existing profile keeps its stored API URL unless `--api-url` names another. `login` makes the profile it saves the active one, so commands without `-p` use it from then on. A re-login (`-p <existing> --token`) always keeps the profile's model (BYOK) keys; it keeps the marked test accounts and the default integrated account too, but only when the API URL is unchanged -- those ids belong to the old environment once the URL changes, so they are dropped instead. The success line names what was kept and dropped.
 
 Verify credentials:
 

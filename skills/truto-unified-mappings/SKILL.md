@@ -169,7 +169,10 @@ truto unified-mappings validate acme.crm.mappings.json -v   # list advisory warn
 Validation reads target config/schema and checks the expressions and supported sample/example outputs. Missing samples and unsupported runtime behavior remain unverified. It exits non-zero on **errors**. Advisory **warnings** (the per-cell
 review flags in `build_summary.warnings`) never fail validation — they are
 summarized by default, listed in full with `-v`. Pass `--environment-id` to
-resolve env schema overrides. `validate` and `apply --dry-run` read the file
+resolve env schema overrides. `-o json` prints one document in place of the
+text summary, even on an early failure: `{ ok, cells: [{ resource, method,
+status, findings }], findings }`, shaped like a build's cell record; exit
+codes are unchanged. `validate` and `apply --dry-run` read the file
 from a path or a pipe (`<(…)`); every other mode that reads it (`build --recheck`,
 `build --continue`, `apply`, `--prepare`, `--plan`) needs a regular file and
 refuses a pipe at once.
@@ -242,7 +245,7 @@ The refinement loop is skipped in this mode.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-a, --account <id>` | marked test account | Integrated account ID for live proxy samples (proven reads only). Without it the integration's marked test account (`truto profiles set test-account.<integration> <id>`) is used; the profile `defaultIntegratedAccount` never is |
-| `--source-url <url\|path>` | -- | API docs URL or local file path (repeatable, comma-separated: after a URL a piece that continues it joins it, so `?fields=id,email&token=…` stays whole and `<URL>,./local.json` is two sources; merged into one source index). Supports glob patterns (e.g. `'./specs/*.json'`). A URL is shown and recorded without its user info, query and fragment (a URL typed without its scheme, `docs.acme.test/spec.json?token=…`, is a URL), a local path exactly as typed. At least one of an account (`--account` or a marked test account) or `--source-url` is required. |
+| `--source-url <url\|path>` | -- | API docs URL or local file path (repeatable, comma-separated: after a URL a bare piece joins it, so `?fields=id,email&token=…` stays whole, but a piece after a comma that opens its own `name=value` pair or names its own scheme starts a new source instead -- `<URL>,./local.json` is two sources, and so is `?v=1,notes=v2.json`; merged into one source index). Supports glob patterns (e.g. `'./specs/*.json'`). **A URL carrying user info or a query string is refused outright, before anything is fetched** (download the gated page to a local file and build from that path instead); a URL that passes is shown and recorded without its user info, query and fragment (a URL typed without its scheme, `docs.acme.test/spec.json`, is a URL), a local path exactly as typed. At least one of an account (`--account` or a marked test account) or `--source-url` is required. |
 | `--yes` | -- | Non-interactive: skip account/docs prompts. Requires an account (`--account` or a marked test account) and/or `--source-url`. |
 | `--llm-provider <provider>` | interactive pick on a TTY; `anthropic` under `CI` or without a TTY | Select `anthropic` or `fireworks` |
 | `--anthropic-api-key <key>` | env / profile / prompt | Override Anthropic API key |

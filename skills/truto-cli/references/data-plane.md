@@ -242,6 +242,7 @@ truto unified test-mapping \
 
 - Evaluates **JSONata-string** mappings only. Operator-style (object) mappings are printed for inspection but not executed locally; their merge semantics live on the platform.
 - The mapping context is `{ response, query, rawQuery, context: {}, headers: {}, body: {} }`. To exercise mappings that read `$context` or `$headers`, run them on the platform.
+- Invalid JSON from `--input` or `--stdin` is refused; the refusal names the input, never its contents, so a stray token in a malformed sample is never echoed back.
 
 ---
 

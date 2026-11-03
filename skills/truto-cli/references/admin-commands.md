@@ -40,6 +40,8 @@ truto integrations delete <id>
 
 **Update fields:** `category`, `config` (JSON), `version` (required — optimistic locking)
 
+`sharing` and `is_beta` need `--publish`: a body that would change either from its live value is refused (exit 1, nothing sent) unless `--publish` is given; sending back the value already live needs nothing.
+
 **Extra commands:**
 
 ```bash
