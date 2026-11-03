@@ -154,7 +154,7 @@ Use these fields when reconnecting an existing account whose credentials have ex
 | `persist_previous_context` | boolean | No | `false` | If `true`, the account's existing `context` is preserved as a base, and the new context from the reconnection is merged on top. If `false`, the previous context is not carried over. |
 | `truto_static_gate_id` | uuid | No | — | Route through a static IP egress proxy. Once connected, the integrated account will also use this static gate for all subsequent unified, proxy, and custom API calls. |
 
-> **New account vs reconnect:** The API determines which flow to use based on the fields you provide. If you include `tenant_id` (and `environment_id`), it's a new connection. If you include `integrated_account_id`, it's a reconnect. You should only provide fields for one flow — if both are present, the API will silently match one path and ignore the other fields, which can lead to unexpected behavior.
+> **New account vs reconnect:** The API picks the flow from the fields you send: `tenant_id` (and `environment_id`) makes a new connection, and `integrated_account_id` makes a reconnect. Send the fields of one flow only. A request with `integrated_account_id` together with both `tenant_id` and `environment_id` is refused with `400`. Without `environment_id`, `integrated_account_id` wins: the request is a reconnect and `tenant_id` is ignored.
 
 ### Link Token Lifecycle
 
