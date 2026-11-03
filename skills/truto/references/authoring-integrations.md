@@ -477,8 +477,8 @@ Common `format` values: `hmac`, `basic`, `jwt`, `clerk`, plus a handful of vendo
 
 | Field | Used by |
 |---|---|
-| `algorithm`, `secret`, `compare_with`, `string_type` | HMAC-style strategies. Placeholders resolve against the inbound payload. |
-| `username`, `password` | HTTP-basic verification. |
+| `algorithm`, `secret`, `compare_with`, `string_type` | HMAC-style strategies. `compare_with` resolves against the inbound payload; `secret` may read only the stored context (`{{context.webhook_secret}}`). |
+| `username`, `password` | HTTP-basic verification. Both may read only the stored context. |
 | `verification_content` | List of placeholder strings joined to form the signed content (e.g. `["{{raw_body}}"]`). |
 | `parts` | Payload keys (e.g. `"raw_body"`) — used only when `verification_content` is absent. |
 | `context_lookup_field_name`, `context_lookup_field_value` | Routing the webhook to the correct integrated account when the webhook URL itself doesn't carry an account token. |
@@ -642,7 +642,7 @@ truto integrations init acme-crm \
       "config": {
         "algorithm":    "sha256",
         "parts":        ["$body"],
-        "secret":       "{{credentials.webhook_secret}}",
+        "secret":       "{{context.webhook_secret}}",
         "compare_with": "$header.x-signature"
       }
     },
@@ -734,7 +734,7 @@ Notable choices:
 - **Added `rate_limit`** — Acme returns standard `Retry-After` on 429s. JSONata is required because `is_rate_limited` etc. are evaluated against the response.
 - **Dropped `deals.create/update/delete`** — Acme exposes deals as read-only via the API.
 - **Added `description` strings** — these surface in `truto integrations tools <id>` and the Truto MCP tool listings, which is what an LLM agent reads to decide which method to call.
-- **Replaced the webhook stub** — `verification_content: ["{{raw_body}}"]`, `{{headers.x-acme-signature}}`, and `{{context.webhook_secret}}` resolve against the inbound payload; `handle_verification` returns `{ "type": "payload" }` so signature verification is not skipped.
+- **Replaced the webhook stub** — `verification_content: ["{{raw_body}}"]` and `{{headers.x-acme-signature}}` resolve against the inbound payload, and `secret` reads the account's stored `{{context.webhook_secret}}`, the only place a `secret` may read; `handle_verification` returns `{ "type": "payload" }` so signature verification is not skipped.
 
 ### Step 3 — Validate
 
@@ -826,7 +826,7 @@ Once your integration is live in your environment, the related references cover 
 - **Validate locally before pushing.** `truto integrations validate --file acme.json` runs the same `IntegrationConfig` schema check the backend runs at create/update time. Cheaper than waiting for the round-trip and produces JSON-path errors that point to the broken field.
 - **Sandbox accounts can read but cannot write.** Calls to `/proxy/{resource}` `POST/PATCH/DELETE` against a sandbox-flagged account return `405` regardless of the integration config. Test reads with sandbox accounts; test writes with non-sandbox.
 - **Backtick-quote keys with hyphens or special characters in JSONata.** `` headers.`x-rate-limit` ``, `` $.body.`event-type` ``. JSONata's dot syntax doesn't accept hyphens.
-- **`{{...}}` is placeholder syntax, not JSONata.** Inside `authorization.config`, `body`, and `headers`, Truto resolves placeholders such as `{{api_key}}` against the integrated account's `context` before sending; in webhook `signature_verification.config` they resolve against the inbound payload (`{{raw_body}}`, `{{headers.x-signature}}`, `{{context.webhook_secret}}`). JSONata `$` functions don't run in those fields. See [Sync Jobs § Templating placeholders vs JSONata](./sync-jobs.md#templating-placeholders-vs-jsonata) for the full distinction.
+- **`{{...}}` is placeholder syntax, not JSONata.** Inside `authorization.config`, `body`, and `headers`, Truto resolves placeholders such as `{{api_key}}` against the integrated account's `context` before sending; in webhook `signature_verification.config` they resolve against the inbound payload (`{{raw_body}}`, `{{headers.x-signature}}`), except `secret`, a basic `username` and `password`, and a JWT's `jwks_uri`, `issuer`, `email` and `subject`, which may read only the stored context (`{{context.webhook_secret}}`). JSONata `$` functions don't run in those fields. See [Sync Jobs § Templating placeholders vs JSONata](./sync-jobs.md#templating-placeholders-vs-jsonata) for the full distinction.
 - **Multi-format credentials use a map, not an array.** When an integration supports both `api_key` and `oauth2`, write `credentials: { "api_key": { ... }, "oauth2": { ... } }`. The Link UI shows the customer a tab per format. Single-format integrations use the credential object directly.
 - **OAuth `client.id`/`client.secret` are part of the *base* integration.** A "shared" or "dummy" client at the integration layer is fine for getting started; customers who want their own (BYOA) supply it via `environment-integration.override.credentials` — see [Customizing Integrations § Override authorization](./customizing-integrations.md#1-override-authorization).
 - **Updating a live integration affects every connected account.** Adding a new optional resource is safe. Renaming a resource, removing a method, or changing the `format` of a credential will break existing connections. Roll forward by adding new methods/resources and deprecating old ones; only delete after every account has migrated.

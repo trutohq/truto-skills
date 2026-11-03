@@ -263,7 +263,7 @@ truto environment-integrations override-rate-limit <id> \
 
 # Webhook override (signature verification)
 truto environment-integrations override-webhook <id> \
-  --signature-verification '{"format":"hmac","config":{"algorithm":"sha256","parts":["$body"],"secret":"{{credentials.webhook_secret}}","compare_with":"$header.x-signature"}}'
+  --signature-verification '{"format":"hmac","config":{"algorithm":"sha256","parts":["$body"],"secret":"{{context.webhook_secret}}","compare_with":"$header.x-signature"}}'
 ```
 
 `--handle-verification` and `--payload-transform` take JSONata evaluated against the inbound payload (`body`, `raw_body`, `headers`, `query_params`, `context`). `payload_transform` runs first and its result replaces that payload. `handle_verification` must return an object whose `type` is `verify`, `payload`, or `meta`; any other result skips signature verification.

@@ -235,6 +235,12 @@ Behavior to know:
 - If `methodConfig` is omitted, the path is forwarded as-is and the body is sent as-is. This is the "raw passthrough" mode.
 - `integrated_account_id` is removed from the query string before forwarding.
 - The response is wrapped in `{ result, next_cursor, prev_cursor }` when JSON; binary responses pass through unchanged.
+- A restricted integrated-account token (the browser-held kind, without full credentials) gets a `403` for `methodConfig.error_expression`, `methodConfig.query` or a non-null `methodConfig.pagination`. The integration's own error expression, query and pagination still apply, and the request's own query parameters still go on the URL. The same token gets a `403` for `truto_response_format=debug`, and a `400` on `/proxy`, `/custom` and `/unified` for:
+  - a placeholder that reads a stored credential;
+  - a placeholder that reads the request itself (`{{query.…}}`, `{{body.…}}`, `{{id}}`, `{{headers.…}}`) or a unified request's `before` step output (`{{before.…}}`). Its placeholders may read only the account's saved settings, such as a connect form's `{{xero_tenant_id.value}}`;
+  - a `{{` or `}}` outside a whole placeholder (a nested placeholder, for example; single braces are fine), including one that the saved values make once the placeholders are filled in;
+  - a `$'` or `` $` `` in a value that also holds a brace;
+  - a saved `context` value that holds a placeholder (or pieces that one fill joins into one) reading a stored credential or the request's `query`, `body`, `headers` or `before` step output, or, outside the credential fields, a `$'` or `` $` `` together with a brace. A saved `{{id}}` or `{{first_name}}`, as in a file name, is fine.
 
 When to prefer Pattern 2 over Pattern 1:
 

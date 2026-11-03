@@ -430,7 +430,7 @@ Stringify an object into a query string. Inverse of `$parseQuery`.
 
 ### `$parseDocument(file, fileType)`
 
-Parses a document file (PDF, DOCX, etc.) and extracts its text content. `fileType` is the file's MIME type; it is sent as the request content type and has no default. Requires `documentParserApiUrl` / `documentParserApiKey` — Truto auto-injects these inside its expression contexts.
+Parses a document file (PDF, DOCX, etc.) and extracts its text content. `fileType` is the file's MIME type; it is sent as the request content type and has no default. Inside Truto it reaches the document parser on its own: no URL or key is passed, and the expression can't read them.
 
 ```
 $parseDocument(buffer, 'application/pdf')

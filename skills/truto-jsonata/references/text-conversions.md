@@ -190,7 +190,7 @@ Converts Markdown into [Atlassian Document Format](https://developer.atlassian.c
 
 ## `$convertMdToPdf(markdown, options?)`
 
-Converts Markdown to a PDF `Blob` by calling Truto's document-parser service (`POST <documentParserApiUrl>/md-to-pdf`). Needs `documentParserApiUrl` / `documentParserApiKey`, which Truto injects inside its expression contexts.
+Converts Markdown to a PDF `Blob` by calling Truto's document-parser service (`POST /md-to-pdf`). Inside Truto it reaches the parser on its own: no URL or key is passed, and the expression can't read them.
 
 **Option fields** (all optional):
 
