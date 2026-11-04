@@ -65,7 +65,7 @@ One per unified resource/method. The build writes this shape:
 |-------|---------|
 | `unified_resource_name` / `unified_method_name` | The unified cell this row maps (for example `contacts` / `list`) |
 | `config` | The mapping itself (the `IntegrationMappingMethod` JSON stored in the DB row) |
-| `db_info.action` | The build's action for the cell: `create`, `update` or `skip`. `skip` keeps the cell out of apply; otherwise apply decides from its baseline and the live rows (see [How `apply` consumes the file](#how-apply-consumes-the-file)) |
+| `db_info.action` | The build's action for the cell: `create`, `update` or `skip`. `skip` keeps the cell out of apply (a `skip` you set by hand stays, even when an answer rebuilds the cell); otherwise apply decides from its baseline and the live rows (see [How `apply` consumes the file](#how-apply-consumes-the-file)) |
 | `db_info.existing` | The row (`id`, `version`) the platform had at build time: context, not authority |
 | `sample.source` | Where the grounding sample came from: `live` proxy, `docs`, `source` URL, `spec`, `corpus`, `manual` or `none` |
 | `sample.data` | The sample (a list trimmed for storage), kept for review and re-validation. Never saved for a `live` sample: account data stays in memory |
