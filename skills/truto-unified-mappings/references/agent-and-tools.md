@@ -104,7 +104,9 @@ a request is built. Model-supplied `truto_*` and `integrated_account_id` keys
 containing `{{` are dropped. The trusted `integrated_account_id` is always
 applied last, so a model-supplied query cannot redirect a sample to a different
 connected account. Unsafe or unprovable samples are skipped and documentation
-examples are used instead. Before the first live sample the CLI discloses the
+examples are used instead. Within 30 minutes of a write to the integration or
+its environment integration row no sample is sent either (the account may still
+run its older cached config); the reason gives the time it can run again. Before the first live sample the CLI discloses the
 Truto-side effects of reading the account once on stderr; a 401 or failed token
 refresh stops further samples on that account. This holds even under prompt
 injection from fetched docs or search content.
