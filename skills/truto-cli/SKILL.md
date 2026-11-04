@@ -91,7 +91,7 @@ truto use staging
 
 **Token resolution:** `--token` flag > with `-p <name>`, that profile's token, then `TRUTO_API_TOKEN`; without `-p`, `TRUTO_API_TOKEN`, then the active profile's token > error.
 **API URL resolution:** `--api-url` flag > with `-p <name>`, that profile's URL, then `TRUTO_API_URL`; without `-p`, `TRUTO_API_URL`, then the active profile's URL > `https://api.truto.one`.
-A token and URL from different places that name different hosts are refused (a profile token belongs to the profile's URL, an environment token to `TRUTO_API_URL` when set, or with `-p` to the default URL); a `--token` is never refused.
+A token and URL from different places that name different hosts are refused: a profile token belongs to the profile's URL, and an environment token to `TRUTO_API_URL` when that is set (without it, the token is used with whichever URL resolves); a `--token` is never refused.
 
 ## Quick Reference
 
