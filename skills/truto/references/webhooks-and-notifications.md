@@ -112,9 +112,9 @@ Each delivery includes these headers:
 |--------|-------|
 | `Content-Type` | `application/json` (or `multipart/form-data` for `formdata` deliveries) |
 | `User-Agent` | `truto` |
-| `X-Truto-Signature` | `format=sha256,v=<hex_hmac>` — HMAC-SHA256 of the body using the webhook's `secret` |
+| `X-Truto-Signature` | `format=sha256,v=<signature>` — `<signature>` is the HMAC-SHA256 of the exact request body bytes, keyed with the webhook's `secret`, encoded as URL-safe base64 with no `=` padding (base64url). For `formdata` deliveries it covers the multipart body bytes as sent. |
 
-Verify deliveries by recomputing the HMAC over the raw request body with the stored `secret` and comparing to the value after `v=` in `X-Truto-Signature`.
+Verify a delivery by recomputing the HMAC-SHA256 over the raw request body bytes (before parsing JSON or multipart), keyed with the stored `secret` string as-is (its UTF-8 bytes; don't decode it), encoding the result as base64url, and comparing it in constant time with the value after `v=` in `X-Truto-Signature`. It is not a hex digest: comparing against one rejects every genuine delivery.
 
 ### Event Types
 
