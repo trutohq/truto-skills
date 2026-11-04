@@ -215,7 +215,7 @@ truto integrations apply acme.integration.json --dry-run  # optional offline pre
 truto integrations build --recheck acme.integration.json # optional report refresh
 ```
 
-Apply rechecks edited artifacts, reconciles against committed/live state, preserves concurrent edits and observes every write. Eligible methods can land while skipped/held items remain pending. A method doc-input change can regenerate unedited documentation from its recorded source using configured model access; manual doc edits and rows whose generation fails are retained.
+Apply rechecks edited artifacts, reconciles against committed/live state, preserves concurrent edits and observes every write. Eligible methods can land while skipped/held items remain pending. A method doc-input change can regenerate unedited documentation from its recorded source using configured model access; doc rows edited or deleted by hand (applied or not) and rows whose generation fails are retained, never regenerated or re-added.
 
 Apply has no prompt and no `--yes`: a plain `apply <file>` writes live at once. An agent runs `--prepare [--plan-out <path>]`, shows the human the plan, and on their approval runs `--plan <path> --expect-digest <digest>`, which writes exactly that plan. Resolve a reported clash with `--resolve '<item>=mine|theirs'`; use `--docs-only` for documentation, and deliberate removal flags only for the listed removals.
 
