@@ -77,7 +77,7 @@ Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KE
 
 ## The workflow
 
-Build, optionally edit, then apply. Validation is automatic at apply; the separate validation command is useful for inspection.
+Build, optionally edit, prepare, then apply the prepared plan once the human approves it. Validation is automatic at apply; the separate validation command is useful for inspection.
 
 ```bash
 # 1. Build — generates <integration>.<model>.mappings.json
@@ -87,8 +87,11 @@ truto unified-mappings build acme crm --account <integrated-account-id>
 # Optional validation — deterministic target reads, no LLM or writes
 truto unified-mappings validate acme.crm.mappings.json
 
-# Apply — reconcile mapping rows with the platform (base or env override)
-truto unified-mappings apply acme.crm.mappings.json --target base
+# Prepare — reconcile mapping rows with the platform (base or env override); no writes, saves a plan
+truto unified-mappings apply acme.crm.mappings.json --target base --prepare
+
+# On the human's approval of the plan: write exactly that plan
+truto unified-mappings apply acme.crm.mappings.json --plan acme.crm.mappings.json.plan.json --expect-digest <digest>
 ```
 
 ### Build
@@ -137,7 +140,7 @@ A read cell with no observed sample (only the spec's field names, another integr
 1. `truto unified-mappings build acme crm --account $ACCOUNT -o json` (or `--source-url`).
 2. Read the document. `questions` lists what's open; `report_path` names `acme.crm.mappings.report.json` (and a `.report.md` alongside it, for people) -- one record per cell with its route, sample source, checks, assumptions and `confidence`.
 3. Ask the human each open question in chat, in plain words, with its suggestion. **Never put a credential in an answer** -- it's refused outright, exit 3; say where the value actually comes from instead.
-4. `truto unified-mappings build --continue acme.crm.mappings.json --answer q1="…"` (repeatable; or `--answers <file>`, `-` for stdin). Never paste a credential: a credential-looking answer is refused (exit 3) and the refusal names character positions, not text. It reuses the account and documentation sources the build recorded, so no `--account` / `--source-url` is needed (pass them only for a file built by an older CLI, or to override). A source URL that carried a query string or user info (a token) is recorded without them: the printed command names every source with `--source-url "…"` in place of that one (`sampled_from.sources_withheld` lists such sources), and a `--continue` whose answer must rebuild a cell stops (exit 1) until the full URL is given again; a `no_sample` confirmation rebuilds nothing, reads no source and needs none. A route answer names `resource.method`: an answer that is only that name (with words like "yes", "use", "keep" and plain punctuation: no `?`, `!`, dash, symbol, emoji or word in another script) is taken as it is, any other is read by the matcher, and the cell moves only to a method the answer names and does not turn down (a leading "No" turns down the method the cell reads, but not "No problem", "No doubt" or "No changes needed", and a double negative such as "nothing wrong with people.list" turns nothing down). A rebuilt cell keeps its route (a conditional one stays conditional, and a never-built one is rebuilt on all its methods, each with its guard). For a `no_sample` question, a `--source-url` the build did not read, or the same one whose docs changed since, rebuilds the cell from it. Answering without `--account` or such a source rebuilds nothing: a built cell is kept as reviewed (unless another answer in the same call rebuilds it, which leaves the question open for the new mapping while that still has no observed sample). Only the cells waiting on now-answered questions rebuild; every other cell stays as committed (a change to one is put back, and a cell the agent adds is dropped). A cell whose rebuild fails keeps waiting on its question with the failure in its reason -- re-ask the human or answer again.
+4. `truto unified-mappings build --continue acme.crm.mappings.json --answer q1="…"` (repeatable; or `--answers <file>`, `-` for stdin). Never paste a credential: a credential-looking answer is refused (exit 3) and the refusal names character positions, not text. It reuses the account and documentation sources the build recorded, so no `--account` / `--source-url` is needed (pass them only for a file built by an older CLI, or to override). A file built before such URLs were refused may record a source URL that carried a query string or user info (a token) without them (`sampled_from.sources_withheld` lists it); a `--continue` whose answer must rebuild a cell then stops (exit 1). Save that page to a local file and pass its path with `--source-url`, plus the build's other sources (a `--source-url` replaces them all); the full URL is refused. A `no_sample` confirmation rebuilds nothing, reads no source and needs none. A route answer names `resource.method`: an answer that is only that name (with words like "yes", "use", "keep" and plain punctuation: no `?`, `!`, dash, symbol, emoji or word in another script) is taken as it is, any other is read by the matcher, and the cell moves only to a method the answer names and does not turn down (a leading "No" turns down the method the cell reads, but not "No problem", "No doubt" or "No changes needed", and a double negative such as "nothing wrong with people.list" turns nothing down). A rebuilt cell keeps its route (a conditional one stays conditional, and a never-built one is rebuilt on all its methods, each with its guard). For a `no_sample` question, a `--source-url` the build did not read, or the same one whose docs changed since, rebuilds the cell from it. Answering without `--account` or such a source rebuilds nothing: a built cell is kept as reviewed (unless another answer in the same call rebuilds it, which leaves the question open for the new mapping while that still has no observed sample). Only the cells waiting on now-answered questions rebuild; every other cell stays as committed (a change to one is put back, and a cell the agent adds is dropped). A cell whose rebuild fails keeps waiting on its question with the failure in its reason -- re-ask the human or answer again.
 5. `truto unified-mappings validate acme.crm.mappings.json`, then `truto unified-mappings apply acme.crm.mappings.json --prepare`. Show the human the plan.
 6. On their approval only: `truto unified-mappings apply acme.crm.mappings.json --plan <path> --expect-digest <digest>`.
 
@@ -149,7 +152,7 @@ A read cell with no observed sample (only the spec's field names, another integr
 
 #### Refinement loop
 
-In an interactive terminal, once any open question above is answered or skipped, the build ends in a **refinement loop**: type a
+In an interactive terminal (with `CI` unset), once any open question above is answered or skipped, the build ends in a **refinement loop**: type a
 free-form instruction (for example `engagements.create: strip the trailing Z
 from start times`) and the agent rebuilds the affected cell. Type `:show` to
 print the full per-cell review in the terminal. Press Enter on an empty line to

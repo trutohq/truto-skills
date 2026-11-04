@@ -86,7 +86,7 @@ Patterns that have broken real integrations before. Check a new or edited integr
 
 ## A value nothing supplies
 
-**Looks like:** a `{{value}}` in a path, a header, or an authorization rule -- including a single method's own auth override, not just the integration's global auth -- that no credential field, query param, or setup step actually fills in. Seen on zscaler, trustpilot, orderly and sailpointidentityiqscim (auth/header values), timely (a path value), and confluenceonprem (a per-method auth override the global check doesn't look at).
+**Looks like:** a `{{value}}` in a path, pagination path, base URL, header, query or authorization rule -- the integration's or a single method's own override -- that no credential field, query param, or setup step actually fills in. Seen on zscaler, trustpilot, orderly and sailpointidentityiqscim (auth/header values), timely (a path value), and confluenceonprem (a per-method auth override the global check doesn't look at).
 
 **CLI:** ERROR when a token is read from the wrong place; WARN for other unsupplied values. The build also stops and asks where the value comes from. When the check can't even run -- a setup step saves keys it has no way to read back -- it says so as an INFO instead of staying quiet.
 

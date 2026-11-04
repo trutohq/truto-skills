@@ -72,7 +72,7 @@ truto login --token <your-api-token>
 truto login --token <token> --profile-name staging --api-url https://custom.truto.one   # -p staging works too
 ```
 
-An existing profile keeps its stored API URL unless `--api-url` names another. `login` makes the profile it saves the active one, so commands without `-p` use it from then on. A re-login (`-p <existing> --token`) always keeps the profile's model (BYOK) keys; it keeps the marked test accounts and the default integrated account too, but only when the API URL is unchanged -- those ids belong to the old environment once the URL changes, so they are dropped instead. The success line names what was kept and dropped.
+An existing profile keeps its stored API URL unless `--api-url` names another. `login` makes the profile it saves the active one, so commands without `-p` use it from then on. A re-login (`-p <existing> --token`) keeps everything stored on the profile, its model (BYOK) keys and `integrationConfigDir`/`unifiedMappingDir` folders included, except the marked test accounts and the default integrated account when the API URL changes -- those ids belong to the old environment, so they are dropped. The success line names what was kept and dropped.
 
 Verify credentials:
 
@@ -91,6 +91,7 @@ truto use staging
 
 **Token resolution:** `--token` flag > with `-p <name>`, that profile's token, then `TRUTO_API_TOKEN`; without `-p`, `TRUTO_API_TOKEN`, then the active profile's token > error.
 **API URL resolution:** `--api-url` flag > with `-p <name>`, that profile's URL, then `TRUTO_API_URL`; without `-p`, `TRUTO_API_URL`, then the active profile's URL > `https://api.truto.one`.
+A token and URL from different places that name different hosts are refused (a profile token belongs to the profile's URL, an environment token to `TRUTO_API_URL` when set); a `--token` is never refused.
 
 ## Quick Reference
 

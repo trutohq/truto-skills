@@ -1,19 +1,25 @@
 # Integration and mapping artifact workflow
 
-Build, optionally edit the artifact, then apply. Reports and fresh checks are automatic; do not add a separate report approval step.
+Build, optionally edit the artifact, prepare, show the human the plan, then execute that plan on their approval. Reports and fresh checks are automatic.
 
 ```bash
 truto integrations build https://docs.example.com/openapi.json acme
-truto integrations apply acme.integration.json
+truto integrations apply acme.integration.json --prepare
+# on the human's approval of the plan:
+truto integrations apply acme.integration.json --plan acme.integration.json.plan.json --expect-digest <digest>
 truto unified-mappings build acme crm --source-url https://docs.example.com/openapi.json
-truto unified-mappings apply acme.crm.mappings.json --target base
+truto unified-mappings apply acme.crm.mappings.json --target base --prepare
+# on the human's approval of the plan:
+truto unified-mappings apply acme.crm.mappings.json --plan acme.crm.mappings.json.plan.json --expect-digest <digest>
 ```
+
+An agent always takes this path. A plain `truto integrations apply <file>` has no prompt and writes live at once; a plain `truto unified-mappings apply` with no terminal or with `-o json`, and no `--yes`, writes nothing (exit 3).
 
 Both builds save the exact checked candidate with a matching report and an authoritative `<artifact>.committed` pair. Edit only the artifact. Apply validates edited content against the projected live result before writing; a historical report never certifies later edits. A failure before an artifact exists has no invented output/report. Report commit failure preserves work and fails the run.
 
 ## Questions and confidence
 
-Both builds now record a `confidence` (high/medium/low, information only -- it never blocks apply or publishing) and any open question, per method or cell, inside the matching report (also written as Markdown for people, e.g. `acme.integration.report.md`). A build that ends with something still waiting or blocked exits 3, not 0 (an integration build's `--fail-on none` is the one way to keep its own exit at 0 regardless). Answer with `build --continue <file> --answer id="…"` (repeatable) or `--answers <file>`; never the value itself for anything that looks like a credential -- it is refused outright. `--continue` rebuilds only what waited on the answered questions, spending no repair round, and refuses flags that change what is built (`--out`, `--docs-only`, `--only-missing`, `--resources`, …); a new gap the rebuild turns up waits on a new question, and the one just answered is never asked again. In a terminal, each build asks its own open questions itself before it finishes, instead of exiting with them unanswered (integration: at the very end, after refinement; mapping: before its refinement loop); Enter skips one and leaves it open.
+Both builds now record a `confidence` (high/medium/low, information only -- it never blocks apply or publishing) and any open question, per method or cell, inside the matching report (also written as Markdown for people, e.g. `acme.integration.report.md`). A build that ends with something still waiting or blocked exits 3, not 0 (an integration build's `--fail-on none` is the one way to keep its own exit at 0 regardless). Answer with `build --continue <file> --answer id="…"` (repeatable) or `--answers <file>`; never the value itself for anything that looks like a credential -- it is refused outright. `--continue` rebuilds only what waited on the answered questions, spending no repair round, and refuses flags that change what is built (`--out`, `--docs-only`, `--only-missing`, `--resources`, …); a new gap the rebuild turns up waits on a new question, and so does an answered one whose gap still needs a change to the file (an unsupplied `{{value}}`, a list wrapper with no `response_path`, a file in a JSON body); other answered questions are not asked again. In a terminal, each build asks its own open questions itself before it finishes, instead of exiting with them unanswered (integration: at the very end, after refinement; mapping: before its refinement loop); Enter skips one and leaves it open.
 
 ## Optional inspection and prepared execution
 
@@ -37,9 +43,9 @@ Apply compares the artifact, its trustworthy committed baseline and live. Unrela
 
 Eligible work can land while individual items are skipped, held, clashing, rejected or uncertain. A shared config/dependency issue can hold the config write; docs follow the method they describe. Mapping rows preserve authored fields and environment inheritance. Do not copy merged effective values into an authored override. All mapping-list pages must be read before assuming a row is absent. `db_info` is build context, not authority to overwrite live state.
 
-Each write is reread. Lost responses and crashes retain enough state to reconcile a later run; never delete sidecars or add dummy edits to force retries. An editor save during the run is preserved. Integration method/doc removals need `--allow-method-removal` / `--prune-docs`; CREATE is private beta, and UPDATE never publishes or changes beta status. After a CREATE with `--slug-override`, apply writes the new `id` and the override as `name` into the artifact. A build whose output file is committed for another host/team/environment/integration stops with exit 1; pass another `--out`.
+Each write is reread. Lost responses and crashes retain enough state to reconcile a later run; never delete sidecars or add dummy edits to force retries. An editor save during the run is preserved. Integration method/doc removals need `--allow-method-removal` / `--prune-docs`; CREATE is private beta, and UPDATE never publishes or changes beta status. After a CREATE with `--slug-override`, apply writes the new `id` and the override as `name` into the artifact. A build whose output file is committed for another host/team/environment/integration stops (an integration build exits 1, a mapping build 3); pass another `--out`.
 
-Apply exits 0 for complete/unchanged, 2 for landed writes with pending work, 3 for blocked/nothing-written with pending work, 1 for auth/unexpected failure and 4 for an otherwise complete run with an executed test failure. `--prepare` writes nothing, so it exits 3 whenever its plan leaves something pending: read `blocked` (absent when the plan can run) and the items, not the exit code, before showing the plan. `-o json` emits one structured result. Dry run is a preview, not readiness proof.
+Apply exits 0 for complete/unchanged, 2 for landed writes with pending work (a write the platform answered 2xx for whose re-read failed counts as landed), 3 for blocked/nothing-written with pending work, 1 for auth/unexpected failure and 4 for an otherwise complete run with an executed test failure. `--prepare` writes nothing, so it exits 3 whenever its plan leaves something pending: read `blocked` (absent when the plan can run) and the items, not the exit code, before showing the plan. `-o json` emits one structured result. Dry run is a preview, not readiness proof.
 
 ## Documentation and repair
 

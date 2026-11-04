@@ -65,15 +65,18 @@ Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KE
 
 ## The workflow
 
-Build, optionally edit the artifact, then apply:
+Build, optionally edit the artifact, prepare, then apply the prepared plan once the human approves it:
 
 ```bash
 # 1. Build — generates <slug>.integration.json from API docs
 truto integrations build https://api.acme.com/openapi.json acme
 
 # Optionally edit acme.integration.json
-# Apply freshly checks the projected config and doc rows
-truto integrations apply acme.integration.json
+# 2. Prepare — checks the projected config and doc rows, writes nothing to Truto, saves a plan
+truto integrations apply acme.integration.json --prepare
+
+# 3. On the human's approval of the plan: write exactly that plan
+truto integrations apply acme.integration.json --plan acme.integration.json.plan.json --expect-digest <digest>
 ```
 
 This is the happy path. When the build stops on an open question instead, see [Questions, confidence and the agent loop](#questions-confidence-and-the-agent-loop) below.
@@ -156,12 +159,12 @@ Every build ends with a short summary -- on stderr in a terminal, and ONCE as a 
 1. `truto integrations build <source> acme -o json`.
 2. Read the JSON summary. `complete`/`incomplete` -> go straight to lint. Otherwise there are open `questions` and/or `blocked`/`low_confidence` methods to look at first.
 3. Ask the human each open question in chat, in plain words, with its `suggestion`. **Never put a credential (a key, token, password) in an answer** -- it's refused outright, nothing runs, exit 3. Say where the value actually comes from (a credential field, a setup step) instead.
-4. `truto integrations build --continue acme.integration.json --answer q1="…" --answer q2="…"` (repeatable; or `--answers <file>`, a JSON object or one `q1=…` per line, `-` for stdin). Never paste a credential: a credential-looking answer is refused (exit 3) and the refusal names character positions, not text; the check reads through encodings, quotes escaped in a JSON string and a token padded with `=` after any `Authorization` scheme, while a placeholder, a field name, a masked example (`re_xxxxxxxxx`) or a type name after a weaker credential name (`auth: OAuth2ClientCredentials`) passes. Only the methods still waiting on the answered questions are rebuilt, as a new run that spends no repair round; every other method stays byte-identical -- if the model touches one anyway, the CLI puts it back, and a method it adds is dropped, except a waiting method renamed or moved to another resource with the same verb and path. A run that would lose a waiting method (removed while the model added one the CLI drops, as a changed verb or path does) is refused with exit 1 and writes nothing; answer again. A removal the rebuild lists in the file's `excluded_operations` stands. With `-o json`, `continued` lists what was rebuilt, renamed, removed, put back and dropped. If the rebuild turns up a new gap, that's a new question (it can only hold what was being rebuilt or shared config, never another method); the one you just answered is never asked again.
+4. `truto integrations build --continue acme.integration.json --answer q1="…" --answer q2="…"` (repeatable; or `--answers <file>`, a JSON object or one `q1=…` per line, `-` for stdin). Never paste a credential: a credential-looking answer is refused (exit 3) and the refusal names character positions, not text; the check reads through encodings, quotes escaped in a JSON string and a token padded with `=` after any `Authorization` scheme, while a placeholder, a field name, a masked example (`re_xxxxxxxxx`) or a type name after a weaker credential name (`auth: OAuth2ClientCredentials`) passes. Only the methods still waiting on the answered questions are rebuilt, as a new run that spends no repair round; every other method stays byte-identical -- if the model touches one anyway, the CLI puts it back, and a method it adds is dropped, except a waiting method renamed or moved to another resource with the same verb and path, and a method that an answered shared-config question's action step calls (the read a credential-check answer adds to `post_install`). A run that would lose a waiting method (removed while the model added one the CLI drops, as a changed verb or path does) is refused with exit 1 and writes nothing; answer again. A removal the rebuild lists in the file's `excluded_operations` stands. With `-o json`, `continued` lists what was rebuilt, renamed, removed, put back and dropped. If the rebuild turns up a new gap, that's a new question (it can only hold what was being rebuilt or shared config, never another method); the one you just answered is not asked again, unless its gap needs a change to the file (an unsupplied `{{value}}`, a list wrapper with no `response_path`, a file in a JSON body) and the rebuild left it there -- then it waits on a new question.
 5. `truto integrations lint acme.integration.json`. It exits 1 on warnings as well as errors; review the warnings, but only an ERROR blocks apply (`--ignore-warnings` makes lint fail on ERRORs only).
 6. `truto integrations apply acme.integration.json --prepare`. Show the human the plan.
 7. On their approval only: `truto integrations apply acme.integration.json --plan acme.integration.json.plan.json --expect-digest <digest>`.
 
-`--continue` takes only the file -- no source URL, slug, `--out`, `--docs-only`, `--only-missing`, `--refine`, `--instructions` or `--spec`. In a real terminal (no `-o json`), the build asks each open question itself at the end instead of exiting -- press Enter to skip one (it stays open). Answers are saved in the report with who gave them and when; a later build or `--continue` of the same file never asks an already-answered question again.
+`--continue` takes only the file -- no source URL, slug, `--out`, `--docs-only`, `--only-missing`, `--refine`, `--instructions` or `--spec`. In a real terminal (no `-o json`), the build asks each open question itself at the end instead of exiting -- press Enter to skip one (it stays open). Answers are saved in the report with who gave them and when; a later build or `--continue` of the same file reuses them and asks again only about a gap that still needs a change to the file.
 
 **Confidence** is information only -- it never blocks apply or publishing. Each method in the report (`acme.integration.report.json`, and `acme.integration.report.md` for people) carries a `confidence.level` (`high`/`medium`/`low`) and `confidence.reasons`. A method is `low` with no doc section, an ERROR or stop finding, a failed read test, or an open question. `high` needs its own doc section, a response example, clean lint (no warning either), a spec match or a passed read test, and at most one assumption. The model's own rating can move a method one step toward its own level, except that an ERROR, a stop finding, a failed read test or an open question keeps it `low` whatever the model thinks. Use the summary's `low_confidence` list to point the human's review at those methods and their `assumptions` first -- not as something that has to clear before moving on.
 
@@ -206,14 +209,15 @@ See [references/lint-and-audit.md](references/lint-and-audit.md) for the main au
 ### Apply
 
 ```bash
-truto integrations apply acme.integration.json
+truto integrations apply acme.integration.json --prepare  # plan; no platform writes
+truto integrations apply acme.integration.json --plan acme.integration.json.plan.json --expect-digest <digest>
 truto integrations apply acme.integration.json --dry-run  # optional offline preview
 truto integrations build --recheck acme.integration.json # optional report refresh
 ```
 
 Apply rechecks edited artifacts, reconciles against committed/live state, preserves concurrent edits and observes every write. Eligible methods can land while skipped/held items remain pending. A method doc-input change can regenerate unedited documentation from its recorded source using configured model access; manual doc edits and rows whose generation fails are retained.
 
-Use `--prepare [--plan-out <path>]` and then `--plan <path> --expect-digest <digest>` when an exact prepared candidate is useful. Resolve a reported clash with `--resolve '<item>=mine|theirs'`; use `--docs-only` for documentation, and deliberate removal flags only for the listed removals. Apply is non-interactive and needs no `--yes`.
+Apply has no prompt and no `--yes`: a plain `apply <file>` writes live at once. An agent runs `--prepare [--plan-out <path>]`, shows the human the plan, and on their approval runs `--plan <path> --expect-digest <digest>`, which writes exactly that plan. Resolve a reported clash with `--resolve '<item>=mine|theirs'`; use `--docs-only` for documentation, and deliberate removal flags only for the listed removals.
 
 Mark/select a test account with `truto profiles set test-account.<integration> <id>` or `--test-account <id>`. Only proven eligible reads run, with Truto-side token/reauth/webhook effects disclosed. Saved, applied, checked and tested remain distinct; missing evidence is not a pass. Exit codes: 0 complete, 2 partial, 3 blocked, 1 auth/unexpected error, 4 executed test failure on an otherwise complete run.
 

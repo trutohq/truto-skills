@@ -78,9 +78,9 @@ A credential the connecting user types in (`api_key`, `basic`) that nothing chec
 
 ### `placeholder_supply` and `response_path`
 
-`placeholder_supply`: a `{{value}}` in a path, header, query, base_url or authorization that nothing supplies (no credential field, no action writing it to context, not caller input). `response_path`: a list with no `response_path` whose documented response is an envelope with the rows under one key; the runtime then returns the wrapper as one record.
+`placeholder_supply`: a `{{value}}` that nothing supplies (no credential field, no action writing it to context, not caller input), in the integration's authorization, base_url, headers or query, or in a method's path, pagination_path, base_url, headers, query or authorization. `response_path`: a list with no `response_path` whose documented response is an envelope with the rows under one key; the runtime then returns the wrapper as one record.
 
-- **Severity:** `warn`; a build stops on each with a question for the methods involved.
+- **Severity:** `warn`, except `placeholder_supply` on an OAuth token read in authorization (it is stored at `oauth.token.*`), which is `error`. A build stops on each `warn` with a question for the methods involved, but not on a value used only in a `query` (optional input).
 - **Action:** Supply the value (a credential field, an action, or `{{query.<name>}}`), or set `response_path` to the key the rows sit under.
 
 ### `method_path`
