@@ -445,7 +445,7 @@ See [references/troubleshooting.md](references/troubleshooting.md) for source-ti
 |-----------|---------|
 | [Orchestrator Phases](references/orchestrator-phases.md) | Phase A (autonomous build), Phase B (interactive refinement), docs phase, agent tools, patch format |
 | [IntegrationFile](references/integration-file.md) | Output JSON shape, field-by-field breakdown, hand-editing tips, relationship to `apply` |
-| [Lint and Audit](references/lint-and-audit.md) | The main audit sources (method_naming, pattern_match, presence_check, critic, description_quality, method_coverage, docs_completeness, and the CLI V2 checks credential_check, placeholder_supply, response_path, method_path), severities, exit codes, structured output |
+| [Lint and Audit](references/lint-and-audit.md) | The main audit sources (method_naming, pattern_match, presence_check, critic, description_quality, method_coverage, docs_completeness, and the checks CLI V2 adds or widens: credential_check, placeholder_supply, response_path, method_path), severities, exit codes, structured output |
 | [Known Mistakes](references/known-mistakes.md) | Patterns that have broken real integrations before: what each looks like, how the CLI flags it (or doesn't), and the fix |
 | [Troubleshooting](references/troubleshooting.md) | Source-tier selection, cache invalidation, Firecrawl tiers, stuck builds, `--legacy-flow` |
 
