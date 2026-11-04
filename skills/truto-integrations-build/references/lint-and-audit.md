@@ -203,7 +203,7 @@ Resolution order (same as `truto integrations build`):
 
 1. `--integration-config-dir <path>` flag
 2. `$TRUTO_INTEGRATION_CONFIG_DIR` environment variable
-3. Active profile's `integrationConfigDir` (`~/.truto/config.json`)
+3. The `integrationConfigDir` of the profile `-p` names, else the active one's (`~/.truto/config.json`)
 4. `$TRUTO_REPO_PATH` environment variable (appends `src/integration/integrationConfig`)
 5. Walk-up resolution (searches parent directories for a `src/integration/integrationConfig/` directory)
 6. Bundled corpus subset (fallback)
