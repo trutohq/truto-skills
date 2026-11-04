@@ -74,7 +74,7 @@ Two categories of checks:
 A credential the connecting user types in (`api_key`, `basic`) that nothing checks at connect: no `request` step in `post_install` or `validation` fails on an HTTP error, so a wrong key still shows "Connection successful". A `throw_error: "process"` request counts when a later transform raises on its result with `$error(…)`. A request to a `no_auth` method (one that sends no Authorization header) counts only when it carries a typed-in credential itself (a password field, or a field the authorization block reads), as a login or token exchange does; a connection parameter such as `{{subdomain}}` in its path does not count.
 
 - **Severity:** `warn` (lint exits 1 on it). A build stops on it with a `credential_check_missing` question that holds `config.actions`.
-- **Action:** Add a `request` step at the end of `actions.post_install` (a `validation` action's `request` step counts too) that calls the cheapest read any valid key can make (the current user or account, else a list of one item).
+- **Action:** Add a `request` step at the end of `actions.post_install` (a `validation` action's `request` step counts too) that calls the cheapest read any valid key can make (the current user or account, else a list of one item). If the docs have no such read, answer the build's question `none`.
 
 ### `placeholder_supply` and `response_path`
 
