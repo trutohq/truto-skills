@@ -57,7 +57,7 @@ truto profiles set integrationConfigDir /path/to/truto/src/integration/integrati
 | `firecrawlApiKey` | Crawls generic doc sites into clean markdown; also backs `web_search` / `web_fetch` when running on Fireworks | Falls back to `llms-full.txt` / `.md` trick / Turndown (lower tiers); Fireworks builds lose `web_search` / `web_fetch` |
 | `integrationConfigDir` | Directory of existing `<slug>.json` configs for pattern matching | `pattern_match` audit findings skip; other audit sources still run |
 
-Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$FIREWORKS_API_KEY`, `$FIRECRAWL_API_KEY`, etc.) > the profile `-p` names, else the active one (`~/.truto/config.json`) > interactive prompt (Anthropic and Fireworks always; Firecrawl when crawling is needed).
+Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$FIREWORKS_API_KEY`, `$FIRECRAWL_API_KEY`, etc.) > the profile `-p` names, else the active one (`~/.truto/config.json`) > interactive prompt (Anthropic and Fireworks always; Firecrawl when crawling is needed), only in a terminal with `CI` unset and never under `-o json`, which offers to save the key to that profile. A `-p` naming no profile stops the build before any prompt; nothing is saved.
 
 > Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`) downloaded automatically on first use (~35 MB). No external API key is required. To use Fireworks-hosted `qwen3-embedding-8b` embeddings instead, pass `--embedding-provider fireworks` (requires `FIREWORKS_API_KEY`).
 

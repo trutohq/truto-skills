@@ -67,7 +67,7 @@ truto profiles set integrationConfigDir /path/to/truto/src/integration/integrati
 | `unifiedMappingDir` | Corpus of unified mapping exemplars (other integrations' `.mappings`/model files) | Falls back to a bundled subset; fewer exemplars to crib from |
 | `integrationConfigDir` | Proxy-config corpus for exemplars | Fewer proxy exemplars |
 
-Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$TRUTO_UNIFIED_MAPPING_DIR`, …) > the profile `-p` names, else the active one (`~/.truto/config.json`) > interactive prompt when supported on a TTY.
+Each key's resolution order: `--flag` > environment variable (`$ANTHROPIC_API_KEY`, `$TRUTO_UNIFIED_MAPPING_DIR`, …) > the profile `-p` names, else the active one (`~/.truto/config.json`) > interactive prompt on a TTY with `CI` unset (never with `--yes` or `-o json`), which offers to save the key to that profile. A `-p` naming no profile stops the build before any prompt.
 
 > **Note:** Hybrid search (BM25 + cosine) is powered by a local ONNX model (`all-MiniLM-L6-v2`, ~35 MB) downloaded automatically on first use. No external API key is required for embeddings.
 >
