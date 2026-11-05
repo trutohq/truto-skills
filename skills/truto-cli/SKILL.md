@@ -64,13 +64,15 @@ truto upgrade --force      # re-download even if current
 The CLI uses API tokens. Authenticate with:
 
 ```bash
-# Interactive (prompts for profile name, API URL, token)
+# Interactive (prompts for profile name, API URL, token; needs a terminal)
 truto login
 
 # Non-interactive (for scripting / LLM agents)
 truto login --token <your-api-token>
-truto login --token <token> --profile-name staging --api-url https://custom.truto.one
+truto login --token <token> --profile-name staging --api-url https://custom.truto.one   # -p staging works too
 ```
+
+An existing profile keeps its stored API URL unless `--api-url` names another. `login` makes the profile it saves the active one, so commands without `-p` use it from then on. A re-login (`-p <existing> --token`) keeps everything stored on the profile, its model (BYOK) keys and `integrationConfigDir`/`unifiedMappingDir` folders included, except the marked test accounts and the default integrated account when the API URL changes -- those ids belong to the old environment, so they are dropped. The success line names what was kept and dropped.
 
 Verify credentials:
 
@@ -87,8 +89,9 @@ truto profiles use staging
 truto use staging
 ```
 
-**Token resolution:** `--token` flag > active profile's token > error.
-**API URL resolution:** `--api-url` flag > active profile's URL > `https://api.truto.one`.
+**Token resolution:** `--token` flag > with `-p <name>`, that profile's token, then `TRUTO_API_TOKEN`; without `-p`, `TRUTO_API_TOKEN`, then the active profile's token > error.
+**API URL resolution:** `--api-url` flag > with `-p <name>`, that profile's URL, then `TRUTO_API_URL`; without `-p`, `TRUTO_API_URL`, then the active profile's URL > `https://api.truto.one`.
+A token and URL from different places that name different hosts are refused: a profile token belongs to the profile's URL, and an environment token to `TRUTO_API_URL` when that is set (without it, the token is used with whichever URL resolves); a `--token` is never refused.
 
 ## Quick Reference
 
@@ -218,13 +221,17 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
 
 **LLM rule of thumb:** default to `-o ndjson` for anything you'll pipe; default to `-o json > /tmp/out.json` for anything you'll `jq` over more than once.
 
+## Integration engineering workflow
+
+For build/edit/apply/verification, follow [the artifact workflow](references/integration-workflow.md). Reports and fresh checks are automatic; preserve `.committed` recovery state, explicit partial outcomes and concurrent edits. Use only authorized marked accounts for eligible reads, and keep saved/applied/local checks/live tests distinct.
+
 ## LLM Agent Tips
 
 1. **For any LLM-driven workflow, always pass `-o json` or `-o ndjson` — `table` is for humans only and silently truncates IDs, URLs, and JSON/HTML bodies.** Prefer `ndjson` when piping to `head`, `tail`, `less`, `grep`, `jq -c`, etc. — `json` is buffered and gets truncated mid-token by SIGPIPE, causing `jq: parse error`. For larger results, redirect to a file first: `truto … -o json > /tmp/out.json && jq … /tmp/out.json`. See the gotcha below.
 2. **Always run `truto capabilities <account-id> -o json` before any data-plane call.** It tells you which `proxy` resources/methods and which `unified` model/resource/methods are available for that account. Never guess them. See [Querying Data from Connected Accounts](#querying-data-from-connected-accounts-discovery-first) above and [references/querying-data.md](references/querying-data.md). Reach for `truto accounts tools <id>` only when you need the full `query_schema`/`body_schema` for a specific method.
 3. **Resource ID is positional, not a flag.** For `get`/`update`/`delete` on `truto unified` and `truto proxy`, the resource ID is the second positional argument — there is no `-d` / `--id` flag. Correct: `truto proxy contacts crd_xxx -a $ACCOUNT -m get`. Wrong: `truto proxy contacts -a $ACCOUNT -m get -d crd_xxx` (returns `error: unknown option '-d'`). Same convention for unified: `truto unified crm contacts crd_xxx -m get -a $ACCOUNT`.
 4. **Use `-v` (verbose)** to debug failures — shows raw HTTP request/response on stderr.
-5. **Non-interactive login:** `truto login --token <token>` skips all prompts.
+5. **Non-interactive login:** `truto login --token <token>` skips all prompts. Without a terminal `--token` is required: plain `truto login` there exits 1 and saves nothing.
 6. **Use `truto context`** to get a full CLI reference as markdown, or `truto context --full` for the complete command tree with all flags.
 7. **Pagination:** List commands return 25 results by default. Use `truto export` for exhaustive data.
 8. **Resource path convention:** In `export`/`diff`, `crm/contacts` (with `/`) = unified API, `tickets` (no `/`) = proxy API.

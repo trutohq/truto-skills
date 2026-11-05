@@ -11,8 +11,8 @@ These flags are available across all resource commands:
 | ------------------------ | ------------------ | ----------------------------------------------------------- |
 | `--limit <n>`            | `list`             | Results per page (default: 25)                              |
 | `--next-cursor <cursor>` | `list`             | Paginate to next page                                       |
-| `--stdin`                | `create`           | Read body from stdin (JSON array or NDJSON)                 |
-| `-b, --body <json>`      | `create`, `update` | Inline JSON request body                                    |
+| `--stdin`                | `create`, `update` | Read body from stdin (JSON array or NDJSON)                 |
+| `-b, --body <json>`      | `create`, `update` | Inline JSON request body: one JSON object (anything else exits 1, nothing sent, the text never quoted) |
 | `-i, --interactive`      | `update`           | Pre-fill fields from current record for interactive editing |
 | `-f, --force`            | `delete`           | Skip confirmation prompt                                    |
 
@@ -39,6 +39,8 @@ truto integrations delete <id>
 **Create fields:** `name` (required), `config` (JSON, required), `category`
 
 **Update fields:** `category`, `config` (JSON), `version` (required — optimistic locking)
+
+`sharing` and `is_beta` need `--publish`: a body that would change either from its live value is refused (exit 1, nothing sent) unless `--publish` is given; sending back the value already live needs nothing. With several `--stdin` records (each sent to the same `<id>`), each is checked just before its own PATCH: a record refused after earlier ones were sent stops the run with exit 2 and names how many were sent.
 
 **Extra commands:**
 
@@ -67,6 +69,8 @@ cat integration.json | truto integrations validate --stdin
 `init` supports auth formats `api_key`, `oauth2`, `oauth2_client_credentials`, `basic`, `keka_oauth`, `oauth`. The scaffold seeds `credentials`, `authorization`, a starter `resources` block (CRUD method skeletons per resource you list), and an optional `webhook` block. `validate` checks the config against the `IntegrationConfig` schema from the OpenAPI spec, plus local checks for `label`, `credentials`, and the `base_url` path prefix — server-side validation still happens at create/update time.
 
 For the full `integration.config` schema, all five credential formats (`api_key`, `oauth2`, `oauth2_client_credentials`, `oauth`, `keka_oauth`), and an end-to-end Acme CRM worked example that uses `init → validate → create`, see the [Authoring Integrations](../../truto/references/authoring-integrations.md) reference in the `truto` skill.
+
+For artifact-based integration/mapping work, optional prepared execution and explicit restores with `integrations update --body-file` / `docs update --body-file`, see [the artifact workflow](integration-workflow.md). Secret-preservation holds apply to ordinary updates and restores too.
 
 ### Integrated Accounts (`truto accounts`)
 

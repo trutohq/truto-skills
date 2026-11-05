@@ -88,7 +88,7 @@ truto export crm/contacts -a <id> -o ndjson | \
 
 ## Stdin Pipe Support
 
-The `--stdin` flag is available on `create` (resource commands), `unified`, `proxy`, `custom`, and `batch`.
+The `--stdin` flag is available on `create` and `update` (resource commands), `unified`, `proxy`, `custom`, and `batch`.
 
 ```bash
 # Bulk create from NDJSON
@@ -110,15 +110,15 @@ curl -s https://api.example.com/data | truto custom /import -m POST -a <id> --st
 cat batch-requests.json | truto batch --stdin
 ```
 
-### Format Detection (resource `create` only)
+### Format Detection (resource `create` and `update` only)
 
-- Input starting with `[` → parsed as JSON array, each element created separately
+- Input starting with `[` → parsed as JSON array, each element created (or, for `update`, sent to the same `<id>`) separately
 - Otherwise → parsed as NDJSON (one JSON object per line)
 
 ### Important
 
 - For `unified`, `proxy`, `custom`, and `batch`: `--body` takes precedence over `--stdin`. Stdin is parsed as a single JSON body (not NDJSON).
-- For resource `create` commands: `--stdin` takes precedence over `--body`. Supports multi-record input (JSON array or NDJSON).
+- For resource `create` and `update` commands: `--stdin` takes precedence over `--body`. Supports multi-record input (JSON array or NDJSON). `update` checks each record just before its own PATCH: a record refused after earlier ones were sent stops the run with exit 2 and names how many were sent, so send the rest, not the whole input, again.
 
 ## Profiles
 
@@ -139,7 +139,7 @@ truto profiles set default-integrated-account <account-id>
 truto profiles get api-url
 ```
 
-`set` and `get` operate on the currently active profile. Switch profiles first if needed.
+`set`, `get` and `set-key` operate on the profile `-p` names (`truto -p staging profiles set-key anthropic`), else the active one. A `-p` naming a profile that does not exist is refused; nothing is saved.
 
 **Allowed profile keys** (all naming formats accepted):
 

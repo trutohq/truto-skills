@@ -86,6 +86,12 @@ truto unified crm contacts <id> -m delete -a <account-id>
 # Custom method (e.g., search) — no ID, method becomes a path segment
 truto unified crm contacts -m search -a <account-id> -b '{"query":"Jane"}'
 
+# -m names a Truto method: list/get/create/update/delete in any case (-m DELETE is delete);
+# any other name is a custom method, sent as typed. The id and names are sent as encoded path
+# segments; an id that reads as . or .., an empty id, and an id given to list, create or a
+# custom method (their routes have none) are refused. A -q integrated_account_id that differs
+# from -a is refused too.
+
 # With query parameters
 truto unified crm contacts -a <account-id> -q "limit=10,status=active"
 
@@ -118,7 +124,9 @@ truto unified crm contacts -a <id> -q "next_cursor=abc123"
 
 ### Evaluate JSONata Locally (`truto jsonata eval`)
 
-Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata`, but the CLI pins its own version, which can lag the platform's — if a result differs from the platform, trust the platform.
+Evaluate **any** Truto JSONata expression against a JSON context you provide — no API token, no integrated account, no third-party HTTP call. Uses `@truto/truto-jsonata`; the CLI and worker use different versions, so local success does not prove production behavior.
+
+It runs in the CLI's own bounded worker. A runaway expression is stopped and exits 1; if the worker cannot start, nothing is evaluated and it exits 1. Functions that call external services (`$generateEmbeddingsCohere`, `$parseDocument`, `$convertMdToPdf`, `$getArrayBuffer`, `$getDataUri`, `$teeStream`) are **not called**: they return the placeholder string `"[not run: external function $<name>]"` with a warning on stderr, and the command exits 0. With `-o json` that placeholder arrives on stdout as if it were the value, so check stderr before using it. A URL or date-time result prints as its JSON form (`href` / ISO string).
 
 ```bash
 truto jsonata eval --expression <jsonata> [options]
@@ -234,6 +242,7 @@ truto unified test-mapping \
 
 - Evaluates **JSONata-string** mappings only. Operator-style (object) mappings are printed for inspection but not executed locally; their merge semantics live on the platform.
 - The mapping context is `{ response, query, rawQuery, context: {}, headers: {}, body: {} }`. To exercise mappings that read `$context` or `$headers`, run them on the platform.
+- Invalid JSON from `--input` or `--stdin` is refused; the refusal names the input, never its contents, so a stray token in a malformed sample is never echoed back.
 
 ---
 
@@ -345,6 +354,8 @@ truto custom /my-endpoint -a <account-id> -q "foo=bar"
 truto custom /my-endpoint -a <account-id> -H "X-Custom-Header=value"
 echo '{"data":true}' | truto custom /my-endpoint -m POST -a <account-id> --stdin
 ```
+
+A path with a `.` or `..` segment (also percent-encoded), or one the URL parser would resolve outside `/custom`, is refused before anything is sent: it would leave `/custom` for another route. The parser reads `\` as `/` and drops tabs and a trailing space, so `/..\integration/x`, `/%2e%2e\integration/x` and `'.. '` are refused too.
 
 Default output format is `json` (not `table`).
 

@@ -126,9 +126,11 @@ truto logs --log-type <type> [options]
 | `--mcp-server-id <id>` | Filter by MCP server (`mcp`) |
 | `--integration <name>` | Filter by integration name |
 | `--event <event>` | Filter by event (`webhook`) |
-| `--limit <n>` | Number of results (max 100, default 100) |
+| `--limit <n>` | Rows per page (max 100, default 100) |
+| `--next-cursor <cursor>` | Continue from a returned cursor |
+| `--all` | Follow up to 100 pages with a fixed end time |
 
-Not all filters apply to all log types — the parenthetical notes indicate which log types support each filter.
+Not all filters apply to all log types — the parenthetical notes indicate which log types support each filter. Repeated cursors and page caps are reported; an API query failure is an error, not an empty result. Logs cannot establish which cached config version executed.
 
 ### Examples
 
