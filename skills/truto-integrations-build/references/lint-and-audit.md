@@ -37,7 +37,7 @@ Per-method quality assessment of each `description` documentation row. Only fire
 Set-diff of methods present in the live integration vs. the extracted file. Only fires when a live integration exists (UPDATE mode; skipped on CREATE).
 
 - **Severity:** `warn` for methods the live integration has but the extracted file dropped (potential regression), `info` for methods the extracted file has but the live doesn't (additions).
-- **Action:** For dropped methods -- verify the removal is intentional. For additions -- no action needed; they'll be created on apply.
+- **Action:** For dropped methods -- verify the removal is intentional: `apply` stops on a live method the file drops (exit 3, nothing written) until `--allow-method-removal` or the method is back in the file. For additions -- no action needed; they'll be created on apply.
 
 ### `pattern_match`
 
