@@ -152,7 +152,7 @@ Every build ends with a short summary -- on stderr in a terminal, and ONCE as a 
 }
 ```
 
-`status` is `complete`, `incomplete` (smaller gaps only, e.g. a missing doc row -- still exits 0), `waiting` (methods, or the shared config, wait on an answer), `blocked`, or `failed`. Exit codes (`--fail-on` picks what counts as failed; default `blocking`): **0** complete or incomplete with only smaller gaps, **3** finished but something still waits or is blocked, **1** failed. `--fail-on none` never exits 3 (still 1 on a thrown error or an unsaved report); `errors` / `incomplete` widen what counts as failed.
+`status` is `complete`, `incomplete` (smaller gaps only, e.g. a missing doc row -- still exits 0), `waiting` (methods, or the shared config, wait on an answer), `blocked`, or `failed`. Exit codes (`--fail-on` picks what counts as failed; default `blocking`): **0** complete or incomplete with only smaller gaps, **3** finished but something still waits or is blocked, **1** failed. A run that stops before its summary prints `{ "status": "failed", "exit": …, "error": "…" }`, and that `exit` is not always 1: 2 for some usage errors (a deprecated flag), 3 for a `--continue` answer refused as a credential (nothing written), so key on `exit`, not `status`. `--fail-on none` never exits 3 once the build has run (still 1 on a thrown error or an unsaved report); `errors` / `incomplete` widen what counts as failed.
 
 **The loop an agent runs:**
 
