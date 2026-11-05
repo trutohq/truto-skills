@@ -125,7 +125,7 @@ is fixed, not the JSONata output. See
 [references/agent-and-tools.md](references/agent-and-tools.md) for the loop, the
 full tool list, and the sampling ladder.
 
-**Live samples and bootstrap calls pass the shared effective-request safety gate.** Method names alone never prove a read; overrides, dependencies and request behavior are checked. Unsafe or unproven calls are skipped, and so is every sample within 30 minutes of a write to the integration or its environment integration row (the account may still run its older cached config; the reason gives the time it can run again); documentation examples are used where available.
+**Live samples and bootstrap calls pass the shared effective-request safety gate.** Method names alone never prove a read; overrides, dependencies and request behavior are checked. Unsafe or unproven calls are skipped. Within 30 minutes of a write to the integration or its environment integration row (the account may still run its older cached config) the build refreshes the config cache and waits about 7 minutes before its first live sample, counting down on stderr; later samples don't wait. If the refresh fails, or another write lands during the wait, every sample until the latest write's 30 minutes end is skipped, and the reason gives the time it can run again. Documentation examples are used where available.
 Write cells (`create`/`update`/`delete`) are built from the proxy's documented
 request body, so they do not need a live response sample.
 
