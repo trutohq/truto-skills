@@ -1,12 +1,12 @@
 # Lint and Audit
 
-`truto integrations lint` runs the static auditor over an IntegrationFile. No LLM, no writes, no cost. This reference covers every audit source, their finding types, and how to act on them.
+`truto integrations lint` runs the static auditor over an IntegrationFile. No LLM, no writes, no cost. This reference covers the audit sources an author meets most, their finding types, and how to act on them. Every finding names its rule in its `source` field; `lint -o json` shows it.
 
 ---
 
 ## Audit sources
 
-The auditor consolidates six independent signal sources. Each finding carries a `source` field so you can filter by category.
+The auditor runs many checks; the ones below are the ones an author meets most. Each finding carries a `source` field so you can filter by category.
 
 ### `presence_check`
 
@@ -37,7 +37,7 @@ Per-method quality assessment of each `description` documentation row. Only fire
 Set-diff of methods present in the live integration vs. the extracted file. Only fires when a live integration exists (UPDATE mode; skipped on CREATE).
 
 - **Severity:** `warn` for methods the live integration has but the extracted file dropped (potential regression), `info` for methods the extracted file has but the live doesn't (additions).
-- **Action:** For dropped methods -- verify the removal is intentional. For additions -- no action needed; they'll be created on apply.
+- **Action:** For dropped methods -- verify the removal is intentional: `apply` stops on a live method the file drops (exit 3, nothing written) until `--allow-method-removal` or the method is back in the file. For additions -- no action needed; they'll be created on apply.
 
 ### `pattern_match`
 
@@ -68,6 +68,35 @@ Two categories of checks:
 - **Severity:** `warn`
 - **Example:** `method "get" has a non-canonical id placeholder as its last path segment ("{{query.attachment_id}}"). The last segment must be {{id}}.`
 - **Action:** Rewrite the path to end in `{{id}}`. Parent/scoping parameters still use `{{query.<name>}}`, but the record's own identifier is always `{{id}}`.
+
+### `credential_check`
+
+A credential the connecting user types in (`api_key`, `basic`) that nothing checks at connect: no `request` step in `post_install` or `validation` fails on an HTTP error, so a wrong key still shows "Connection successful". A `throw_error: "process"` request counts when a later transform raises on its result with `$error(…)`. A request to a `no_auth` method (one that sends no Authorization header) counts only when it carries a typed-in credential itself (a password field, or a field the authorization block reads), as a login or token exchange does; a connection parameter such as `{{subdomain}}` in its path does not count.
+
+- **Severity:** `warn` (lint exits 1 on it). A build stops on it with a `credential_check_missing` question that holds `config.actions`.
+- **Action:** Add a `request` step at the end of `actions.post_install` (a `validation` action's `request` step counts too) that calls the cheapest read any valid key can make (the current user or account, else a list of one item). If the docs have no such read, answer the build's question `none`.
+
+### `placeholder_supply` and `response_path`
+
+`placeholder_supply`: a `{{value}}` that nothing supplies (no credential field, no action writing it to context, not caller input), in the integration's authorization, base_url, headers or query, or in a method's path, pagination_path, base_url, headers, query or authorization. `response_path`: a list with no `response_path` whose documented response is an envelope with the rows under one key; the runtime then returns the wrapper as one record.
+
+- **Severity:** `warn`, except `placeholder_supply` on an OAuth token read in authorization (it is stored at `oauth.token.*`), which is `error`. A build stops on each `warn` with a question for the methods involved, but not on a value used only in a `query` (optional input).
+- **Action:** Supply the value (a credential field, an action, or `{{query.<name>}}`), or set `response_path` to the key the rows sit under.
+
+### `method_path`
+
+A method path that cannot be called as written: a placeholder path (`/__deleted__`), a missing `path`, a `base_url` path the method's path replaces, or a path parameter written the way docs write it (`{id}`, `:id`, `<id>`, `<int:id>`, `[id]`, `[...slug]`, the same percent-encoded such as `%7Bid%7D` or `%5Bid%5D`, a shell variable such as `$ACCOUNT_ID`, or a name in braces in the query string such as `?user={user_id}`), which the runtime sends literally. A lower-case `$value` or `$count` (OData) and a literal `$Task` are not flagged.
+
+- **Severity:** `error`.
+- **Action:** Use `{{id}}` for the record id of get, update and delete, or `{{query.<name>}}` for any other value; put the base path at the start of every method path.
+
+### `docs_completeness`
+
+Fires once for the whole file when no method has a description (zero MCP tools), and once per method for a documentation row the method lacks: a `response_schema` for a described method, a `body_schema` for a method that declares a JSON `body_format`.
+
+- **Severity:** `warn` -- deliberately not an `error`. The integration still works over the proxy/unified APIs without it; it just has nothing to show in the MCP tool list or the capabilities API.
+- **Example:** "none of the 12 method(s) has a description (no `description` documentation row and no inline `description`), so the integration exposes zero MCP tools..."
+- **Action:** `truto integrations build <docs-url> --docs-only <slug>` to generate description rows, then `truto integrations apply <slug>.docs.integration.json --docs-only`. See [Known Mistakes](known-mistakes.md) for the full pattern and which betas have hit it.
 
 ---
 
@@ -143,7 +172,7 @@ CSV column order: `severity`, `section`, `source`, `resource`, `method`, `messag
 truto integrations lint ./acme.integration.json
 ```
 
-Fully offline. Loads the file, parses via the IntegrationFile schema, runs all audit sources. If `--integration-config-dir` or the profile's `integrationConfigDir` points at a corpus, `pattern_match` fires; otherwise it silently skips.
+Offline except two reads: the category list, which falls back to the built-in list, and, for a file with an `id`, that integration's live documentation rows for the orphan-row check (skipped with a notice when the read fails). Loads the file, parses via the IntegrationFile schema, runs all audit sources. If `--integration-config-dir` or the profile's `integrationConfigDir` points at a corpus, `pattern_match` fires; otherwise it silently skips.
 
 ### Slug mode
 
@@ -174,7 +203,7 @@ Resolution order (same as `truto integrations build`):
 
 1. `--integration-config-dir <path>` flag
 2. `$TRUTO_INTEGRATION_CONFIG_DIR` environment variable
-3. Active profile's `integrationConfigDir` (`~/.truto/config.json`)
+3. The `integrationConfigDir` of the profile `-p` names, else the active one's (`~/.truto/config.json`)
 4. `$TRUTO_REPO_PATH` environment variable (appends `src/integration/integrationConfig`)
 5. Walk-up resolution (searches parent directories for a `src/integration/integrationConfig/` directory)
 6. Bundled corpus subset (fallback)

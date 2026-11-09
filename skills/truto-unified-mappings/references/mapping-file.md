@@ -7,7 +7,7 @@ hand-edit, diff, and commit.
 ## File → database mapping
 
 Each `cells[]` entry becomes **one row** in either table, depending on
-`write_target`:
+`write_target` (`base` or `env`; any other value is refused):
 
 | `write_target` | Table | Row identity (unique index) |
 |----------------|-------|------------------------------|
@@ -40,33 +40,38 @@ pushed.
 
 ## MappingCell
 
-One per unified resource/method:
+One per unified resource/method. The build writes this shape:
 
 ```jsonc
 {
-  "resource_name": "contacts",
-  "method_name": "list",
+  "unified_resource_name": "contacts",
+  "unified_method_name": "list",
   "config": { /* the mapping — see below */ },
-  "apply_db_action": "create",           // "create" | "update" | "skip"
-  "existing_row_id": "…",                // set when a row already exists (→ update)
-  "existing_version": 3,
-  "sample_provenance": "live",           // live | docs | source | spec | corpus | manual | none
-  "proxy_match": { "confidence": "high", "routing_notes": "…", "conditional": null },
-  "validation": { "compile_ok": true, "response_mapping_ok": true, "schema_ok": true },
-  "sample": { /* raw API sample kept for review / re-validation */ }
+  "db_info": {                             // build context for apply
+    "action": "create",                    // "create" | "update" | "skip"
+    "existing": { "id": "…", "version": 3 } // set when a row already existed at build time
+  },
+  "sample": { "source": "docs", "data": { /* … */ } }, // no "data" for a live sample
+  "ai": {
+    "match_confidence": "high",
+    "routing_notes": "…",
+    "conditional": null,
+    "validation": { "compile_ok": true, "response_mapping_ok": true, "schema_ok": true }
+  }
 }
 ```
 
 | Field | Meaning |
 |-------|---------|
-| `resource_name` / `method_name` | The unified cell this row maps (for example `contacts` / `list`) |
+| `unified_resource_name` / `unified_method_name` | The unified cell this row maps (for example `contacts` / `list`) |
 | `config` | The mapping itself (the `IntegrationMappingMethod` JSON stored in the DB row) |
-| `apply_db_action` | What `apply` does with this cell: `create` (insert), `update` (patch existing), `skip` (no-op) |
-| `existing_row_id` / `existing_version` | Populated when the platform already has a row — drives `update` + optimistic locking |
-| `sample_provenance` | Where the grounding sample came from (`live` proxy, `docs`, `source` URL, …) |
-| `proxy_match` | Routing audit — `confidence` (`high`/`medium`/`low`), `routing_notes`, optional `conditional` guard |
-| `validation` | Per-cell check results: `compile_ok`, `response_mapping_ok`, `schema_ok`, `unverified`, `error` |
-| `sample` | The raw API sample, retained so `validate` can re-check without a live call |
+| `db_info.action` | The build's action for the cell: `create`, `update` or `skip`. `skip` keeps the cell out of apply (a `skip` you set by hand stays, even when an answer rebuilds the cell); otherwise apply decides from its baseline and the live rows (see [How `apply` consumes the file](#how-apply-consumes-the-file)) |
+| `db_info.existing` | The row (`id`, `version`) the platform had at build time: context, not authority |
+| `sample.source` | Where the grounding sample came from: `live` proxy, `docs`, `source` URL, `spec`, `corpus`, `manual` or `none` |
+| `sample.data` | The sample (a list trimmed for storage), kept for review and re-validation. Never saved for a `live` sample: account data stays in memory |
+| `ai` | Routing audit (`match_confidence` `high`/`medium`/`low`, `routing_notes`, an optional `conditional` guard) and the per-cell check results (`validation`: `compile_ok`, `response_mapping_ok`, `schema_ok`, `unverified`, `error`) |
+
+Files with the older flat names (`resource_name`, `method_name`, `apply_db_action`, `existing_row_id` / `existing_version`, `sample` + `sample_provenance`, `proxy_match`, `validation`) are still read.
 
 ### The `config` (mapping fields)
 
@@ -99,7 +104,13 @@ Informational, but the single best thing to read before `apply`:
   "counts": { "planned": 18, "built": 15, "routed_unbuilt": 2, "skipped": 1, "flagged": 3 },
   "built": { "contacts": ["list", "get", "create"], "accounts": ["list", "get"] },
   "unbuilt_routed": [
-    { "cell": "deals.update", "proxy": "opportunities.update", "reason": "no verifiable sample", "resolve": "re-run with --account or --source-url" }
+    { "cell": "deals.update", "proxy": "opportunities.update", "confidence": "high", "reason": "no verifiable sample", "resolve": "re-run with --account or --source-url" },
+    { "cell": "people.list", "proxy": "people.search", "confidence": "high",
+      "routes": [                          // a conditional routing: every route, `proxy` is the first
+        { "proxy": "people.search", "confidence": "high", "when": "$exists(rawQuery.q)" },
+        { "proxy": "people.list", "confidence": "medium" }
+      ],
+      "reason": "no verifiable sample", "resolve": "re-run with --account or --source-url" }
   ],
   "skipped": [
     { "cell": "notes.delete", "reason": "no proxy endpoint serves this method" }
@@ -113,12 +124,23 @@ Informational, but the single best thing to read before `apply`:
 }
 ```
 
+`build_summary` lives inside this file and is always informational. A separate sidecar report (`<file>.report.json`, mirrored as `<file>.report.md` for people -- e.g. `acme.crm.mappings.report.json`) carries the per-cell audit trail the build loop used to decide what to ask about: route, sample source, checks, assumptions, any open question, and a `confidence` rating. `report_path` in `unified-mappings build -o json`'s output names it. See [truto-integrations-build: Questions, confidence and the agent loop](../../truto-integrations-build/SKILL.md#questions-confidence-and-the-agent-loop) for how confidence and questions work; the mapping report's cell records use the same confidence rule and questions, with a cell's route and sample in place of a method's doc section and example.
+
 ### `status` vs `outcome`
 
-- **`status`** is the verdict: `complete` (every routed cell built), `partial`
-  (finished, but some routed cells had no verifiable sample — recorded in
-  `unbuilt_routed`; still a successful run), `incomplete` (cut short before every
-  cell was attempted; re-running may build more).
+- **`status`** is the verdict: `complete` (every routed cell was built, and
+  apply skips none of them), `partial` (the build finished but left recorded
+  gaps: routed cells it could not build, usually for want of a verifiable
+  sample, listed in `unbuilt_routed`; or built cells apply skips,
+  `counts.waiting` for those an open question holds until it is answered and
+  `counts.blocked` for those a failed local check holds until it passes;
+  `status_reason` names each; still a successful run), `incomplete` (cut short
+  before every cell was attempted; re-running may build more; it wins over
+  `partial`).
+- **`counts`**: `planned`, `built`, `routed_unbuilt`, `skipped`, `flagged`
+  (built cells with a review warning), and, only when non-zero, `waiting`
+  (built cells an open question holds) and `blocked` (built cells a failed
+  local check holds).
 - **`outcome`** is the diagnostic for *how the loop ended*: `finalized`,
   `stalled_no_progress`, `budget_exceeded`, `gave_up`, `structured`,
   `resumed_no_op`.
@@ -128,8 +150,14 @@ Informational, but the single best thing to read before `apply`:
 - **`skipped`** — acceptable gaps: the router found **no** proxy endpoint serving
   that unified method. Nothing to fix.
 - **`unbuilt_routed`** — a proxy endpoint *was* matched but the cell could not be
-  built (usually no verifiable sample). Each carries a `reason` and often a
-  `resolve` (for example "re-run with `--account`").
+  built (usually no verifiable sample). Each carries the route's `confidence`, a
+  `reason` and often a `resolve` (for example "re-run with `--account`"). A cell the
+  build routed conditionally (more than one proxy method, each with a `when`
+  guard) also carries `routes`: every route as `{ proxy, confidence, when }`,
+  `proxy` being the first; it is omitted for a single route. A `--continue`
+  rebuilds such a cell on that route (on all of `routes`, each with its guard,
+  for a conditional one, as a fresh build would), and its summary keeps the
+  gaps of the cells it did not rebuild.
 
 ### `warnings` and warning kinds
 
@@ -154,7 +182,7 @@ optional `alternatives`, and an optional `resolve`:
 | `general` | Uncategorized |
 
 `counts.flagged` is the number of **built** cells carrying at least one warning —
-they applied fine but deserve a look.
+they were built with advisory findings; this does not say they were applied or live-tested.
 
 ## `refinements`
 
@@ -164,15 +192,6 @@ Append-only history of the post-build refinement loop. Each entry records the
 
 ## How `apply` consumes the file
 
-`truto unified-mappings apply <file>` reads `cells` only. For each cell it
-performs `apply_db_action`:
+Apply reconciles each authored cell against a trustworthy baseline and current live rows, validates the projected values and observes every write. `db_info` is build context, not authority to trust stale action/id/version hints. A deliberate skipped cell remains labelled. `build_summary` is informational, not proof that a later edited file passed checks.
 
-- `create` → insert a new row,
-- `update` → patch the existing row (`existing_row_id` + `existing_version`),
-- `skip` → no-op.
-
-`--target base` writes `unified_model_resource_method` rows; `--target env`
-writes `environment_unified_model_resource_method` overrides. `--dry-run` prints
-the payloads without writing. Because `build_summary` and `refinements` are
-ignored, you can prune or hand-edit cells before applying without breaking
-anything.
+The build saves a matching report and `<artifact>.committed` pair. `build --recheck <file>` optionally refreshes local evidence; apply rechecks automatically. Target changes use a separate copy; base rows and environment overrides retain separate baselines and inheritance. Dry run is offline and does not compare live state. Plans, explicit clash resolutions, partial results and marked-account tests follow [the artifact workflow](../../truto-cli/references/integration-workflow.md).
