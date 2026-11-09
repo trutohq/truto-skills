@@ -118,7 +118,7 @@ cat batch-requests.json | truto batch --stdin
 ### Important
 
 - For `unified`, `proxy`, `custom`, and `batch`: `--body` takes precedence over `--stdin`. Stdin is parsed as a single JSON body (not NDJSON).
-- For resource `create` and `update` commands: `--stdin` takes precedence over `--body`. Supports multi-record input (JSON array or NDJSON). `update` checks each record just before its own PATCH: a record refused after earlier ones were sent stops the run with exit 2 and names how many were sent, so send the rest, not the whole input, again.
+- For resource `create` and `update` commands: `--stdin` takes precedence over `--body`. Supports multi-record input (JSON array or NDJSON), except `integrations update`, which takes one record: more are refused before anything is sent, since every record would update the same integration. Elsewhere `update` checks each record just before its own PATCH: a record refused after earlier ones were sent stops the run with exit 2 and names how many were sent, so send the rest, not the whole input, again.
 
 ## Profiles
 
