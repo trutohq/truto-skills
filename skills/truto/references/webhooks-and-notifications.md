@@ -123,7 +123,7 @@ Common webhook event types:
 | Event | Description |
 |-------|-------------|
 | `sync_job_run:created` | Sync job run started |
-| `sync_job_run:updated` | Sync job run status changed |
+| `sync_job_run:updated` | A caller changed a run's `meta`, `error_handling`, `delay_between_requests_ms` or `resource_stats` (`PATCH /sync-job-run/:id`); not sent for status changes |
 | `sync_job_run:completed` | Sync job run finished successfully |
 | `sync_job_run:failed` | Sync job run failed |
 | `sync_job_run:deleted` | Sync job run deleted |

@@ -571,7 +571,7 @@ A sync job run is a single execution of a sync job for a specific integrated acc
 | `GET` | `/sync-job-run` | List runs |
 | `GET` | `/sync-job-run/:id` | Get a run |
 | `POST` | `/sync-job-run` | Trigger a run |
-| `PATCH` | `/sync-job-run/:id` | Update a run (e.g. set status) |
+| `PATCH` | `/sync-job-run/:id` | Update a run's `meta`, `error_handling`, `delay_between_requests_ms` or `resource_stats`. Truto sets `status`, `started_at`, `finished_at` and `retry_attempt` as the run runs: a body that sends any of them is a `400` (`sync_job_run_read_only_field`) and changes nothing |
 | `DELETE` | `/sync-job-run/:id` | Stop / delete a run |
 
 > **In-dashboard assistant note:** the Platform Assistant's API catalog exposes only `GET`, `POST`, and `DELETE` on sync-job runs — **not `PATCH`**. To **re-run** a job, `POST /sync-job-run` (a fresh run); to **stop** an in-progress run, `DELETE /sync-job-run/:id`. Don't reach for `PATCH` to change a run's status from the assistant.
@@ -625,7 +625,7 @@ curl -X POST https://api.truto.one/sync-job-run \
 Sync job runs emit webhook events:
 - `sync_job_run:created` — When a run is created
 - `sync_job_run:started` — When a run starts executing
-- `sync_job_run:updated` — When a run status changes
+- `sync_job_run:updated` — When a caller changes a run's `meta`, `error_handling`, `delay_between_requests_ms` or `resource_stats` (`PATCH /sync-job-run/:id`); status changes have their own events (`started`, `rate_limited`, `completed`, `failed`, and `deleted` for a stop)
 - `sync_job_run:rate_limited` — When a run backs off a rate limit
 - `sync_job_run:completed` / `sync_job_run:failed` — When a run finishes
 - `sync_job_run:record` / `sync_job_run:record_error` — Per-record delivery and per-record errors

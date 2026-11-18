@@ -8,6 +8,10 @@ Dates are `YYYY-MM-DD`.
 
 ## [Unreleased]
 
+### Changed
+
+- `skills/truto/references/sync-jobs.md`, `webhooks-and-notifications.md`, `daemon-jobs.md`, `skills/truto-cli/references/admin-commands.md` — `PATCH /sync-job-run/:id` refuses `status`, `started_at`, `finished_at` and `retry_attempt` (`400` `sync_job_run_read_only_field`), so `sync_job_run:updated` now only means a caller changed `meta`, `error_handling`, `delay_between_requests_ms` or `resource_stats`. `PATCH /integrated-account/:id` accepts one status change, `needs_reauth` to `active` (`400` `integrated_account_status_transition` otherwise; the stored status passes). `PATCH /daemon-job-run/:id` refuses moving a run back (`400` `daemon_job_run_status_transition`). The CLI example that set `needs_reauth` now resumes an account instead. Pairs with `trutohq/truto#2410`.
+
 ### Added
 
 - `skills/truto-cli/references/integration-workflow.md` — The CLI V2 artifact workflow that integration and mapping builds share: methods and cells that wait on a question and `build --continue`, exit codes, one apply path for agents (`apply --prepare`, then `apply --plan <file> --expect-digest <d>` once a human approves the plan), `apply --diff`, the hold on a write that would lose a stored secret, a dropped method stopping the whole apply (exit 3) until `--allow-method-removal`, a file with no baseline at all written over live as `--resolve <item>=mine` would, `apply --no-docs-refresh` (no apply-time doc regeneration), and the cache refresh and ~7-minute wait before a mapping sample or read-only `integrations audit` call within 30 minutes of a config write. Pairs with `trutohq/truto#2248`.

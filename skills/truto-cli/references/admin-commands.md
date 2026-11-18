@@ -89,7 +89,7 @@ truto accounts list --features-super-query wnam                      # SuperQuer
 truto accounts list --created-at 2024-01-01T00:00:00Z                # ISO 8601 timestamp filters
 truto accounts get <id>
 truto accounts create -b '{"environment_integration_id":"...","tenant_id":"...","context":{...},"authentication_method":"oauth2","region":"wnam"}'
-truto accounts update <id> -b '{"status":"needs_reauth"}'
+truto accounts update <id> --status active                          # resume a needs_reauth account once the problem is fixed at the provider
 truto accounts delete <id>
 ```
 
@@ -113,7 +113,7 @@ For broader `jq` shaping recipes (group-by, fall-back labels, manual pagination 
 
 **Create fields:** `environment_integration_id` (required), `tenant_id` (required), `context` (JSON, required), `authentication_method` (required — `oauth2`, `api_key`, `basic`, etc.), `region` (default: `wnam`)
 
-**Update fields:** `tenant_id`, `status`, `context` (JSON), `authentication_method`
+**Update fields:** `tenant_id`, `status` (only `needs_reauth` to `active`; any other change is a `400` `integrated_account_status_transition`, and sending the current status changes nothing), `context` (JSON), `authentication_method`
 
 **Extra commands:**
 
