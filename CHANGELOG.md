@@ -10,7 +10,7 @@ Dates are `YYYY-MM-DD`.
 
 ### Changed
 
-- `skills/truto/references/sync-jobs.md`, `webhooks-and-notifications.md`, `daemon-jobs.md`, `skills/truto-cli/references/admin-commands.md` — `PATCH /sync-job-run/:id` refuses `status`, `started_at`, `finished_at` and `retry_attempt` (`400` `sync_job_run_read_only_field`), so `sync_job_run:updated` now only means a caller changed `meta`, `error_handling`, `delay_between_requests_ms` or `resource_stats`. `PATCH /integrated-account/:id` accepts one status change, `needs_reauth` to `active` (`400` `integrated_account_status_transition` otherwise; the stored status passes). `PATCH /daemon-job-run/:id` refuses moving a run back (`400` `daemon_job_run_status_transition`). The CLI example that set `needs_reauth` now resumes an account instead. Pairs with `trutohq/truto#2410`.
+- `skills/truto/references/sync-jobs.md`, `webhooks-and-notifications.md`, `daemon-jobs.md`, `skills/truto-cli/references/admin-commands.md` — `PATCH /sync-job-run/:id` refuses `status` (except `stopped`, which stops the run as `DELETE` does), `started_at`, `finished_at` and `retry_attempt` (`400` `sync_job_run_read_only_field`), so `sync_job_run:updated` now only means a caller changed `meta`, `error_handling`, `delay_between_requests_ms` or `resource_stats`, or stopped the run that way. `PATCH /integrated-account/:id` accepts one status change, `needs_reauth` to `active` (`400` `integrated_account_status_transition` otherwise; the stored status passes). `PATCH /daemon-job-run/:id` refuses moving a run back (`400` `daemon_job_run_status_transition`). The CLI example that set `needs_reauth` now resumes an account instead. Pairs with `trutohq/truto#2410`.
 
 ### Added
 
