@@ -68,4 +68,4 @@ curl -X POST https://api.truto.one/static-gate \
 ## Gotchas
 
 - The `api_token` is only included in the creation response. Subsequent reads strip it — store it immediately.
-- PATCH only supports updating `name` and `domain`. Token rotation is not exposed via the API.
+- PATCH updates `name` and `domain`, and replaces the token when the body sends a new `api_token` (it is not returned). A PATCH that changes `domain` must send `api_token` in the same request, or it gets a `400` and nothing is saved. `api_token` must be a non-empty string.
