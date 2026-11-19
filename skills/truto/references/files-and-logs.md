@@ -68,7 +68,7 @@ curl "https://api.truto.one/log?log_type=unified_proxy_api&created_at[gt]=2024-0
 | `webhook` | Webhook delivery logs | `environment_id`, `webhook_id`, `event` |
 | `sync_job_cron_trigger` | Sync job cron trigger logs | `environment_id` |
 | `mcp` | MCP server request logs | `integrated_account_id`, `mcp_server_id`, `tool_name`, `resource`, `method` |
-| `audit` | The team's audit log: who changed what through the dashboard or API, sign-ins, Truto staff impersonation | `team_id` (required), `environment_id`, `audit_action`, `audit_action_kind`, `audit_actor_type`, `user_id`, `audit_target_type`, `audit_target_id`, `request_id`, `search` |
+| `audit` | The team's audit log: who changed what through the dashboard or API, sign-ins and refused sign-ins, password resets, billing portal changes, Truto staff impersonation | `team_id` (required), `environment_id`, `audit_action`, `audit_action_kind`, `audit_actor_type`, `user_id`, `audit_target_type`, `audit_target_id`, `request_id`, `search` |
 
 ### Response
 
@@ -166,7 +166,7 @@ Cron trigger logs:
 
 #### `audit` entries
 
-The team's audit log. Unlike the other log types it is scoped to a **team**, not an environment: send `log_type_filter[team_id]`, and the caller must be an admin of that team (or use an API token issued for it). It covers every environment of the team. Entries are metadata only (never request or response bodies) and are kept for 90 days. Dashboard: **Settings → Audit log** (admins only).
+The team's audit log. Unlike the other log types it is scoped to a **team**, not an environment: send `log_type_filter[team_id]`, and the caller must be an admin of that team (or use an API token issued for it). For an admin it covers every environment of the team; an API token gets only its own environment's entries, so team-level entries (sign-ins, members, billing) are admin-only. Entries are metadata only (never request or response bodies) and are kept for 90 days. Dashboard: **Settings → Audit log** (admins only).
 
 ```bash
 curl -G https://api.truto.one/log \
@@ -192,21 +192,25 @@ curl -G https://api.truto.one/log \
   "audit_target_name": "https://example.com/truto-events",
   "api_token_id": "7e1d...",
   "http_method": "DELETE",
-  "http_url_details_path": "/webhook/0b6c...",
+  "http_url": "https://api.truto.one/webhook/0b6c...",
   "http_status_code": 200,
+  "http_request_id": "8d2f9b1c4e7a1234",
   "http_ip": "203.0.113.7",
-  "http_request_id": "8d2f9b1c4e7a1234"
+  "http_useragent": "truto-cli/1.0.45",
+  "http_country": "IN"
 }
 ```
 
-- `audit_action` is `<object>.<verb>`, e.g. `webhook.updated`, `integration.installed`, `integrated_account.connected`, `integrated_account.disconnected`, `integrated_account.post_install_failed`, `user.signed_in`, `impersonation.started`. Filter on it, not on the dashboard label, which can be reworded.
-- `audit_actor_type`: `user`, `api_token`, `truto_staff`, `end_user`, `integrated_account`, `scim`, `system`. Any other value is a `400`. `audit_actor_name` names the actor; Truto staff are shown as `Truto staff`.
+An entry has **only** these fields (an allowlist, the same in `GET /log`, the dashboard, its CSV and log forwarding): `timestamp`, `log_type`, `team_id`, `environment_id`, the `audit_*` fields, `user_id`, `api_token_id`, `http_method`, `http_url` (credentials such as an OAuth `code` replaced by `REDACTED`), `http_status_code`, `http_request_id`, `http_ip`, `http_useragent`, `http_country`. No response headers, handler log lines or `message`. Fields with no value are left out.
+
+- `audit_action` is `<object>.<verb>`, e.g. `webhook.updated`, `integration.installed`, `integrated_account.connected`, `integrated_account.disconnected`, `integrated_account.post_install_failed`, `user.signed_in`, `user.sign_in_failed` (`audit_detail` = method: `password`, `mfa`, `mfa_backup_code`, `mfa_setup`, `passkey`, `magic_link`, `saml`, `oidc`, or the social provider), `user.password_reset_requested`, `user.password_reset`, `mfa.enabled`, `billing.details_updated`, `billing.payment_method_added`, `billing.payment_method_removed`, `impersonation.started`. An `_failed` action is a failure even when `http_status_code` is a 302 (SSO answers with a redirect). Filter on it, not on the dashboard label, which can be reworded.
+- `audit_actor_type`: `user`, `api_token`, `truto_staff`, `end_user`, `integrated_account`, `scim`, `system`. Any other value is a `400`. `audit_actor_name` names the actor; Truto staff are shown as `Truto staff`, a refused SAML/OIDC sign-in as `Unknown user` (target: the `sso_connection`), and a billing portal change as `Stripe billing portal`.
 - `audit_action_kind`: `created`, `updated`, `deleted` or `other`, read from the end of `audit_action`. Any other value is a `400`.
 - `audit_target_type` accepts an array to match any of several (`log_type_filter[audit_target_type][]=webhook&log_type_filter[audit_target_type][]=datastore`).
 - `search`: case-insensitive, every word (up to 5) must appear in the action, actor name, or target name or id.
 - `environment_id` is absent on team-level events (sign-ins, member changes, SCIM).
-- Optional fields: `audit_detail` (a short qualifier such as the sign-in method or the start of a post-install error), `audit_target_version`, `audit_via` (`assistant` or `platform_mcp`), `audit_staff_name`, `user_id`, `impersonating_staff_user_id`.
-- Reads, Unified/Proxy/Custom API calls, per-account MCP calls, inbound integration webhooks and failed sign-ins are **not** in the audit log.
-- To keep entries past 90 days, add `audit` to an observability destination's `config.log_types`. A destination with no `log_types` does not receive `audit`.
+- Optional fields: `audit_detail` (a short qualifier such as the sign-in method or the start of a post-install error), `audit_target_version`, `audit_via` (`assistant` or `platform_mcp`), `audit_staff_name`, `user_id` and `api_token_id` (both absent when Truto staff acted).
+- Reads, Unified/Proxy/Custom API calls, per-account MCP calls and inbound integration webhooks are **not** in the audit log, nor is a sign-in attempt for an email with no account.
+- To keep entries past 90 days, add `audit` to an observability destination's `config.log_types`. A destination with no `log_types` does not receive `audit`. Only a team admin with a dashboard session can create, edit or delete a destination that lists `audit` (`403` for members and API tokens). A destination taking `api` also gets audited requests from its environment, in the same allowlisted shape.
 
 > Most fields on log entries are optional. Empty fields are stripped before storage, so any field documented above may be missing for a given entry.
