@@ -27,7 +27,7 @@ Daemon jobs are background processing tasks (similar to sync jobs but for genera
 | `GET` | `/daemon-job-run` | List runs |
 | `GET` | `/daemon-job-run/:id` | Get a run |
 | `POST` | `/daemon-job-run` | Trigger a run |
-| `PATCH` | `/daemon-job-run/:id` | Update a run |
+| `PATCH` | `/daemon-job-run/:id` | Update a run. It can't move back: a `completed`, `failed` or `stopped` run can't go back to `created` or `running`, and a `running` one can't go back to `created` (`400` `daemon_job_run_status_transition`) |
 | `DELETE` | `/daemon-job-run/:id` | Stop a run |
 
 ### Run Create Fields
