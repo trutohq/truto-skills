@@ -628,11 +628,14 @@ Static IP egress proxies for API calls. **Full CRUD.**
 truto gates list
 truto gates get <id>
 truto gates create -b '{"name":"us-west-proxy","domain":"api.example.com"}'
-truto gates update <id> -b '{"name":"renamed","domain":"api2.example.com"}'
+truto gates update <id> --name renamed
+truto gates update <id> -b '{"domain":"api2.example.com","api_token":"<token the gate expects>"}'
 truto gates delete <id>
 ```
 
 **Create fields:** `name` (required), `domain` (required)
+
+A domain change must send `api_token` in the same request, or the server answers `400` and saves nothing. `--domain` alone can't do it; use `-b`. A sent `api_token` replaces the gate's token.
 
 ### Documentation (`truto docs`)
 
