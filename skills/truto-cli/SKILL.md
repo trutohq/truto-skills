@@ -225,6 +225,33 @@ When `-o` is set to `json`, `yaml`, `csv`, or `ndjson`, decorative messages are 
 
 For build/edit/apply/verification, follow [the artifact workflow](references/integration-workflow.md). Reports and fresh checks are automatic; preserve `.committed` recovery state, explicit partial outcomes and concurrent edits. Use only authorized marked accounts for eligible reads, and keep saved/applied/local checks/live tests distinct.
 
+## Updating an integration (version, publishing)
+
+Every `truto integrations update` needs the integration's **current** `version` (an optimistic lock). Read it right before you update, and pass it with `--lock-version`:
+
+```bash
+truto integrations get <id> --select version,sharing,is_beta -o json
+truto integrations update <id> -b '{"category":"crm"}' --lock-version <version>
+```
+
+`sharing` and `is_beta` also need `--publish`. A new integration starts private (`sharing: deny`) and in beta (`is_beta: true`). To make it available to every team:
+
+```bash
+truto integrations update <id> -b '{"sharing":"allow","is_beta":false}' --publish --lock-version <version>
+```
+
+What each answer means, and what to do next:
+
+| Answer | Meaning | Next step |
+| --- | --- | --- |
+| CLI: `the body has no version` (exit 1, nothing sent) | You left out the version. | Read it with `get --select version`, add `--lock-version <version>`. |
+| `400 Version mismatch ... Latest version is N` | Your version is not the live one: the integration changed since you read it (another person, or your own earlier `apply` or `update`). Older CLIs also sent a body with no version and got this. | Read the integration again and check what changed. Then retry with the version you just read. |
+| CLI: `Publishing a change needs --publish` (exit 1, nothing sent) | The body changes `sharing` or `is_beta`. | Add `--publish` if you mean to publish. |
+| `403 Only the root team or a catalog publisher team can set sharing to ask or allow` | Your team may not publish integrations. | Ask the Truto team to publish it. This is not a fault. |
+| `404 Integration not found` | The server looks the integration up among the integrations your token's team owns, before it checks the version. Reading it with `get` is not enough: a shared integration is readable but not yours to update. | Check the profile (`-p`), `truto whoami`, and `truto integrations get <id> --select team_id,team.name`. If the team is yours, wait a minute and retry once with `--lock-version`. |
+
+A 404 or a `Version mismatch` is not a server fault by itself. Report one only when a retry with the right profile and the current version still fails, and include the command and the answer.
+
 ## LLM Agent Tips
 
 1. **For any LLM-driven workflow, always pass `-o json` or `-o ndjson` — `table` is for humans only and silently truncates IDs, URLs, and JSON/HTML bodies.** Prefer `ndjson` when piping to `head`, `tail`, `less`, `grep`, `jq -c`, etc. — `json` is buffered and gets truncated mid-token by SIGPIPE, causing `jq: parse error`. For larger results, redirect to a file first: `truto … -o json > /tmp/out.json && jq … /tmp/out.json`. See the gotcha below.
@@ -259,7 +286,7 @@ For build/edit/apply/verification, follow [the artifact workflow](references/int
   - `notification-destinations` (primary) = `notifications` = `notification-destination`
   - `gates` (primary) — API path is `static-gate`
   - `docs` (primary) — singular alias `documentation`
-- **Optimistic locking** — `integrations update`, `unified-models update`, `unified-model-mappings update`, and `env-unified-model-mappings update` all require a `version` field. Fetch current version with `get` first.
+- **Optimistic locking** — `integrations update`, `unified-models update`, `unified-model-mappings update`, and `env-unified-model-mappings update` all require the current `version`. Read it with `get` first and pass `--lock-version <version>` (or `"version"` in the body). For integrations, see [Updating an integration](#updating-an-integration-version-publishing).
 - `**environment_id` is implicit\*\* — your API token is scoped to one environment.
 - **MCP tokens use positional args** — `mcp-tokens` takes account ID as first positional argument, not `--account`.
 - **`unified-mappings` (AI build) vs `unified-model-mappings` (admin CRUD)** — confusingly close names, different tools. `truto unified-mappings build/validate/apply` is the **AI build flow** that generates JSONata mapping rows into a local `<integration>.<model>.mappings.json` and pushes them (see the **truto-unified-mappings** skill). `truto unified-model-mappings` is the **admin CRUD** command for those rows (`unified-model-resource-method`). Build with the former; hand-edit individual rows with the latter.
