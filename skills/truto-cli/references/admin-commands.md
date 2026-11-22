@@ -41,7 +41,7 @@ truto integrations delete <id>
 
 **Create fields:** `name` (required), `config` (JSON, required), `category`
 
-**Update fields:** `category`, `config` (JSON), `version` (required — optimistic locking; `--lock-version <version>`). Read the current version right before the update. The CLI refuses a body with no version (exit 1, nothing sent); a version that is not the live one gets `400 Version mismatch`. See [Updating an integration](../SKILL.md#updating-an-integration-version-publishing) for each error and the next step.
+**Update fields:** `category`, `config` (JSON), `version` (required — optimistic locking; `--lock-version <version>`). Read the current version right before the update. A CLI release that includes trutohq/truto#2434 refuses a body with no version (exit 1, nothing sent); an older CLI sends it and gets `400 Version mismatch`, as does a version that is not the live one. See [Updating an integration](../SKILL.md#updating-an-integration-version-publishing) for each error and the next step.
 
 `sharing` and `is_beta` need `--publish` (and the version, like any update): a body that would change either from its live value is refused (exit 1, nothing sent) unless `--publish` is given; sending back the value already live needs nothing. With several `--stdin` records (each sent to the same `<id>`), each is checked just before its own PATCH: a record refused after earlier ones were sent stops the run with exit 2 and names how many were sent.
 

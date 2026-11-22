@@ -163,7 +163,7 @@ Every build ends with a short summary -- on stderr in a terminal, and ONCE as a 
 5. `truto integrations lint acme.integration.json`. It exits 1 on warnings as well as errors; review the warnings, but only an ERROR blocks apply (`--ignore-warnings` makes lint fail on ERRORs only).
 6. `truto integrations apply acme.integration.json --prepare`. Show the human the plan.
 7. On their approval only: `truto integrations apply acme.integration.json --plan acme.integration.json.plan.json --expect-digest <digest>`.
-8. Publish only when the human asks. A new integration is created private (`sharing: deny`) and in beta (`is_beta: true`). Read its current version after the apply, then send it:
+8. Publish only when the human asks. `truto integrations apply` creates a new integration private (`sharing: deny`) and in beta (`is_beta: true`). Read its current version after the apply, then send it:
    `truto integrations get <id> --select version -o json`, then
    `truto integrations update <id> -b '{"sharing":"allow","is_beta":false}' --publish --lock-version <version>`.
    For what a `Version mismatch`, 403 or 404 means there, see [Updating an integration](../truto-cli/SKILL.md#updating-an-integration-version-publishing) in the truto-cli skill. None of them is a server fault by itself.

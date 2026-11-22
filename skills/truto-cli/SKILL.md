@@ -234,7 +234,7 @@ truto integrations get <id> --select version,sharing,is_beta -o json
 truto integrations update <id> -b '{"category":"crm"}' --lock-version <version>
 ```
 
-`sharing` and `is_beta` also need `--publish`. A new integration starts private (`sharing: deny`) and in beta (`is_beta: true`). To make it available to every team:
+`sharing` and `is_beta` also need `--publish`. An integration created by `truto integrations apply` starts private (`sharing: deny`) and in beta (`is_beta: true`). `truto integrations create` leaves `is_beta` at `false` unless the body sets it. To make an integration available to every team:
 
 ```bash
 truto integrations update <id> -b '{"sharing":"allow","is_beta":false}' --publish --lock-version <version>
@@ -244,13 +244,13 @@ What each answer means, and what to do next:
 
 | Answer | Meaning | Next step |
 | --- | --- | --- |
-| CLI: `the body has no version` (exit 1, nothing sent) | You left out the version. | Read it with `get --select version`, add `--lock-version <version>`. |
-| `400 Version mismatch ... Latest version is N` | Your version is not the live one: the integration changed since you read it (another person, or your own earlier `apply` or `update`). Older CLIs also sent a body with no version and got this. | Read the integration again and check what changed. Then retry with the version you just read. |
+| CLI: `the body has no version` (exit 1, nothing sent) | You left out the version. Only a CLI release that includes trutohq/truto#2434 checks this; an older CLI sends the body and gets `400 Version mismatch` (next row). | Read it with `get --select version`, add `--lock-version <version>`. |
+| `400 Version mismatch ... Latest version is N` | Your version is not the live one: the integration changed since you read it (another person, or your own earlier `apply` or `update`). A CLI older than the release with trutohq/truto#2434 also sends a body with no version, and gets this. | Read the integration again and check what changed. Then retry with the version you just read. |
 | CLI: `Publishing a change needs --publish` (exit 1, nothing sent) | The body changes `sharing` or `is_beta`. | Add `--publish` if you mean to publish. |
 | `403 Only the root team or a catalog publisher team can set sharing to ask or allow` | Your team may not publish integrations. | Ask the Truto team to publish it. This is not a fault. |
-| `404 Integration not found` | The server looks the integration up among the integrations your token's team owns, before it checks the version. Reading it with `get` is not enough: a shared integration is readable but not yours to update. | Check the profile (`-p`), `truto whoami`, and `truto integrations get <id> --select team_id,team.name`. If the team is yours, wait a minute and retry once with `--lock-version`. |
+| `404 Integration not found` | The server looks the integration up among the integrations your token's team owns, before it checks the version. Reading it with `get` is not enough: a shared integration is readable but not yours to update. | Check the profile (`-p`), `truto whoami`, and `truto integrations get <id> --select team_id,team.name`. Check the id is the one `apply` or `create` printed. Waiting does not help: nothing in this lookup is cached. |
 
-A 404 or a `Version mismatch` is not a server fault by itself. Report one only when a retry with the right profile and the current version still fails, and include the command and the answer.
+A 404 or a `Version mismatch` is not a server fault by itself. Report one only when the id, the profile's team and the current version are all right and it still fails, and include the command and the answer.
 
 ## LLM Agent Tips
 
