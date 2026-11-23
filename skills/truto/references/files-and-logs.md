@@ -211,6 +211,6 @@ An entry has **only** these fields (an allowlist, the same in `GET /log`, the da
 - `environment_id` is absent on team-level events (sign-ins, member changes, SCIM).
 - Optional fields: `audit_detail` (a short qualifier such as the sign-in method or the start of a post-install error), `audit_target_version`, `audit_via` (`assistant` or `platform_mcp`), `audit_staff_name`, `user_id` and `api_token_id` (both absent when Truto staff acted).
 - Reads, Unified/Proxy/Custom API calls, per-account MCP calls and inbound integration webhooks are **not** in the audit log, nor is a sign-in attempt for an email with no account.
-- To keep entries past 90 days, add `audit` to an observability destination's `config.log_types`. A destination with no `log_types` does not receive `audit`. Only a team admin with a dashboard session can create, edit or delete a destination that lists `audit` (`403` for members and API tokens). A destination taking `api` also gets audited requests from its environment, in the same allowlisted shape.
+- To keep entries past 90 days, add `audit` to an observability destination's `config.log_types`. A destination with no `log_types` does not receive `audit`. Only a team admin with a dashboard session can create, edit or delete a destination that lists `audit` (`403` for members and API tokens). Audited requests go only to `audit` destinations; a destination taking `api` never receives them.
 
 > Most fields on log entries are optional. Empty fields are stripped before storage, so any field documented above may be missing for a given entry.
