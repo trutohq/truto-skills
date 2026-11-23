@@ -8,6 +8,10 @@ Dates are `YYYY-MM-DD`.
 
 ## [Unreleased]
 
+### Changed
+
+- `skills/truto/references/sync-jobs.md`, `webhooks-and-notifications.md`, `daemon-jobs.md`, `skills/truto-cli/references/admin-commands.md` — `PATCH /sync-job-run/:id` refuses `status` (except `stopped`, which stops the run as `DELETE` does), `started_at`, `finished_at` and `retry_attempt` (`400` `sync_job_run_read_only_field`), so `sync_job_run:updated` now only means a caller changed `meta`, `error_handling`, `delay_between_requests_ms` or `resource_stats`, or stopped the run that way. `PATCH /integrated-account/:id` accepts one status change, `needs_reauth` to `active` (`400` `integrated_account_status_transition` otherwise; the stored status passes). `PATCH /daemon-job-run/:id` refuses moving a run back (`400` `daemon_job_run_status_transition`). The CLI example that set `needs_reauth` now resumes an account instead. Pairs with `trutohq/truto#2410`.
+
 ### Added
 
 - `skills/truto/references/files-and-logs.md` — `log_type=audit`, the team's audit log: team-scoped (`log_type_filter[team_id]` required, admins only; an API token reads only its own environment), 90-day range, the allowlisted entry shape, refused sign-ins, password resets and billing portal changes, admin-only `audit` destinations, its filters (`audit_action`, `audit_action_kind`, `audit_actor_type`, `user_id`, `audit_target_type`, `audit_target_id`, `request_id`, `search`), the entry shape, what it leaves out, and that an observability destination receives `audit` only when it lists it. Pairs with `trutohq/truto#2283`.
