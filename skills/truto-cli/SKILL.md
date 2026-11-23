@@ -244,7 +244,7 @@ What each answer means, and what to do next:
 
 | Answer | Meaning | Next step |
 | --- | --- | --- |
-| CLI: `the body has no version` (exit 1, nothing sent) | You left out the version. Only a CLI release that includes trutohq/truto#2434 checks this; an older CLI sends the body and gets `400 Version mismatch` (next row). | Read it with `get --select version`, add `--lock-version <version>`. |
+| CLI: ``Refusing to update integration <id>: the body has no `version` `` (exit 1, nothing sent) | You left out the version. Only a CLI release that includes trutohq/truto#2434 checks this; an older CLI sends the body and gets `400 Version mismatch` (next row). | Read it with `get --select version`, add `--lock-version <version>`. |
 | `400 Version mismatch ... Latest version is N` | Your version is not the live one: the integration changed since you read it (another person, or your own earlier `apply` or `update`). A CLI older than the release with trutohq/truto#2434 also sends a body with no version, and gets this. | Read the integration again and check what changed. Then retry with the version you just read. |
 | CLI: `Publishing a change needs --publish` (exit 1, nothing sent) | The body changes `sharing` or `is_beta`. | Add `--publish` if you mean to publish. |
 | `403 Only the root team or a catalog publisher team can set sharing to ask or allow` | Your team may not publish integrations. | Ask the Truto team to publish it. This is not a fault. |
