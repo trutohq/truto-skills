@@ -30,7 +30,8 @@ curl -X POST https://api.truto.one/static-gate \
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | Yes | Gate name |
-| `domain` | string | Yes | Allowed domain |
+| `domain` | string | Yes | The gate's host name, with an optional port (`gate.example.com`, `gate.example.com:8443`). A scheme, a path, credentials or a private host is a `400`. |
+| `api_token` | string | No | The gate's token; generated when left out |
 | `environment_id` | uuid | Yes | Parent environment |
 
 ### Fields
@@ -39,7 +40,7 @@ curl -X POST https://api.truto.one/static-gate \
 |-------|------|-------------|
 | `id` | uuid | Gate identifier |
 | `name` | string | Display name |
-| `domain` | string | Allowed domain |
+| `domain` | string | The gate's host name, with an optional port |
 | `api_token` | string | Auto-generated token (shown on create only) |
 | `environment_id` | uuid | Parent environment |
 | `created_at` | datetime | Creation timestamp |
