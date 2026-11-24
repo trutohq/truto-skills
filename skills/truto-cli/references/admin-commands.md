@@ -635,7 +635,7 @@ truto gates delete <id>
 
 **Create fields:** `name` (required), `domain` (required)
 
-A domain change must send `api_token` in the same request, or the server answers `400` and saves nothing. `--domain` alone can't do it; use `-b`. A sent `api_token` replaces the gate's token.
+A domain change must send `api_token` in the same request, and a new `api_token` must come with its `domain` (the current one, to rotate the token in place), or the server answers `400` and saves nothing. `--domain` alone can't do it; use `-b`. A sent `api_token` replaces the gate's token.
 
 ### Documentation (`truto docs`)
 
