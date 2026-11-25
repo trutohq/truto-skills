@@ -96,6 +96,8 @@ curl -X POST "https://api.truto.one/proxy/files?integrated_account_id=$ACCOUNT_I
 - Query parameters are forwarded to the native API, including `integrated_account_id` — the provider may ignore unknown params.
 - The `resource` name must match the native API's resource naming (case-sensitive for some providers).
 - No `/meta` endpoints for proxy API — refer to the provider's documentation.
+- **Credentials go only to the integration's credential hosts**: the hosts of its `base_url`, of each method's own `base_url`, of a method path that is a whole saved URL, and of `config.credential_hosts` (for example `https://files.slack.com`, `https://{{domain}}`), filled with the account's settings. A request that lands anywhere else (a download `base` or `truto_base` you point at another host, a pre-signed link, a redirect hop to a CDN) is still sent, with nothing of the account's: no authorization and none of its saved values. Its log row names the host in `credential_host_miss`. A pre-signed S3 link keeps working; a `base` you point at your own server gets nothing.
+- **What you send is plain text.** Truto never fills a `{{…}}` in your request's query, body, headers or path against the account: it goes to the provider as those characters.
 
 ---
 
@@ -232,12 +234,13 @@ curl -X POST "https://api.truto.one/custom/v1/reports/run?integrated_account_id=
 Behavior to know:
 
 - The `methodConfig` field is **stripped from the body** before the request is forwarded — it's metadata for Truto, never sent upstream.
+- Placeholders in `methodConfig` read only your request (`{{body.…}}`, `{{query.…}}`, `{{id}}`), never the account's saved settings or credentials. A `{{…}}` in the request itself (the path, query or body) is sent as text.
 - If `methodConfig` is omitted, the path is forwarded as-is and the body is sent as-is. This is the "raw passthrough" mode.
 - `integrated_account_id` is removed from the query string before forwarding.
 - The response is wrapped in `{ result, next_cursor, prev_cursor }` when JSON; binary responses pass through unchanged.
 - A restricted integrated-account token (the browser-held kind, without full credentials) gets a `403` for `methodConfig.error_expression`, `methodConfig.query` or a non-null `methodConfig.pagination`. The integration's own error expression, query and pagination still apply, and the request's own query parameters still go on the URL. The same token gets a `403` for `truto_response_format=debug`, and a `400` on `/proxy`, `/custom` and `/unified` for:
   - a placeholder that reads a stored credential;
-  - a placeholder that reads the request itself (`{{query.…}}`, `{{body.…}}`, `{{id}}`, `{{headers.…}}`) or a unified request's `before` step output (`{{before.…}}`). Its placeholders may read only the account's saved settings, such as a connect form's `{{xero_tenant_id.value}}`;
+  - a placeholder that reads the request itself (`{{query.…}}`, `{{body.…}}`, `{{id}}`, `{{headers.…}}`) or a unified request's `before` step output (`{{before.…}}`). A placeholder for one of the account's saved settings, such as a connect form's `{{xero_tenant_id.value}}`, is allowed, and sent as text like any other: Truto doesn't fill placeholders in what a caller sends;
   - a `{{` or `}}` outside a whole placeholder (a nested placeholder, for example; single braces are fine), including one that the saved values make once the placeholders are filled in;
   - a `$'` or `` $` `` in a value that also holds a brace;
   - a saved `context` value that holds a placeholder (or pieces that one fill joins into one) reading a stored credential or the request's `query`, `body`, `headers` or `before` step output, or, outside the credential fields, a `$'` or `` $` `` together with a brace. A saved `{{id}}` or `{{first_name}}`, as in a file name, is fine.
@@ -250,7 +253,7 @@ When to prefer Pattern 2 over Pattern 1:
 
 ### Where Custom Methods Run
 
-Custom methods (both patterns) execute through the same `fetchResourceForIntegratedAccount` pipeline as standard CRUD: `headers`/`query` merging, placeholder substitution, JSONata transforms, pagination, error mapping, and credential refresh all apply. There's no separate "custom handler" runtime — they're regular method configs invoked by a different route.
+Custom methods (both patterns) execute through the same `fetchResourceForIntegratedAccount` pipeline as standard CRUD: `headers`/`query` merging, placeholder substitution in the method config (never in the caller's own values), JSONata transforms, pagination, error mapping, credential refresh and the credential-host rule all apply. There's no separate "custom handler" runtime — they're regular method configs invoked by a different route.
 
 ---
 
