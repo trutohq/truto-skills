@@ -96,7 +96,7 @@ curl -X POST "https://api.truto.one/proxy/files?integrated_account_id=$ACCOUNT_I
 - Query parameters are forwarded to the native API, including `integrated_account_id` — the provider may ignore unknown params.
 - The `resource` name must match the native API's resource naming (case-sensitive for some providers).
 - No `/meta` endpoints for proxy API — refer to the provider's documentation.
-- **Credentials go only to the integration's credential hosts**: the hosts of its `base_url`, of each method's own `base_url`, of a method path that is a whole saved URL, and of `config.credential_hosts` (for example `https://files.slack.com`, `https://{{domain}}`), filled with the account's settings. A request that lands anywhere else (a download `base` or `truto_base` you point at another host, a pre-signed link, a redirect hop to a CDN) is still sent, with nothing of the account's: no authorization and none of its saved values. Its log row names the host in `credential_host_miss`. A pre-signed S3 link keeps working; a `base` you point at your own server gets nothing.
+- **Credentials go only to the integration's credential hosts**: the hosts of its `base_url`, of each method's own `base_url`, of a method path that is a whole saved URL, and of `config.credential_hosts` (for example `https://files.slack.com`, `https://{{domain}}`), filled with the account's settings. Truto is rolling this out: for now a request to any other host is only recorded. Once it is enforced, a request that lands anywhere else (a download `base` or `truto_base` you point at another host, a pre-signed link, a redirect hop to a CDN) is still sent, with nothing of the account's: no authorization and none of its saved values. Its log row names the host in `credential_host_miss`. A pre-signed S3 link keeps working; a `base` you point at your own server gets nothing.
 - **What you send is plain text.** Truto never fills a `{{…}}` in your request's query, body, headers or path against the account: it goes to the provider as those characters.
 
 ---
@@ -234,7 +234,7 @@ curl -X POST "https://api.truto.one/custom/v1/reports/run?integrated_account_id=
 Behavior to know:
 
 - The `methodConfig` field is **stripped from the body** before the request is forwarded — it's metadata for Truto, never sent upstream.
-- Placeholders in `methodConfig` read only your request (`{{body.…}}`, `{{query.…}}`, `{{id}}`), never the account's saved settings or credentials. A `{{…}}` in the request itself (the path, query or body) is sent as text.
+- Once credential hosts are enforced, placeholders in `methodConfig` read only your request (`{{body.…}}`, `{{query.…}}` for a query key you send, `{{id}}`), never the account's saved settings or credentials. Until then they still read the account, and each one that does is logged (`caller_placeholders_unfilled`). A `{{…}}` in the request itself (the path, query or body) is sent as text either way.
 - If `methodConfig` is omitted, the path is forwarded as-is and the body is sent as-is. This is the "raw passthrough" mode.
 - `integrated_account_id` is removed from the query string before forwarding.
 - The response is wrapped in `{ result, next_cursor, prev_cursor }` when JSON; binary responses pass through unchanged.
